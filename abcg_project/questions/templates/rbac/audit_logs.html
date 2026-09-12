@@ -1,0 +1,231 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Audit History | aBCG{% endblock %}
+
+{% block content %}
+<section class="page-header flex-wrap align-items-center mb-4">
+    <div>
+        <h1 class="h2 fw-bold text-dark m-0">Audit History</h1>
+    </div>
+</section>
+
+<!-- Telemetry Scorecard Section -->
+<div class="row g-3 mb-4">
+    <!-- Active Admin Sessions -->
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm p-3 h-100" style="border-radius: var(--radius); background: var(--surface);">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted fw-bold uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Active Admin Sessions</span>
+                <i class="bi bi-person-fill-check text-primary fs-5"></i>
+            </div>
+            <div class="d-flex align-items-baseline gap-2">
+                <span class="fs-3 fw-bold text-dark">{{ telemetry.active_sessions }}</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill animate-pulse" style="font-size: 0.65rem; height: fit-content;">Live Telemetry</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Total Log Entries -->
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm p-3 h-100" style="border-radius: var(--radius); background: var(--surface);">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted fw-bold uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Total Log Transactions</span>
+                <i class="bi bi-clipboard2-data text-secondary fs-5"></i>
+            </div>
+            <span class="fs-3 fw-bold text-dark">{{ telemetry.total_logs }}</span>
+        </div>
+    </div>
+    
+    <!-- Role & Boundary Overrides -->
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm p-3 h-100" style="border-radius: var(--radius); background: var(--surface);">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted fw-bold uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Override Actions</span>
+                <i class="bi bi-shield-fill-exclamation text-warning fs-5"></i>
+            </div>
+            <span class="fs-3 fw-bold text-warning">{{ telemetry.overrides }}</span>
+        </div>
+    </div>
+    
+    <!-- Role Mappings Changed -->
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm p-3 h-100" style="border-radius: var(--radius); background: var(--surface);">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted fw-bold uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Role Mappings Updated</span>
+                <i class="bi bi-toggle-on text-info fs-5"></i>
+            </div>
+            <span class="fs-3 fw-bold text-info">{{ telemetry.role_changes }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Search/Filter Logs Card -->
+<div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: var(--radius); background: var(--surface);">
+    <form method="get" class="row g-3 align-items-end">
+        <!-- Text Search -->
+        <div class="col-md-4">
+            <label for="q" class="form-label fw-bold text-muted small uppercase">Search query</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0" style="border-color: var(--line); border-radius: var(--radius) 0 0 var(--radius);">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" class="form-control border-start-0" id="q" name="q" value="{{ q }}" placeholder="Type action, study ID, username..." style="border-color: var(--line); border-radius: 0 var(--radius) var(--radius) 0; font-size: 0.88rem; height: 38px;">
+            </div>
+        </div>
+        
+        <!-- Filter Event Type -->
+        <div class="col-md-3">
+            <label for="event_type" class="form-label fw-bold text-muted small uppercase">Event Type</label>
+            <select class="form-select" id="event_type" name="event_type" style="border-color: var(--line); border-radius: var(--radius); font-size: 0.88rem; height: 38px;">
+                <option value="">All Events</option>
+                <option value="ROLE_CHANGE" {% if event_type == 'ROLE_CHANGE' %}selected{% endif %}>Role & Permission Changes</option>
+                <option value="OVERRIDE" {% if event_type == 'OVERRIDE' %}selected{% endif %}>Record Overrides / Updates</option>
+                <option value="CREATION" {% if event_type == 'CREATION' %}selected{% endif %}>Participant / User Creation</option>
+                <option value="LOGIN" {% if event_type == 'LOGIN' %}selected{% endif %}>User Access & Logins</option>
+            </select>
+        </div>
+
+        <!-- Filter Actor Role -->
+        <div class="col-md-3">
+            <label for="role" class="form-label fw-bold text-muted small uppercase">Actor Role</label>
+            <select class="form-select" id="role" name="role" style="border-color: var(--line); border-radius: var(--radius); font-size: 0.88rem; height: 38px;">
+                <option value="">All Roles</option>
+                <option value="Super Admin" {% if role_filter == 'Super Admin' %}selected{% endif %}>Super Admin</option>
+                <option value="Admin" {% if role_filter == 'Admin' %}selected{% endif %}>Admin</option>
+                <option value="Nodal Officer" {% if role_filter == 'Nodal Officer' %}selected{% endif %}>Nodal Officer</option>
+                <option value="Doctor" {% if role_filter == 'Doctor' %}selected{% endif %}>Doctor</option>
+                <option value="Project Nurse" {% if role_filter == 'Project Nurse' %}selected{% endif %}>Project Nurse</option>
+            </select>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100" style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 600; font-size: 0.88rem; height: 38px;">
+                Apply Filters
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Chronological Audit Table Card -->
+<div class="card border-0 shadow-sm overflow-hidden" style="border-radius: var(--radius); background: var(--surface);">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="min-width: 950px;">
+            <thead class="bg-light text-muted" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                <tr>
+                    <th class="px-4 py-3" style="width: 180px;">Timestamp</th>
+                    <th class="py-3" style="width: 250px;">Actor Identity</th>
+                    <th class="py-3">Action Description</th>
+                    <th class="py-3" style="width: 200px;">Target User / Subject</th>
+                    <th class="px-4 py-3 text-end" style="width: 140px;">IP Address</th>
+                </tr>
+            </thead>
+            <tbody style="font-size: 0.85rem;">
+                {% for log in logs %}
+                <tr class="audit-row-hover">
+                    <td class="px-4 py-3 text-dark fw-semibold">
+                        {{ log.timestamp|date:"Y-m-d H:i:s" }}
+                    </td>
+                    <td class="py-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle rounded-circle d-inline-grid place-items-center bg-light text-primary font-bold" style="width: 28px; height: 28px; font-size: 0.72rem; line-height: 28px; text-align: center;">
+                                {{ log.actor.username|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div class="text-dark fw-bold" style="font-size: 0.88rem;">{{ log.actor.profile.full_name|default:log.actor.username }}</div>
+                                <span class="text-muted small">@{{ log.actor.username }} ({{ log.actor.profile.role|default:"User" }})</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3 text-muted font-medium" style="max-width: 400px; word-break: break-word; font-size: 0.85rem;">
+                        {{ log.action }}
+                    </td>
+                    <td class="py-3">
+                        {% if log.target_user %}
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle rounded-circle d-inline-grid place-items-center bg-slate-100 text-slate-600 font-bold" style="width: 26px; height: 26px; font-size: 0.7rem; line-height: 26px; text-align: center;">
+                                {{ log.target_user.username|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div class="text-dark fw-semibold">{{ log.target_user.profile.full_name|default:log.target_user.username }}</div>
+                                <span class="text-muted small" style="font-size: 0.75rem;">@{{ log.target_user.username }}</span>
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="text-muted opacity-50 font-semibold">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-end text-muted font-monospace" style="font-size: 0.78rem;">
+                        <i class="bi bi-laptop me-1.5 opacity-75"></i>{{ log.ip_address|default:"127.0.0.1" }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="bi bi-clock-history display-4 mb-3 d-block text-muted opacity-50"></i>
+                        No audit logs available or match the filter.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if logs.has_other_pages %}
+    <div class="card-footer bg-white border-0 px-4 py-3 d-flex align-items-center justify-content-between border-top">
+        <div class="text-muted small">
+            Showing <span class="fw-bold text-dark">{{ logs.start_index }}</span> to <span class="fw-bold text-dark">{{ logs.end_index }}</span> of <span class="fw-bold text-dark">{{ logs.paginator.count }}</span> records
+        </div>
+        <nav aria-label="Audit Logs Pagination">
+            <ul class="pagination pagination-sm mb-0">
+                {% if logs.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link text-primary" href="?page={{ logs.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if event_type %}&event_type={{ event_type }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;</span>
+                    </li>
+                {% endif %}
+
+                {% for page in logs.paginator.page_range %}
+                    {% if page == logs.number %}
+                        <li class="page-item active" aria-current="page">
+                            <span class="page-link bg-primary border-primary">{{ page }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link text-primary" href="?page={{ page }}{% if q %}&q={{ q }}{% endif %}{% if event_type %}&event_type={{ event_type }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}">{{ page }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link text-primary" href="?page={{ logs.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if event_type %}&event_type={{ event_type }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .audit-row-hover {
+        transition: background-color 0.2s ease;
+    }
+    .audit-row-hover:hover {
+        background-color: var(--surface-soft);
+    }
+</style>
+{% endblock %}

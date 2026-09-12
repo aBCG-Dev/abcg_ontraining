@@ -1,0 +1,6 @@
+{% load rbac_tags %}
+{% if request.user|has_any_group:"Admin,Doctor,Nodal Officer,Super Admin" %}
+    {% include 'includes/sidebar_admin.html' %}
+{% else %}
+    {% include 'includes/sidebar_field.html' %}
+{% endif %}

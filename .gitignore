@@ -1,0 +1,26 @@
+# Environments
+.venv/
+venv/
+ENV/
+env/
+*/.venv/
+*/venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*/__pycache__/
+
+# Scratch files and temporary testing logs
+scratch/
+*/scratch/
+.git_backup
+*/.git_backup
+*.log
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store

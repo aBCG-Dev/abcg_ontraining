@@ -1,0 +1,42 @@
+<nav aria-label="Primary" class="flex h-full flex-col gap-1.5 overflow-y-auto px-3 py-4 bg-sidebar text-sidebar-foreground">
+  <div class="px-2.5 mb-2">
+    <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Field Operations</div>
+  </div>
+
+  <a
+    href="{% url 'questions:home' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'dashboard_field' or page == 'home' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="layout-dashboard" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Home Dashboard</span>
+  </a>
+
+  <a
+    href="{% url 'questions:registration' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold text-slate-300 hover:bg-sidebar-accent hover:text-white transition-all"
+  >
+    <i data-lucide="user-plus" class="size-4.5 shrink-0 text-success"></i>
+    <span class="flex-1 truncate">New Registration</span>
+  </a>
+
+  <a
+    href="{% url 'questions:search' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold text-slate-300 hover:bg-sidebar-accent hover:text-white transition-all"
+  >
+    <i data-lucide="search" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Search Registry</span>
+  </a>
+
+  <a
+    href="{% url 'questions:pending_sync' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold text-slate-300 hover:bg-sidebar-accent hover:text-white transition-all"
+  >
+    <i data-lucide="refresh-cw" class="size-4.5 shrink-0 text-warning"></i>
+    <span class="flex-1 truncate">Pending Sync</span>
+  </a>
+
+  <div class="mt-auto px-2 py-3 border-t border-sidebar-border text-center text-[10px] text-slate-400 font-semibold">
+    Logged in: @{{ request.user.username }}
+    <div class="text-slate-500 font-mono mt-0.5">({{ request.user.profile.role }})</div>
+  </div>
+</nav>

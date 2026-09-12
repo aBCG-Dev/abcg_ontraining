@@ -1,0 +1,545 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}aBCG VE Study Analytics{% endblock %}
+
+{% block content %}
+<!-- Include html2pdf library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<div class="space-y-6 max-w-7xl mx-auto px-4">
+  <!-- Clean Action Bar -->
+  <div class="flex items-center justify-end pb-4 border-b border-border/40">
+    <button 
+      onclick="downloadLandscapeReport()"
+      class="h-9 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white transition-all shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer px-4"
+    >
+      <i data-lucide="file-text" class="size-4"></i> Export PDF Report
+    </button>
+  </div>
+
+  <!-- KPI Metrics Panel (3 Core Cards) -->
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <!-- Screened -->
+    <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between min-h-[110px] overflow-hidden">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Total Screened</span>
+        <i data-lucide="scan-search" class="size-4.5 text-indigo-600"></i>
+      </div>
+      <div>
+        <div class="text-3xl font-black text-foreground tracking-tight leading-none" id="kpi-screened">{{ metrics.screened|default:"0" }}</div>
+        <p class="text-[10px] text-muted-foreground mt-1 truncate">Registered individuals</p>
+      </div>
+    </div>
+
+    <!-- Cases -->
+    <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between min-h-[110px] overflow-hidden">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Confirmed TB Cases</span>
+        <i data-lucide="activity" class="size-4.5 text-red-600"></i>
+      </div>
+      <div>
+        <div class="text-3xl font-black text-red-600 tracking-tight" id="kpi-cases">{{ metrics.cases|default:"0" }}</div>
+        <p class="text-[10px] text-muted-foreground mt-1 truncate">Verified cohort records</p>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between min-h-[110px] overflow-hidden">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Controls Matched</span>
+        <i data-lucide="users" class="size-4.5 text-teal-600"></i>
+      </div>
+      <div>
+        <div class="text-3xl font-black text-teal-600 tracking-tight" id="kpi-controls">{{ metrics.controls|default:"0" }}</div>
+        <p class="text-[10px] text-muted-foreground mt-1 truncate">Paired comparison pool</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active filter label -->
+  <div class="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-2">
+    <i data-lucide="map-pin" class="size-3.5 text-primary shrink-0"></i>
+    <span>Active Filter Scope: <strong id="active-scope-lbl" class="text-foreground">India</strong></span>
+  </div>
+
+  <!-- Row 2: Charts Grid -->
+  <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <!-- TB Classification -->
+    <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col h-[380px]">
+      <div class="mb-4">
+        <h3 class="font-bold text-sm text-foreground">TB Classification Distribution</h3>
+        <p class="text-xs text-muted-foreground">Proportion of pulmonary vs extrapulmonary verified case cohorts</p>
+      </div>
+      <div class="flex-1 relative min-h-0">
+        <canvas id="breakdownChart" class="w-full h-full"></canvas>
+      </div>
+    </div>
+
+    <!-- Diagnostic Certainty Profile -->
+    <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col h-[380px]">
+      <div class="mb-4">
+        <h3 class="font-bold text-sm text-foreground">Diagnostic Confirmation Profile</h3>
+        <p class="text-xs text-muted-foreground">Microbiologically confirmed vs clinically diagnosed certainty split</p>
+      </div>
+      <div class="flex-1 relative min-h-0">
+        <canvas id="certaintyChart" class="w-full h-full"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Site rankings table -->
+  <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col">
+    <div class="mb-4">
+      <h3 class="font-bold text-sm text-foreground">Geographic Site Load Rankings</h3>
+      <p class="text-xs text-muted-foreground">Site registration burden and pending verifications</p>
+    </div>
+    <div class="overflow-x-auto rounded-lg border border-border/40 flex-1">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b border-border bg-muted/40 font-bold text-muted-foreground uppercase tracking-wider text-[9px]">
+            <th class="p-3 pl-4">TB Unit (Site Code)</th>
+            <th class="p-3 text-right">Screened</th>
+            <th class="p-3 text-right text-red-600">TB Cases</th>
+            <th class="p-3 pr-4 text-right">Verification Backlog</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40 font-medium text-foreground" id="geo-tbody">
+          <!-- Dynamic rows -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- 1-PAGE LANDSCAPE SLIDE REPORT CONTAINER     -->
+<!-- ========================================== -->
+<div id="pdf-report-root" class="font-sans bg-white" style="display: none; color: #0f172a; width: 10.4in; height: 7.6in; padding: 0.3in; box-sizing: border-box; overflow: hidden;">
+  <div class="w-full h-full flex flex-col justify-between" style="height: 100%;">
+    <!-- Slide Header -->
+    <div class="flex justify-between items-end border-b-2 border-slate-900 pb-2 mb-4">
+      <h1 class="text-xl font-bold text-slate-900" style="font-family: 'Outfit', sans-serif;">aBCG report</h1>
+      <div class="text-right text-[8px] text-slate-400 font-bold uppercase">
+        <div>Date Generated: <span id="pdf-report-date"></span></div>
+        <div>Filter Scope: <span id="pdf-report-scope">India</span></div>
+      </div>
+    </div>
+
+    <!-- Main Content Slide Grid (Left: KPIs + Charts, Right: Table + Summary) -->
+    <div class="grid grid-cols-12 gap-5 flex-1 min-h-0 mb-4">
+      <!-- Left Column (KPIs + Charts) -->
+      <div class="col-span-7 flex flex-col justify-between gap-4">
+        <!-- 3 KPIs with left-accent bars and premium spacing -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="border border-slate-200 border-l-4 border-l-indigo-600 p-3 rounded bg-slate-50">
+            <span class="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Total Screened</span>
+            <strong class="text-lg font-black text-slate-800" id="pdf-kpi-screened">{{ metrics.screened|default:"0" }}</strong>
+          </div>
+          <div class="border border-slate-200 border-l-4 border-l-red-600 p-3 rounded bg-slate-50">
+            <span class="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Confirmed TB Cases</span>
+            <strong class="text-lg font-black text-red-600" id="pdf-kpi-cases">{{ metrics.cases|default:"0" }}</strong>
+          </div>
+          <div class="border border-slate-200 border-l-4 border-l-teal-600 p-3 rounded bg-slate-50">
+            <span class="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Controls Matched</span>
+            <strong class="text-lg font-black text-slate-800 text-teal-600" id="pdf-kpi-controls">{{ metrics.controls|default:"0" }}</strong>
+          </div>
+        </div>
+
+        <!-- TB Profile Split Charts in PDF (Doughnut on Left, Bar Chart on Right) -->
+        <div class="grid grid-cols-2 gap-3 h-[180px]">
+          <!-- TB Classification Chart -->
+          <div class="border border-slate-200 p-3 rounded bg-slate-50/50 flex flex-col justify-between h-[180px]">
+            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-1">TB Classifications</span>
+            <div class="flex-1 relative min-h-0 h-[120px]">
+              <canvas id="pdfBreakdownChart" class="w-full h-full"></canvas>
+            </div>
+          </div>
+
+          <!-- Diagnostic Certainty Chart -->
+          <div class="border border-slate-200 p-3 rounded bg-slate-50/50 flex flex-col justify-between h-[180px]">
+            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Certainty Splits</span>
+            <div class="flex-1 relative min-h-0 h-[120px]">
+              <canvas id="pdfCertaintyChart" class="w-full h-full"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column (Geo Rankings Table + Executive Summary Callout) -->
+      <div class="col-span-5 flex flex-col justify-between gap-4">
+        <!-- Site rankings table (top-half) -->
+        <div class="border border-slate-200 rounded p-3 flex flex-col min-h-0 flex-1">
+          <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Geographic Site Load Rankings</span>
+          <div class="overflow-hidden flex-1">
+            <table class="w-full text-left text-[9px] border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 font-bold text-slate-500 uppercase tracking-wider text-[7px] bg-slate-50">
+                  <th class="p-1.5 pl-2">TB Unit</th>
+                  <th class="p-1.5 text-right">Screened</th>
+                  <th class="p-1.5 text-right">TB Cases</th>
+                  <th class="p-1.5 pr-2 text-right">Backlog</th>
+                </tr>
+              </thead>
+              <tbody id="pdf-geo-tbody" class="divide-y divide-slate-100 text-slate-700">
+                <!-- Dynamic -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Executive Summary / Policy Analytics Callout (bottom-half) -->
+        <div class="border border-slate-200 rounded p-3 bg-slate-50/40 flex flex-col gap-1.5">
+          <span class="text-[8px] font-bold text-slate-500 uppercase tracking-wider block">Analytical Decision Callout</span>
+          <div class="grid grid-cols-2 gap-2 text-[9px]">
+            <div class="border-r border-slate-200 pr-2">
+              <span class="block text-slate-400 text-[8px] uppercase">Enrolment Yield</span>
+              <strong class="text-slate-800" id="pdf-summary-yield">33.9%</strong>
+              <p class="text-[7px] text-slate-400 mt-0.5">Ratio of screened becoming case cohorts</p>
+            </div>
+            <div class="pl-1">
+              <span class="block text-slate-400 text-[8px] uppercase">Matching Progress</span>
+              <strong class="text-slate-800" id="pdf-summary-ratio">1 : 4 target</strong>
+              <p class="text-[7px] text-slate-400 mt-0.5">Control to case registration density</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide Footer (only page number as footer) -->
+    <div class="border-t border-slate-100 pt-2 flex justify-center text-[9px] text-slate-400 font-semibold">
+      <span>Page 1</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Complete Hierarchical Dataset for dynamic updates - injected in real time from database
+  const fullDataset = {{ dataset_json|safe }};
+
+  let breakdownChart, certaintyChart, pdfBreakdownChart, pdfCertaintyChart;
+
+  document.addEventListener("DOMContentLoaded", function() {
+      // 1. Initialize charts
+      initCharts();
+      
+      // 2. Load active filter selections from context processors
+      syncNavbarFiltersToDashboard();
+  });
+
+  function syncNavbarFiltersToDashboard() {
+      const contextState = "{{ selected_state|escapejs }}";
+      const contextDistrict = "{{ selected_district|escapejs }}";
+      const contextTbUnit = "{{ selected_tb_unit|escapejs }}";
+      
+      let targetState = "All";
+      let targetDistrict = "All";
+      let targetTbUnit = "All";
+
+      if (contextState) targetState = contextState;
+      if (contextDistrict) targetDistrict = contextDistrict;
+      if (contextTbUnit) targetTbUnit = contextTbUnit;
+
+      updateDashboardData(targetState, targetDistrict, targetTbUnit);
+  }
+
+  function initCharts() {
+      const chartColors = ['#0f4c81', '#dc2626', '#8b5cf6', '#10b981'];
+
+      // 1. Dashboard Breakdown Chart
+      const ctx1 = document.getElementById('breakdownChart')?.getContext('2d');
+      if (ctx1) {
+          breakdownChart = new Chart(ctx1, {
+              type: 'doughnut',
+              data: {
+                  labels: ['Pulmonary TB', 'Extrapulmonary TB', 'Excluded', 'Not Eligible'],
+                  datasets: [{
+                      data: fullDataset.All.breakdown,
+                      backgroundColor: chartColors,
+                      borderWidth: 0,
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                      legend: {
+                          position: 'right',
+                          labels: { color: '#64748b', font: { size: 10, weight: 'semibold' } }
+                      }
+                  }
+              }
+          });
+      }
+
+      // 2. Dashboard Certainty Chart
+      const ctx2 = document.getElementById('certaintyChart')?.getContext('2d');
+      if (ctx2) {
+          certaintyChart = new Chart(ctx2, {
+              type: 'bar',
+              data: {
+                  labels: ['Microbiologically Confirmed', 'Clinically Diagnosed'],
+                  datasets: [{
+                      data: fullDataset.All.certainty,
+                      backgroundColor: '#0f4c81',
+                      borderRadius: 6,
+                      barThickness: 32,
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                      y: {
+                          grid: { color: 'rgba(156, 163, 175, 0.08)' },
+                          ticks: { color: '#64748b', font: { size: 9 } }
+                      },
+                      x: {
+                          grid: { display: false },
+                          ticks: { color: '#64748b', font: { size: 9 } }
+                      }
+                  }
+              }
+          });
+      }
+
+      // 3. PDF Breakdown Chart
+      const ctxPdf1 = document.getElementById('pdfBreakdownChart')?.getContext('2d');
+      if (ctxPdf1) {
+          pdfBreakdownChart = new Chart(ctxPdf1, {
+              type: 'doughnut',
+              data: {
+                  labels: ['PTB', 'EPTB', 'Excl', 'Inelig'],
+                  datasets: [{
+                      data: fullDataset.All.breakdown,
+                      backgroundColor: chartColors,
+                      borderWidth: 0,
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                      legend: {
+                          position: 'right',
+                          labels: { color: '#64748b', font: { size: 8, weight: 'semibold' } }
+                      }
+                  }
+              }
+          });
+      }
+
+      // 4. PDF Certainty Chart
+      const ctxPdf2 = document.getElementById('pdfCertaintyChart')?.getContext('2d');
+      if (ctxPdf2) {
+          pdfCertaintyChart = new Chart(ctxPdf2, {
+              type: 'bar',
+              data: {
+                  labels: ['Microbial', 'Clinical'],
+                  datasets: [{
+                      data: fullDataset.All.certainty,
+                      backgroundColor: '#0f4c81',
+                      borderRadius: 4,
+                      barThickness: 24,
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                      y: {
+                          grid: { color: 'rgba(156, 163, 175, 0.08)' },
+                          ticks: { color: '#64748b', font: { size: 7 } }
+                      },
+                      x: {
+                          grid: { display: false },
+                          ticks: { color: '#64748b', font: { size: 7 } }
+                      }
+                  }
+              }
+          });
+      }
+  }
+
+  function updateDashboardData(stateVal, districtVal, tuVal) {
+      let data = (fullDataset && fullDataset.All) || {
+          scope: "All Locations",
+          screened: 0, eligible: 0, cases: 0, controls: 0, ineligible: 0,
+          breakdown: [0, 0, 0, 0], certainty: [0, 0], geo: [], alerts: []
+      }; 
+      
+      if (stateVal && stateVal !== "All" && fullDataset && fullDataset[stateVal]) {
+          data = fullDataset[stateVal];
+      }
+      
+      const formatNum = (val) => Number(val || 0);
+      
+      // Update KPIs
+      const screenedStr = formatNum(data.screened).toLocaleString();
+      const casesStr = formatNum(data.cases).toLocaleString();
+      const controlsStr = formatNum(data.controls).toLocaleString();
+
+      const elScreened = document.getElementById("kpi-screened");
+      const elCases = document.getElementById("kpi-cases");
+      const elControls = document.getElementById("kpi-controls");
+
+      if (elScreened) elScreened.innerText = screenedStr;
+      if (elCases) elCases.innerText = casesStr;
+      if (elControls) elControls.innerText = controlsStr;
+
+      // Immediately sync PDF metrics fields
+      const elPdfKpiScreened = document.getElementById("pdf-kpi-screened");
+      const elPdfKpiCases = document.getElementById("pdf-kpi-cases");
+      const elPdfKpiControls = document.getElementById("pdf-kpi-controls");
+
+      if (elPdfKpiScreened) elPdfKpiScreened.innerText = screenedStr;
+      if (elPdfKpiCases) elPdfKpiCases.innerText = casesStr;
+      if (elPdfKpiControls) elPdfKpiControls.innerText = controlsStr;
+
+      // Update active scope text
+      let scopeText = "India";
+      if (stateVal && stateVal !== "All") {
+          scopeText = stateVal;
+          if (districtVal && districtVal !== "All") {
+              scopeText += " > " + districtVal;
+              if (tuVal && tuVal !== "All") {
+                  scopeText += " > " + tuVal;
+              }
+          }
+      }
+      const elScope = document.getElementById("active-scope-lbl");
+      if (elScope) elScope.innerText = scopeText;
+
+      const elPdfScope = document.getElementById("pdf-report-scope");
+      if (elPdfScope) elPdfScope.innerText = scopeText;
+
+      // Compute enrolment yield dynamically
+      const rawScreened = formatNum(data.screened);
+      const rawCases = formatNum(data.cases);
+      const yieldPct = rawScreened ? ((rawCases / rawScreened) * 100).toFixed(1) + "%" : "0%";
+      const elPdfYield = document.getElementById("pdf-summary-yield");
+      if (elPdfYield) elPdfYield.innerText = yieldPct;
+
+      // Update Exceptions/Alerts Grid
+      const alertGrid = document.getElementById("alert-grid");
+      if (alertGrid) {
+          alertGrid.innerHTML = "";
+          if (data.alerts && data.alerts.length > 0) {
+              data.alerts.forEach(al => {
+                  const card = document.createElement("div");
+                  card.className = "flex items-start gap-2.5 rounded-lg border border-red-200/50 bg-white p-3 shadow-xs";
+                  card.innerHTML = `
+                    <div class="size-2 rounded-full bg-red-600 mt-1.5 shrink-0 animate-pulse"></div>
+                    <div>
+                      <span class="block text-[9px] font-bold text-red-700 uppercase tracking-wide">${al.level}: ${al.title}</span>
+                      <p class="text-[11px] text-muted-foreground mt-0.5">${al.msg}</p>
+                    </div>
+                  `;
+                  alertGrid.appendChild(card);
+              });
+          } else {
+              alertGrid.innerHTML = `
+                <div class="col-span-2 text-center p-4 text-xs text-muted-foreground font-semibold flex items-center justify-center gap-1.5">
+                  <i data-lucide="check-circle" class="size-4.5 text-emerald-500"></i> No exceptions active.
+                </div>
+              `;
+              lucide.createIcons();
+          }
+      }
+
+      // Update Geo list
+      const geoBody = document.getElementById("geo-tbody");
+      if (geoBody) {
+          geoBody.innerHTML = "";
+          if (data.geo && data.geo.length > 0) {
+              data.geo.forEach(g => {
+                  const tr = document.createElement("tr");
+                  tr.className = "hover:bg-muted/10 transition-colors";
+                  tr.innerHTML = `
+                    <td class="p-3 pl-4 font-bold">${g.name}</td>
+                    <td class="p-3 text-right">${formatNum(g.screened).toLocaleString()}</td>
+                    <td class="p-3 text-right text-red-600 font-bold">${formatNum(g.cases).toLocaleString()}</td>
+                    <td class="p-3 pr-4 text-right font-medium">${formatNum(g.backlog).toLocaleString()}</td>
+                  `;
+                  geoBody.appendChild(tr);
+              });
+          } else {
+              geoBody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-xs text-muted-foreground">No site registration data recorded yet.</td></tr>`;
+          }
+      }
+
+      // Sync Geo Table in PDF (with red warning highlights for backlog sites)
+      const pdfGeoBody = document.getElementById("pdf-geo-tbody");
+      if (pdfGeoBody) {
+          pdfGeoBody.innerHTML = "";
+          if (data.geo && data.geo.length > 0) {
+              data.geo.forEach(g => {
+                  const rawBacklog = formatNum(g.backlog);
+                  const backlogTrClass = rawBacklog >= 10 ? 'bg-red-50/70 font-semibold' : '';
+                  
+                  const tr = document.createElement("tr");
+                  tr.className = backlogTrClass;
+                  tr.innerHTML = `
+                    <td class="p-1.5 pl-2 border-b border-slate-100 font-bold">${g.name}</td>
+                    <td class="p-1.5 border-b border-slate-100 text-right">${formatNum(g.screened).toLocaleString()}</td>
+                    <td class="p-1.5 border-b border-slate-100 text-right font-bold text-red-600">${formatNum(g.cases).toLocaleString()}</td>
+                    <td class="p-1.5 pr-2 border-b border-slate-100 text-right font-bold ${rawBacklog >= 10 ? 'text-red-700' : ''}">${rawBacklog.toLocaleString()}</td>
+                  `;
+                  pdfGeoBody.appendChild(tr);
+              });
+          } else {
+              pdfGeoBody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-[8px] text-slate-400">No site records registered yet</td></tr>`;
+          }
+      }
+
+      // Update Charts
+      const bData = data.breakdown.map(v => formatNum(v));
+      const cData = data.certainty.map(v => formatNum(v));
+
+      if (breakdownChart) {
+          breakdownChart.data.datasets[0].data = bData;
+          breakdownChart.update();
+      }
+      if (certaintyChart) {
+          certaintyChart.data.datasets[0].data = cData;
+          certaintyChart.update();
+      }
+
+      // Sync PDF charts data
+      if (pdfBreakdownChart) {
+          pdfBreakdownChart.data.datasets[0].data = bData;
+          pdfBreakdownChart.update();
+      }
+      if (pdfCertaintyChart) {
+          pdfCertaintyChart.data.datasets[0].data = cData;
+          pdfCertaintyChart.update();
+      }
+  }
+
+  function downloadLandscapeReport() {
+      // Update report metadata timestamp
+      const elReportDate = document.getElementById("pdf-report-date");
+      if (elReportDate) elReportDate.innerText = new Date().toLocaleString();
+
+      // Export Report to PDF in Landscape orientation
+      const reportRoot = document.getElementById("pdf-report-root");
+      if (reportRoot) {
+          reportRoot.style.display = 'block';
+
+          const opt = {
+              margin:       0.2,
+              filename:     `aBCG_VE_Study_Report_${(document.getElementById("pdf-report-scope")?.innerText || "India").replace(/\s+/g, '_')}.pdf`,
+              image:        { type: 'jpeg', quality: 0.98 },
+              html2canvas:  { scale: 2, useCORS: true },
+              jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+          };
+
+          html2pdf().set(opt).from(reportRoot).save().then(() => {
+              reportRoot.style.display = 'none';
+          });
+      }
+  }
+</script>
+{% endblock %}

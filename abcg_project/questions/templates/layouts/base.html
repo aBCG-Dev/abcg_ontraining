@@ -1,0 +1,88 @@
+{% load static %}{% load rbac_tags %}
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}aBCG{% endblock %}</title>
+
+    <!-- External Typography & Icon Frameworks -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Our Local Master Application Stylesheet -->
+    <link rel="stylesheet" href="{% static 'questions/css/app.css' %}">
+    
+    <!-- Lucide Icons CDN for sidebar icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        .bg-sidebar {
+            background-color: #0f2942 !important;
+        }
+        .text-sidebar-foreground {
+            color: #e2e8f0 !important;
+        }
+        .bg-sidebar-accent {
+            background-color: #183b5c !important;
+        }
+        .border-sidebar-border {
+            border-color: #183b5c !important;
+        }
+        /* Make sure Lucide icons have sizes */
+        .size-4.5 {
+            width: 1.125rem;
+            height: 1.125rem;
+        }
+        .size-6 {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+        /* Custom styles for Bootstrap sidebar column */
+        .admin-sidebar-nav {
+            position: sticky;
+            top: 56px;
+            height: calc(100vh - 56px);
+            overflow-y: auto;
+            z-index: 100;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="display: none;">
+        {% csrf_token %}
+    </div>
+    <!-- Inject our global header bar inclusion -->
+    {% include "includes/navbar.html" %}
+
+    <!-- Layout Wrapper Container -->
+    <div class="d-flex" style="min-height: calc(100vh - 72px);">
+        {% if user.is_authenticated and user|has_any_group:"Admin,Doctor,Nodal Officer,Super Admin" %}
+            <!-- Admin Sidebar (Left fixed col) -->
+            <div class="shrink-0 d-none d-lg-block" style="width: 260px; height: calc(100vh - 72px); position: sticky; top: 72px; z-index: 100;">
+                {% include "includes/sidebar.html" %}
+            </div>
+        {% endif %}
+        
+        <!-- Main Content Area (Fills the remaining width dynamically) -->
+        <main class="flex-grow-1 p-4" style="background: #eef3f8; min-height: calc(100vh - 72px); overflow-x: hidden;">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Inject our global footer inclusion -->
+    {% include "includes/footer.html" %}
+
+    <!-- Bootstrap Core Script Layer -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'questions/js/app.js' %}"></script>
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

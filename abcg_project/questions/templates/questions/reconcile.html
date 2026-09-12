@@ -1,0 +1,1046 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %}{{ participant.full_name }} - Registry Comparison &amp; Reconciliation | aBCG{% endblock %}
+
+{% block content %}
+<style>
+    /* Controlled Content Width Constraint */
+    .reconcile-container {
+        max-width: 1300px;
+        margin: 0 auto;
+        padding-top: 2rem;
+        padding-bottom: 5.5rem;
+    }
+    
+    /* Modern visual structures */
+    .panel-card {
+        border-radius: 12px;
+        border: 1px solid #e2e8f0 !important;
+        background-color: #ffffff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        overflow: hidden;
+        margin-bottom: 2.25rem;
+    }
+
+    .summary-number-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 1.15rem 1.5rem;
+        flex: 1;
+        min-width: 140px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .summary-val {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.1;
+    }
+
+    .summary-lbl {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        margin-top: 2px;
+        letter-spacing: 0.3px;
+    }
+
+    /* Filters toolbar */
+    .pill-filter {
+        border-radius: 20px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        padding: 0.45rem 1rem;
+        border: 1px solid #cbd5e1;
+        background-color: #ffffff;
+        color: #475569;
+        transition: all 0.2s ease;
+    }
+    .pill-filter:hover {
+        background-color: #f8fafc;
+        color: #0f172a;
+    }
+    .pill-filter.active {
+        background-color: #0f2942;
+        color: #ffffff;
+        border-color: #0f2942;
+    }
+
+    /* Table visual structure */
+    .comparison-table th {
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #475569;
+        padding: 1.35rem 1.5rem !important;
+        background-color: #f8fafc;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+
+    .comparison-table td {
+        padding: 1.35rem 1.5rem !important;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+
+    .category-divider-row td {
+        background-color: #f8fafc !important;
+        font-weight: 800;
+        color: #475569;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.95rem 1.5rem !important;
+        border-bottom: 1.5px solid #e2e8f0 !important;
+    }
+
+    /* Status badges */
+    .result-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.3rem 0.6rem;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .badge-match {
+        color: #475569;
+        background-color: #f1f5f9;
+        border: 1px solid #e2e8f0;
+    }
+    .badge-difference {
+        color: #ea580c;
+        background-color: #fff7ed;
+        border: 1px solid #ffedd5;
+    }
+    .badge-nikshay-only {
+        color: #2563eb;
+        background-color: #eff6ff;
+        border: 1px solid #dbeafe;
+    }
+    .badge-abcg-only {
+        color: #0d9488;
+        background-color: #f0fdfa;
+        border: 1px solid #ccfbf1;
+    }
+    .badge-missing {
+        color: #94a3b8;
+        background-color: #f8fafc;
+        border: 1px solid #f1f5f9;
+    }
+
+    /* Review panel drawer */
+    .review-drawer {
+        background-color: #f8fafc;
+        border-top: 2px solid #0f2942;
+        padding: 1.5rem;
+        margin: 0.5rem 1.5rem 1.5rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.03);
+    }
+
+    .form-control:focus {
+        border-color: #0f2942 !important;
+        box-shadow: 0 0 0 3px rgba(15, 41, 66, 0.15) !important;
+    }
+
+    /* Tablet and Responsive Card items */
+    @media (max-width: 991px) {
+        .desktop-table-container {
+            display: none !important;
+        }
+        .tablet-cards-container {
+            display: block !important;
+        }
+    }
+    @media (min-width: 992px) {
+        .desktop-table-container {
+            display: block !important;
+        }
+        .tablet-cards-container {
+            display: none !important;
+        }
+    }
+</style>
+
+<div class="reconcile-container">
+    <!-- Breadcrumbs -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-1 text-muted small">
+            <li class="breadcrumb-item"><a href="{% url 'questions:home' %}" class="text-decoration-none text-muted">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'questions:search' %}" class="text-decoration-none text-muted">Participants</a></li>
+            <li class="breadcrumb-item active text-secondary" aria-current="page">Data Comparison</li>
+        </ol>
+    </nav>
+    
+    <!-- PARTICIPANT HEADER -->
+    <div class="card panel-card border border-slate-200 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                <div>
+                    <span class="text-secondary small fw-bold text-uppercase tracking-wider">Active Comparison Dossier</span>
+                    <h1 class="fw-extrabold text-dark mb-1 mt-0.5" style="font-size: 1.8rem; letter-spacing: -0.5px;">{{ participant.full_name }}</h1>
+                    <p class="text-secondary fw-bold mb-3" style="font-size: 0.95rem;">
+                        {{ participant.age }} years · {{ participant.gender }}
+                    </p>
+                    
+                    <div class="d-flex gap-3 flex-wrap align-items-center" style="font-size: 0.82rem;">
+                        <span class="text-secondary fw-bold">Study ID: <code class="text-dark font-monospace fw-bold bg-light px-2 py-1 rounded">{{ participant.study_id }}</code></span>
+                        <span class="text-secondary fw-bold">Screening ID: <code class="text-primary font-monospace fw-bold bg-light px-2 py-1 rounded">{{ participant.screening_id|default:"" }}</code></span>
+                        <span class="text-secondary fw-bold">Nikshay ID: <code class="text-dark font-monospace fw-bold bg-light px-2 py-1 rounded">{{ participant.nikshay_id|default:"" }}</code></span>
+                    </div>
+                    <div class="mt-4 pt-3.5 border-top border-slate-100 d-flex align-items-center gap-3 flex-wrap">
+                        <label for="nikshayIdInput" class="text-secondary small fw-bold mb-0"><i class="bi bi-search me-1"></i> Nikshay Registry Search:</label>
+                        <div class="input-group input-group-sm" style="max-width: 320px;">
+                            <input type="text" class="form-control font-monospace fw-bold ps-3" id="nikshayIdInput" placeholder="Enter Nikshay ID (e.g. NK-123456)" value="{{ nikshay.nikshay_id }}" style="height: 38px; border-radius: 6px 0 0 6px;">
+                            <button class="btn btn-primary fw-bold px-3" type="button" onclick="fetchNikshayRegistryData()" style="background-color: #0f2942; border: none; height: 38px; border-radius: 0 6px 6px 0;">Search Registry</button>
+                        </div>
+                        <span class="text-muted small italic">Try searching <strong>NK-123456</strong> or <strong>NK-777777</strong> for different demo states.</span>
+                    </div>
+                </div>
+                
+                <div class="d-flex flex-column align-items-md-end gap-2">
+                    <a href="{% url 'questions:search' %}" class="btn btn-outline-secondary py-2 px-3.5 fw-bold d-inline-flex align-items-center" style="border-radius: 8px; font-size: 0.88rem; border-color: #cbd5e1; color: #475569;">
+                        <i class="bi bi-arrow-left me-1.5" style="font-size: 1.1rem;"></i> Back to Participants
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPARISON SUMMARY & METRICS STRIP -->
+    <div class="d-flex gap-3 mb-4 flex-wrap">
+        <div class="summary-number-card">
+            <div class="summary-val" id="sum-total">0</div>
+            <div class="summary-lbl">Fields Compared</div>
+        </div>
+        <div class="summary-number-card border-slate-100">
+            <div class="summary-val text-secondary" id="sum-matched">0</div>
+            <div class="summary-lbl">Matched</div>
+        </div>
+        <div class="summary-number-card" style="border-left: 3px solid #f97316;">
+            <div class="summary-val text-warning" id="sum-diff">0</div>
+            <div class="summary-lbl">Differences</div>
+        </div>
+        <div class="summary-number-card">
+            <div class="summary-val text-muted" id="sum-missing">0</div>
+            <div class="summary-lbl">Missing</div>
+        </div>
+        <div class="summary-number-card" style="border-left: 3px solid #2563eb;">
+            <div class="summary-val text-primary" id="sum-nikshay">0</div>
+            <div class="summary-lbl">Nikshay Only</div>
+        </div>
+        <div class="summary-number-card" style="border-left: 3px solid #0d9488;">
+            <div class="summary-val text-info" id="sum-abcg">0</div>
+            <div class="summary-lbl">aBCG Only</div>
+        </div>
+    </div>
+
+    <!-- COMPARISON STATUS ALERT BANNER -->
+    <div class="alert p-4 d-flex align-items-center gap-3 mb-4" id="status-banner" style="border-radius: 10px; font-size: 0.95rem;">
+        <!-- Filled dynamically by JS -->
+    </div>
+
+    <!-- MAIN INTERACTIVE COMPARISON WORKSPACE -->
+    <div class="card panel-card border border-slate-200 mb-4">
+        
+        <!-- Search & Filter Bar Controls -->
+        <div class="bg-light p-4 border-bottom border-slate-200">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <!-- Left: Filters row -->
+                <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                    <button class="pill-filter active" onclick="setFilter('ALL')">All Fields</button>
+                    <button class="pill-filter" onclick="setFilter('MATCH')">✓ Matched</button>
+                    <button class="pill-filter" onclick="setFilter('DIFFERENT')">! Differences</button>
+                    <button class="pill-filter" onclick="setFilter('MISSING')">Missing</button>
+                    <button class="pill-filter" onclick="setFilter('NIKSHAY_ONLY')">Nikshay Only</button>
+                    <button class="pill-filter" onclick="setFilter('ABCG_ONLY')">aBCG Only</button>
+                </div>
+                
+                <!-- Right: Search query -->
+                <div class="d-flex align-items-center" style="max-width: 320px; min-width: 250px;">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0 text-slate-400"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-1" id="searchFilterInput" onkeyup="setSearchQuery(this.value)" placeholder="Search fields..." style="height: 38px; border-radius: 0 8px 8px 0; font-size: 0.85rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Source Sync Timestamps Bar -->
+        <div class="px-4 py-3 border-bottom border-slate-100 bg-white d-flex justify-content-between flex-wrap gap-2 text-secondary small font-semibold">
+            <span>Source: <strong>NIKSHAY</strong> (Last synchronized: 14 Aug 2026, 10:30 AM)</span>
+            <span>Source: <strong>aBCG LOCAL</strong> (Last updated: 14 Aug 2026, 10:42 AM)</span>
+        </div>
+
+        <!-- DESKTOP CONTAINER (Screens >= 992px) -->
+        <div class="desktop-table-container">
+            <table class="table comparison-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Field</th>
+                        <th style="width: 30%;">Nikshay</th>
+                        <th style="width: 30%;">aBCG Local Data</th>
+                        <th class="text-end" style="width: 15%;">Result</th>
+                    </tr>
+                </thead>
+                <tbody id="comparison-rows-body">
+                    <!-- Loaded dynamically via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TABLET & MOBILE CARDS CONTAINER (Screens < 992px) -->
+        <div class="tablet-cards-container p-3 bg-light" id="comparison-cards-body">
+            <!-- Loaded dynamically via JS -->
+        </div>
+
+    </div>
+    
+    <!-- SUBMISSION RECONCILIATION VALUES FORM -->
+    <form method="post" id="reconciliationSubmitForm">
+        {% csrf_token %}
+        
+        <!-- Standard inputs synced dynamically with checklist/reconciliation choices -->
+        <input type="hidden" name="agree_name" id="hidden_agree_name" value="">
+        <input type="hidden" name="agree_age" id="hidden_agree_age" value="">
+        <input type="hidden" name="agree_phone" id="hidden_agree_phone" value="">
+        <input type="hidden" name="agree_bcg_status" id="hidden_agree_bcg_status" value="">
+        <input type="hidden" name="agree_bcg_vaccination_date" id="hidden_agree_bcg_vaccination_date" value="">
+        <input type="hidden" name="agree_bcg_scar" id="hidden_agree_bcg_scar" value="">
+        <input type="hidden" name="agree_tb_classification" id="hidden_agree_tb_classification" value="">
+        <input type="hidden" name="nikshay_id" id="hidden_nikshay_id" value="{{ nikshay.nikshay_id }}">
+        
+        <!-- Manual collection fields sent to views -->
+        <input type="hidden" name="bcg_status_val" id="hidden_bcg_status_val" value="">
+        <input type="hidden" name="bcg_vaccination_date_val" id="hidden_bcg_vaccination_date_val" value="">
+        <input type="hidden" name="bcg_scar_val" id="hidden_bcg_scar_val" value="">
+        <input type="hidden" name="tb_classification_val" id="hidden_tb_classification_val" value="">
+        <input type="hidden" name="eptb_screened_val" id="hidden_eptb_screened_val" value="">
+        
+        <!-- Final Reconciliation Confirmation Card -->
+        <div class="card panel-card p-5 border border-slate-200">
+            <h5 class="fw-bold text-dark mb-2.5" style="font-size: 1.1rem;"><i class="bi bi-check-circle-fill text-success me-1.5"></i> Confirm Reconciliation</h5>
+            <p class="text-secondary small mb-3.5">Review the differences above and choose the correct values. Once you submit, your choices will be saved to the participant's official file, and the record will be marked as reconciled.</p>
+            
+            <div class="form-check d-flex align-items-start gap-2.5 p-4 rounded border border-success border-opacity-10 bg-success bg-opacity-5 mb-4">
+                <input class="form-check-input mt-1" type="checkbox" id="agreeSyncCheck" required checked style="cursor: pointer;">
+                <label class="form-check-label text-dark small" for="agreeSyncCheck" style="cursor: pointer; font-size: 0.88rem;">
+                    <strong>Mark this record as reconciled</strong><br>
+                    Save the selected values and finish the comparison for this participant.
+                </label>
+            </div>
+            
+            <!-- Audit note -->
+            <div class="text-secondary small italic mt-1.5 mb-4">
+                <i class="bi bi-info-circle me-1"></i> Note: Nikshay data comes from the national registry database. aBCG Local data is collected directly by our field researchers.
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 border-top border-slate-100 pt-4 mt-1">
+                <a href="{% url 'questions:search' %}" class="btn btn-outline-secondary px-4 fw-bold" style="border-radius: 8px; font-size: 0.88rem; height: 38px; border-color: #cbd5e1; color: #475569;">Cancel</a>
+                <button type="submit" class="btn btn-success px-4 fw-bold d-inline-flex align-items-center justify-content-center shadow-sm" style="background-color: #16a34a; border: none; border-radius: 8px; font-size: 0.88rem; height: 38px;">
+                    <i class="bi bi-check2-all me-1.5" style="font-size: 1.1rem;"></i> Reconcile &amp; Sync Record
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- DATA SERIALIZATION & SCRIPT LOGIC -->
+<script>
+    // Serialize Python model attributes directly to JS
+    const participantData = {
+        full_name: "{{ participant.full_name|escapejs }}",
+        study_id: "{{ participant.study_id|escapejs }}",
+        screening_id: "{{ participant.screening_id|default_if_none:''|escapejs }}",
+        nikshay_id: "{{ participant.nikshay_id|default_if_none:''|escapejs }}",
+        age: "{{ participant.age }}",
+        gender: "{{ participant.gender|escapejs }}",
+        dob: "{{ participant.dob|default_if_none:''|escapejs }}",
+        father_husband_name: "{{ participant.father_husband_name|default_if_none:''|escapejs }}",
+        marital_status: "{{ participant.marital_status|default_if_none:''|escapejs }}",
+        contact_number: "{{ participant.contact_number|default_if_none:''|escapejs }}",
+        secondary_phone: "{{ participant.secondary_phone|default_if_none:''|escapejs }}",
+        address: "{{ participant.address|default_if_none:''|escapejs }}",
+        village: "{{ participant.village|default_if_none:''|escapejs }}",
+        taluka_block: "{{ participant.taluka_block|default_if_none:''|escapejs }}",
+        district: "{{ participant.district|default_if_none:''|escapejs }}",
+        state: "{{ participant.state|default_if_none:''|escapejs }}",
+        sector: "{{ participant.sector|default_if_none:''|escapejs }}",
+        demographic_area: "{{ participant.demographic_area|default_if_none:''|escapejs }}",
+        tb_classification: "{{ participant.case_finding_type|default_if_none:''|escapejs }}" || "EPTB", 
+        hiv_status: "{{ participant.hiv_status|default_if_none:''|escapejs }}",
+        symptoms: "{{ participant.symptoms|default_if_none:''|escapejs }}",
+        risk_factors: "{{ participant.risk_factors|default_if_none:''|escapejs }}",
+        weight_kg: "{{ participant.weight_kg }}",
+        height_cm: "{{ participant.height_cm }}",
+        bmi: "{{ participant.bmi }}",
+        past_tb: {% if participant.past_tb %}true{% else %}false{% endif %},
+        diabetes: {% if participant.diabetes %}true{% else %}false{% endif %},
+        smoker: {% if participant.smoker %}true{% else %}false{% endif %},
+        close_contact: {% if participant.close_contact %}true{% else %}false{% endif %},
+        bcg_status: "{{ participant.bcg_status|default_if_none:''|escapejs }}",
+        bcg_evidence: "{{ participant.bcg_evidence|default_if_none:''|escapejs }}",
+        bcg_scar: "{{ participant.bcg_scar|default_if_none:''|escapejs }}",
+        bcg_vaccination_status: "{{ participant.bcg_vaccination_status|default_if_none:''|escapejs }}",
+        bcg_vaccination_date: "{{ participant.bcg_vaccination_date|default_if_none:''|escapejs }}",
+        eligible_bcg_campaign: {% if participant.eligible_bcg_campaign %}true{% else %}false{% endif %},
+        tpt_undergone: "{{ participant.tpt_undergone|default_if_none:''|escapejs }}",
+        eptb_screened: {% if participant.eptb_screened %}true{% else %}false{% endif %}
+    };
+    
+    const nikshayData = {
+        nikshay_id: "{{ nikshay.nikshay_id|escapejs }}",
+        full_name: "{{ nikshay.full_name|escapejs }}",
+        age: "{{ nikshay.age }}",
+        gender: "{{ nikshay.gender|escapejs }}",
+        contact_number: "{{ nikshay.contact_number|escapejs }}",
+        address: "{{ nikshay.address|escapejs }}",
+        tb_treatment_status: "{{ nikshay.tb_treatment_status|escapejs }}",
+        adherence_records: "{{ nikshay.adherence_records|escapejs }}",
+        diagnosis_date: "{{ nikshay.diagnosis_date|escapejs }}",
+        bank_aadhaar_details: "{{ nikshay.bank_aadhaar_details|escapejs }}",
+        state: "{{ nikshay.state|escapejs }}",
+        district: "{{ nikshay.district|escapejs }}",
+        tb_unit: "{{ nikshay.tb_unit|escapejs }}",
+        tb_classification: "{{ nikshay.tb_classification|default_if_none:'PTB'|escapejs }}",
+        bcg_vaccination_status: "{{ nikshay.bcg_vaccination_status|default_if_none:'Vaccinated'|escapejs }}",
+        bcg_vaccination_date: "{{ nikshay.bcg_vaccination_date|default_if_none:'2026-03-10'|escapejs }}",
+        bcg_scar: "{{ nikshay.bcg_scar|default_if_none:'Scar Present'|escapejs }}",
+        eptb_screened: "{{ nikshay.eptb_screened|default_if_none:'No'|escapejs }}"
+    };
+
+    // Category mapping config
+    const fieldsConfig = [
+        // 1. Identification
+        { category: "1. Identification", name: "Participant Name", key: "full_name", reconcilable: true, keyName: "name" },
+        { category: "1. Identification", name: "Study ID", key: "study_id", reconcilable: false },
+        { category: "1. Identification", name: "Screening ID", key: "screening_id", reconcilable: false },
+        { category: "1. Identification", name: "Nikshay ID", key: "nikshay_id", reconcilable: true, keyName: "nikshay_id" },
+        
+        // 2. Demographics
+        { category: "2. Demographics", name: "Age", key: "age", reconcilable: true, keyName: "age" },
+        { category: "2. Demographics", name: "Gender", key: "gender", reconcilable: false },
+        { category: "2. Demographics", name: "Date of Birth", key: "dob", reconcilable: false },
+        { category: "2. Demographics", name: "Father / Husband Name", key: "father_husband_name", reconcilable: false },
+        { category: "2. Demographics", name: "Marital Status", key: "marital_status", reconcilable: false },
+        
+        // 3. Contact Information
+        { category: "3. Contact Information", name: "Primary Mobile Number", key: "contact_number", reconcilable: true, keyName: "phone" },
+        { category: "3. Contact Information", name: "Secondary Mobile Number", key: "secondary_phone", reconcilable: false },
+        
+        // 4. Address & Location
+        { category: "4. Address & Location", name: "Street Address", key: "address", reconcilable: false },
+        { category: "4. Address & Location", name: "Village", key: "village", reconcilable: false },
+        { category: "4. Address & Location", name: "District", key: "district", reconcilable: false },
+        { category: "4. Address & Location", name: "State", key: "state", reconcilable: false },
+        { category: "4. Address & Location", name: "Sector", key: "sector", reconcilable: false },
+        { category: "4. Address & Location", name: "Area Type", key: "demographic_area", reconcilable: false },
+        
+        // 5. TB Information
+        { category: "5. TB Information", name: "TB Classification", key: "tb_classification", reconcilable: true, keyName: "tb_classification" },
+        { category: "5. TB Information", name: "TB Treatment Status", key: "tb_treatment_status", reconcilable: false, nikshayOnly: true },
+        { category: "5. TB Information", name: "Adherence Records", key: "adherence_records", reconcilable: false, nikshayOnly: true },
+        { category: "5. TB Information", name: "Diagnosis Date", key: "diagnosis_date", reconcilable: false, nikshayOnly: true },
+        { category: "5. TB Information", name: "EPTB Screened", key: "eptb_screened", reconcilable: false, valueFormat: (v) => v ? "Yes" : "No" },
+        
+        // 6. Clinical / Screening
+        { category: "6. Clinical / Screening", name: "Symptoms", key: "symptoms", reconcilable: false, abcgOnly: true },
+        { category: "6. Clinical / Screening", name: "Risk Factors", key: "risk_factors", reconcilable: false, abcgOnly: true },
+        { category: "6. Clinical / Screening", name: "HIV Status", key: "hiv_status", reconcilable: false, abcgOnly: true },
+        { category: "6. Clinical / Screening", name: "Weight", key: "weight_kg", reconcilable: false, abcgOnly: true, valueFormat: (v) => v ? v + " kg" : "" },
+        { category: "6. Clinical / Screening", name: "Height", key: "height_cm", reconcilable: false, abcgOnly: true, valueFormat: (v) => v ? v + " cm" : "" },
+        { category: "6. Clinical / Screening", name: "BMI", key: "bmi", reconcilable: false, abcgOnly: true },
+        
+        // 7. BCG Information
+        { category: "7. BCG Information", name: "BCG Vaccination Status", key: "bcg_vaccination_status", reconcilable: true, keyName: "bcg_status" },
+        { category: "7. BCG Information", name: "BCG Vaccination Date", key: "bcg_vaccination_date", reconcilable: true, keyName: "bcg_vaccination_date" },
+        { category: "7. BCG Information", name: "BCG Scar", key: "bcg_scar", reconcilable: true, keyName: "bcg_scar" },
+        { category: "7. BCG Information", name: "BCG Campaign Eligibility", key: "eligible_bcg_campaign", reconcilable: false, abcgOnly: true, valueFormat: (v) => v ? "Yes" : "No" },
+        
+        // 8. Study-Specific Information
+        { category: "8. Study-Specific Information", name: "TPT Undergone", key: "tpt_undergone", reconcilable: false, abcgOnly: true }
+    ];
+
+    // Current interactive state
+    let activeFilter = 'ALL';
+    let searchQuery = '';
+    let openReviewField = null; // key of the field currently in inline review
+    
+    // Reconciliation choices stored here: 'accepted_nikshay' or 'keep_abcg'
+    const userChoices = {
+        name: 'keep_abcg',
+        age: 'keep_abcg',
+        phone: 'keep_abcg',
+        bcg_status: 'keep_abcg',
+        bcg_vaccination_date: 'keep_abcg',
+        bcg_scar: 'keep_abcg',
+        tb_classification: 'keep_abcg'
+    };
+
+    function setFilter(filter) {
+        activeFilter = filter;
+        document.querySelectorAll('.pill-filter').forEach(btn => {
+            if (btn.innerText.includes(filter === 'ALL' ? 'All Fields' : filter.replace('_', ' '))) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        renderComparison();
+    }
+
+    function setSearchQuery(val) {
+        searchQuery = val.trim().toLowerCase();
+        renderComparison();
+    }
+
+    // Normalizes strings for comparison
+    function normalize(val) {
+        if (!val) return "";
+        return String(val).trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    function calculateComparisonList() {
+        if (!dynamicDiscovered) {
+            discoverDynamicRegistryFields();
+            dynamicDiscovered = true;
+        }
+        let results = [];
+        
+        fieldsConfig.forEach(f => {
+            const rawAbcg = participantData[f.key];
+            const rawNikshay = nikshayData[f.key];
+            
+            let abcgVal = (rawAbcg !== undefined && rawAbcg !== null) ? String(rawAbcg) : "";
+            let nikshayVal = (rawNikshay !== undefined && rawNikshay !== null) ? String(rawNikshay) : "";
+            
+            if (f.valueFormat) {
+                if (abcgVal) abcgVal = f.valueFormat(rawAbcg);
+                if (nikshayVal) nikshayVal = f.valueFormat(rawNikshay);
+            }
+            
+            let status = 'MATCH';
+            
+            if (f.nikshayOnly) {
+                status = 'NIKSHAY_ONLY';
+                abcgVal = "";
+            } else if (f.abcgOnly) {
+                status = 'ABCG_ONLY';
+                nikshayVal = "";
+            } else {
+                const normAbcg = normalize(abcgVal);
+                const normNikshay = normalize(nikshayVal);
+                
+                if (!normAbcg && !normNikshay) {
+                    status = 'MISSING';
+                } else if (!normAbcg) {
+                    status = 'NIKSHAY_ONLY';
+                } else if (!normNikshay) {
+                    status = 'ABCG_ONLY';
+                } else if (normAbcg !== normNikshay) {
+                    status = 'DIFFERENT';
+                }
+            }
+            
+            results.push({
+                ...f,
+                abcgDisplay: abcgVal || "Not collected",
+                nikshayDisplay: nikshayVal || "Not available in Nikshay",
+                status: status
+            });
+        });
+        
+        return results;
+    }
+
+    function updateSummaryMetrics(list) {
+        document.getElementById('sum-total').innerText = list.length;
+        document.getElementById('sum-matched').innerText = list.filter(x => x.status === 'MATCH').length;
+        document.getElementById('sum-diff').innerText = list.filter(x => x.status === 'DIFFERENT').length;
+        document.getElementById('sum-missing').innerText = list.filter(x => x.status === 'MISSING').length;
+        document.getElementById('sum-nikshay').innerText = list.filter(x => x.status === 'NIKSHAY_ONLY').length;
+        document.getElementById('sum-abcg').innerText = list.filter(x => x.status === 'ABCG_ONLY').length;
+        
+        // Status banner updates
+        const diffCount = list.filter(x => x.status === 'DIFFERENT').length;
+        const banner = document.getElementById('status-banner');
+        
+        if (diffCount > 0) {
+            banner.className = "alert alert-warning p-3.5 d-flex align-items-center gap-3 mb-4 border-warning border-opacity-20";
+            banner.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                                <div>
+                                    <strong class="text-dark d-block">Needs Review</strong>
+                                    <span class="text-secondary">${diffCount} field${diffCount > 1 ? 's' : ''} require${diffCount === 1 ? 's' : ''} review before reconciliation can be completed.</span>
+                                </div>`;
+        } else {
+            banner.className = "alert alert-success p-3.5 d-flex align-items-center gap-3 mb-4 border-success border-opacity-20";
+            banner.innerHTML = `<i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                <div>
+                                    <strong class="text-dark d-block">All Fields Reconciled</strong>
+                                    <span class="text-secondary">No differences detected. Ready to finalize.</span>
+                                </div>`;
+        }
+    }
+
+    function toggleReview(fieldKey) {
+        if (openReviewField === fieldKey) {
+            openReviewField = null;
+        } else {
+            openReviewField = fieldKey;
+        }
+        renderComparison();
+    }
+
+    function handleChoice(fieldKeyName, choice) {
+        userChoices[fieldKeyName] = choice;
+        
+        // Sync to hidden input elements in the form
+        if (fieldKeyName === 'name') {
+            document.getElementById('hidden_agree_name').value = (choice === 'accepted_nikshay') ? 'on' : '';
+        } else if (fieldKeyName === 'age') {
+            document.getElementById('hidden_agree_age').value = (choice === 'accepted_nikshay') ? 'on' : '';
+        } else if (fieldKeyName === 'phone') {
+            document.getElementById('hidden_agree_phone').value = (choice === 'accepted_nikshay') ? 'on' : '';
+        } else if (fieldKeyName === 'bcg_status') {
+            document.getElementById('hidden_agree_bcg_status').value = (choice === 'accepted_nikshay') ? 'on' : '';
+        } else if (fieldKeyName === 'bcg_vaccination_date') {
+            document.getElementById('hidden_agree_bcg_vaccination_date').value = (choice === 'accepted_nikshay') ? 'on' : '';
+        } else if (fieldKeyName === 'bcg_scar') {
+            document.getElementById('hidden_agree_bcg_scar').value = (choice === 'accepted_nikshay') ? 'on' : '';
+        } else if (fieldKeyName === 'tb_classification') {
+            document.getElementById('hidden_agree_tb_classification').value = (choice === 'accepted_nikshay') ? 'on' : '';
+        } else if (fieldKeyName === 'nikshay_id') {
+            document.getElementById('hidden_nikshay_id').value = choice;
+        }
+        
+        renderComparison();
+    }
+
+    function renderLocalInput(item) {
+        if (item.key === 'bcg_vaccination_status') {
+            const val = participantData[item.key] || '';
+            return `
+                <div onclick="event.stopPropagation()">
+                    <select class="form-select form-select-sm font-monospace fw-semibold" onchange="updateLocalField('${item.key}', this.value)" style="max-width:180px;">
+                        <option value="" ${val === '' ? 'selected' : ''}>-- Select --</option>
+                        <option value="Vaccinated" ${val === 'Vaccinated' ? 'selected' : ''}>Vaccinated</option>
+                        <option value="Unvaccinated" ${val === 'Unvaccinated' ? 'selected' : ''}>Unvaccinated</option>
+                        <option value="Unknown" ${val === 'Unknown' ? 'selected' : ''}>Unknown</option>
+                    </select>
+                </div>
+            `;
+        } else if (item.key === 'bcg_vaccination_date') {
+            const val = participantData[item.key] || '';
+            return `
+                <div onclick="event.stopPropagation()">
+                    <input type="date" class="form-control form-control-sm font-monospace fw-semibold" value="${val}" onchange="updateLocalField('${item.key}', this.value)" style="max-width:180px;">
+                </div>
+            `;
+        } else if (item.key === 'bcg_scar') {
+            const val = participantData[item.key] || '';
+            return `
+                <div onclick="event.stopPropagation()">
+                    <select class="form-select form-select-sm font-monospace fw-semibold" onchange="updateLocalField('${item.key}', this.value)" style="max-width:180px;">
+                        <option value="" ${val === '' ? 'selected' : ''}>-- Select --</option>
+                        <option value="Scar Present" ${val === 'Scar Present' ? 'selected' : ''}>Scar Present</option>
+                        <option value="Scar Absent" ${val === 'Scar Absent' ? 'selected' : ''}>Scar Absent</option>
+                        <option value="Unknown" ${val === 'Unknown' ? 'selected' : ''}>Unknown</option>
+                    </select>
+                </div>
+            `;
+        } else if (item.key === 'tb_classification') {
+            const val = participantData[item.key] || '';
+            return `
+                <div onclick="event.stopPropagation()">
+                    <select class="form-select form-select-sm font-monospace fw-semibold" onchange="updateLocalField('${item.key}', this.value)" style="max-width:180px;">
+                        <option value="PTB" ${val === 'PTB' ? 'selected' : ''}>PTB</option>
+                        <option value="EPTB" ${val === 'EPTB' ? 'selected' : ''}>EPTB</option>
+                    </select>
+                </div>
+            `;
+        } else if (item.key === 'eptb_screened') {
+            const val = (participantData[item.key] === true || participantData[item.key] === 'true' || participantData[item.key] === 'Yes') ? "Yes" : "No";
+            return `
+                <div onclick="event.stopPropagation()">
+                    <select class="form-select form-select-sm font-monospace fw-semibold" onchange="updateLocalField('${item.key}', this.value)" style="max-width:180px;">
+                        <option value="Yes" ${val === 'Yes' ? 'selected' : ''}>Yes</option>
+                        <option value="No" ${val === 'No' ? 'selected' : ''}>No</option>
+                    </select>
+                </div>
+            `;
+        }
+        return null;
+    }
+
+    function updateLocalField(key, value) {
+        participantData[key] = value;
+        
+        // Map key to the correct hidden input
+        if (key === 'bcg_vaccination_status') {
+            document.getElementById('hidden_bcg_status_val').value = value;
+        } else if (key === 'bcg_vaccination_date') {
+            document.getElementById('hidden_bcg_vaccination_date_val').value = value;
+        } else if (key === 'bcg_scar') {
+            document.getElementById('hidden_bcg_scar_val').value = value;
+        } else if (key === 'tb_classification') {
+            document.getElementById('hidden_tb_classification_val').value = value;
+        } else if (key === 'eptb_screened') {
+            document.getElementById('hidden_eptb_screened_val').value = value;
+        }
+        
+        // Re-render to update mismatch indicators dynamically
+        renderComparison();
+    }
+
+    function renderComparison() {
+        const fullList = calculateComparisonList();
+        updateSummaryMetrics(fullList);
+        
+        // Filter elements
+        let filteredList = fullList;
+        if (activeFilter !== 'ALL') {
+            filteredList = fullList.filter(x => x.status === activeFilter);
+        }
+        if (searchQuery) {
+            filteredList = filteredList.filter(x => x.name.toLowerCase().includes(searchQuery) || x.category.toLowerCase().includes(searchQuery));
+        }
+        
+        const desktopBody = document.getElementById('comparison-rows-body');
+        const tabletBody = document.getElementById('comparison-cards-body');
+        
+        desktopBody.innerHTML = '';
+        tabletBody.innerHTML = '';
+        
+        if (filteredList.length === 0) {
+            const emptyHtml = `<tr><td colspan="4" class="p-5 text-center text-muted"><i class="bi bi-info-circle me-1"></i> No matching fields found for the active filter.</td></tr>`;
+            desktopBody.innerHTML = emptyHtml;
+            tabletBody.innerHTML = `<div class="text-center p-4 text-secondary"><i class="bi bi-info-circle me-1"></i> No matching fields.</div>`;
+            return;
+        }
+        
+        // Group list items by Category
+        let currentCategory = "";
+        
+        filteredList.forEach(item => {
+            if (item.category !== currentCategory) {
+                currentCategory = item.category;
+                
+                // Add desktop divider
+                const desktopDivider = document.createElement('tr');
+                desktopDivider.className = 'category-divider-row';
+                desktopDivider.innerHTML = `<td colspan="4">${currentCategory}</td>`;
+                desktopBody.appendChild(desktopDivider);
+                
+                // Add tablet divider
+                const tabletDivider = document.createElement('div');
+                tabletDivider.className = 'small fw-bold text-secondary text-uppercase tracking-wider mt-3 mb-2 px-2';
+                tabletDivider.innerText = currentCategory;
+                tabletBody.appendChild(tabletDivider);
+            }
+            
+            // Build Status badge HTML
+            let badgeHtml = '';
+            switch (item.status) {
+                case 'MATCH':
+                    badgeHtml = `<span class="result-badge badge-match">✓ Match</span>`;
+                    break;
+                case 'DIFFERENT':
+                    badgeHtml = `<span class="result-badge badge-difference">! Difference</span>`;
+                    break;
+                case 'NIKSHAY_ONLY':
+                    badgeHtml = `<span class="result-badge badge-nikshay-only">Nikshay Only</span>`;
+                    break;
+                case 'ABCG_ONLY':
+                    badgeHtml = `<span class="result-badge badge-abcg-only">aBCG Only</span>`;
+                    break;
+                default:
+                    badgeHtml = `<span class="result-badge badge-missing">Missing</span>`;
+            }
+            
+            // Reconciled overlay values helper
+            let abcgDisplayValue = item.abcgDisplay;
+            let nikshayDisplayValue = item.nikshayDisplay;
+            
+            const localInputHtml = renderLocalInput(item);
+            if (localInputHtml) {
+                abcgDisplayValue = localInputHtml;
+            } else if (item.status === 'DIFFERENT' && item.reconcilable) {
+                const choice = userChoices[item.keyName];
+                if (choice === 'accepted_nikshay') {
+                    abcgDisplayValue = `<span class="text-decoration-line-through text-danger">${item.abcgDisplay}</span> <i class="bi bi-arrow-right text-success small mx-1"></i> <span class="text-success fw-bold">${item.nikshayDisplay}</span>`;
+                } else if (choice === 'keep_abcg') {
+                    abcgDisplayValue = `<span class="text-success fw-bold">${item.abcgDisplay}</span> <span class="badge bg-secondary ms-1 small" style="font-size:0.65rem;">Kept</span>`;
+                }
+            }
+            
+            // Render Desktop Row
+            const row = document.createElement('tr');
+            row.style.cursor = (item.status === 'DIFFERENT') ? 'pointer' : 'default';
+            if (item.status === 'DIFFERENT') {
+                row.onclick = () => toggleReview(item.key);
+            }
+            
+            row.innerHTML = `
+                <td>
+                    <div class="fw-bold text-dark">${item.name}</div>
+                </td>
+                <td>
+                    <span class="${item.nikshayOnly || item.status === 'MATCH' || item.status === 'DIFFERENT' ? 'font-monospace fw-semibold text-dark' : 'text-secondary small italic'}">
+                        ${nikshayDisplayValue}
+                    </span>
+                </td>
+                <td>
+                    <span class="${item.abcgOnly || item.status === 'MATCH' || item.status === 'DIFFERENT' ? 'font-monospace fw-semibold text-dark' : 'text-secondary small italic'}">
+                        ${abcgDisplayValue}
+                    </span>
+                </td>
+                <td class="text-end">
+                    <div class="d-flex justify-content-end align-items-center gap-2">
+                        ${badgeHtml}
+                        ${item.status === 'DIFFERENT' ? `<button type="button" class="btn btn-xs btn-outline-primary py-0.5 px-2 fw-bold" style="font-size:0.72rem; border-radius:4px;">Review</button>` : ''}
+                    </div>
+                </td>
+            `;
+            desktopBody.appendChild(row);
+            
+            // Render Inline Review Drawer on Desktop if open
+            if (item.status === 'DIFFERENT' && openReviewField === item.key) {
+                const drawerRow = document.createElement('tr');
+                drawerRow.innerHTML = `
+                    <td colspan="4" class="p-0 border-0">
+                        <div class="review-drawer">
+                            <h6 class="fw-bold text-dark mb-2.5" style="font-size:0.85rem;"><i class="bi bi-check-circle-fill text-warning me-1"></i> Resolve Discrepancy: ${item.name}</h6>
+                            
+                            <div class="d-flex flex-column gap-2 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="choice_${item.key}" id="radio_nikshay_${item.key}" ${userChoices[item.keyName] === 'accepted_nikshay' ? 'checked' : ''} onchange="handleChoice('${item.keyName}', 'accepted_nikshay')">
+                                    <label class="form-check-label small text-dark" for="radio_nikshay_${item.key}">
+                                        <strong>Accept Nikshay Registry Value:</strong> Change local file to <code class="text-success font-monospace">${item.nikshayDisplay}</code>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="choice_${item.key}" id="radio_abcg_${item.key}" ${userChoices[item.keyName] === 'keep_abcg' ? 'checked' : ''} onchange="handleChoice('${item.keyName}', 'keep_abcg')">
+                                    <label class="form-check-label small text-dark" for="radio_abcg_${item.key}">
+                                        <strong>Keep Local aBCG Value:</strong> Retain local value <code class="text-primary font-monospace">${item.abcgDisplay}</code>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="text-secondary small italic" style="font-size: 0.75rem;">
+                                * Selected value will override the local record value upon finalizing reconciliation.
+                            </div>
+                        </div>
+                    </td>
+                `;
+                desktopBody.appendChild(drawerRow);
+            }
+            
+            // Render Tablet/Mobile Card item
+            const card = document.createElement('div');
+            card.className = 'card p-3 mb-2.5 border border-slate-200 shadow-sm bg-white';
+            card.style.borderRadius = '10px';
+            
+            let cardChoiceHtml = '';
+            if (item.status === 'DIFFERENT' && item.reconcilable) {
+                cardChoiceHtml = `
+                    <div class="mt-2.5 p-2 bg-light rounded border border-slate-100">
+                        <div class="form-check mb-1.5">
+                            <input class="form-check-input" type="radio" name="m_choice_${item.key}" id="m_radio_nikshay_${item.key}" ${userChoices[item.keyName] === 'accepted_nikshay' ? 'checked' : ''} onchange="handleChoice('${item.keyName}', 'accepted_nikshay')">
+                            <label class="form-check-label small text-dark" for="m_radio_nikshay_${item.key}">
+                                Accept Nikshay value: <strong>${item.nikshayDisplay}</strong>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="m_choice_${item.key}" id="m_radio_abcg_${item.key}" ${userChoices[item.keyName] === 'keep_abcg' ? 'checked' : ''} onchange="handleChoice('${item.keyName}', 'keep_abcg')">
+                            <label class="form-check-label small text-dark" for="m_radio_abcg_${item.key}">
+                                Keep Local value: <strong>${item.abcgDisplay}</strong>
+                            </label>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            card.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="fw-bold text-dark" style="font-size: 0.88rem;">${item.name}</span>
+                    ${badgeHtml}
+                </div>
+                
+                <div class="row g-2 pt-1 border-top border-slate-100 mt-1 small">
+                    <div class="col-6">
+                        <span class="text-secondary d-block" style="font-size:0.68rem; text-transform:uppercase; font-weight:700;">Nikshay</span>
+                        <span class="${item.nikshayOnly || item.status === 'MATCH' || item.status === 'DIFFERENT' ? 'font-monospace fw-bold text-dark' : 'text-secondary italic'}">${item.nikshayDisplay}</span>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-secondary d-block" style="font-size:0.68rem; text-transform:uppercase; font-weight:700;">aBCG Local</span>
+                        <span class="${item.abcgOnly || item.status === 'MATCH' || item.status === 'DIFFERENT' ? 'font-monospace fw-bold text-dark' : 'text-secondary italic'}">${abcgDisplayValue}</span>
+                    </div>
+                </div>
+                ${cardChoiceHtml}
+            `;
+            tabletBody.appendChild(card);
+        });
+    }
+
+    let dynamicDiscovered = false;
+    // Dynamic Key Discovery from Nikshay payload
+    function discoverDynamicRegistryFields() {
+        const staticKeys = new Set(fieldsConfig.map(f => f.key));
+        const staticNikshayKeys = new Set(fieldsConfig.filter(f => f.nikshayKey).map(f => f.nikshayKey));
+        
+        Object.keys(nikshayData).forEach(nkKey => {
+            // If the Nikshay key is not mapped statically
+            if (!staticKeys.has(nkKey) && !staticNikshayKeys.has(nkKey)) {
+                // Add it dynamically!
+                fieldsConfig.push({
+                    category: "9. Dynamic Registry Fields",
+                    name: nkKey.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                    key: nkKey,
+                    reconcilable: false, // dynamic new fields are read-only comparisons by default
+                    keyName: nkKey,
+                    dynamic: true
+                });
+            }
+        });
+    }
+
+    // In-browser mock registry search engine
+    function fetchNikshayRegistryData() {
+        const inputVal = document.getElementById('nikshayIdInput').value.trim();
+        if (!inputVal) {
+            alert("Please enter a Nikshay ID.");
+            return;
+        }
+        
+        // Simulating API call response
+        let newNikshay = {};
+        
+        // Predefined demo states
+        if (inputVal === "NK-123456") {
+            newNikshay = {
+                nikshay_id: "NK-123456",
+                full_name: "Vignesh Raj", 
+                age: "28", 
+                gender: "Male",
+                contact_number: "9876543210", 
+                address: "Thottampatty, Tiruvallur",
+                tb_treatment_status: "On Treatment",
+                adherence_records: "92% Adherent",
+                diagnosis_date: "2026-02-15",
+                bank_aadhaar_details: "Aadhaar Verified",
+                state: "Tamil Nadu",
+                district: "Tiruvallur",
+                tb_unit: "Tiruvallur TU",
+                tb_classification: "PTB",
+                bcg_vaccination_status: "Vaccinated",
+                bcg_vaccination_date: "2026-03-10",
+                bcg_scar: "Scar Present",
+                eptb_screened: "No",
+                income_status: "Below Poverty Line", // Dynamic new field!
+                custom_registration_flag: "Active" // Dynamic new field!
+            };
+        } else if (inputVal === "NK-777777") {
+            newNikshay = {
+                nikshay_id: "NK-777777",
+                full_name: participantData.full_name, 
+                age: participantData.age, 
+                gender: participantData.gender, 
+                contact_number: participantData.contact_number, 
+                address: "Kongapattu, Tiruvallur",
+                tb_treatment_status: "Completed",
+                adherence_records: "98% Adherent",
+                diagnosis_date: "2026-01-20",
+                bank_aadhaar_details: "Bank Account Linked",
+                state: "Tamil Nadu",
+                district: "Tiruvallur",
+                tb_unit: "Tiruvallur TU",
+                tb_classification: "EPTB",
+                bcg_vaccination_status: "Unvaccinated", // different from local
+                bcg_vaccination_date: "2026-04-15", // different
+                bcg_scar: "Scar Absent", // different
+                eptb_screened: "Yes",
+                hospital_admitted: "Yes" // Dynamic new field!
+            };
+        } else {
+            // Hash calculation for random IDs
+            let h = 0;
+            for (let i = 0; i < inputVal.length; i++) {
+                h = inputVal.charCodeAt(i) + ((h << 5) - h);
+            }
+            h = Math.abs(h);
+            
+            const firstNames = ["Ramesh", "Sunita", "Anil", "Priya", "Vikram", "Meena", "Rajesh", "Lakshmi", "Suresh", "Kavita"];
+            const lastNames = ["Kumar", "Devi", "Sharma", "Patel", "Reddy", "Naik", "Yadav", "Verma"];
+            const firstName = firstNames[h % firstNames.length];
+            const lastName = lastNames[(h >> 2) % lastNames.length];
+            
+            newNikshay = {
+                nikshay_id: inputVal,
+                full_name: `${firstName} ${lastName}`,
+                age: 18 + (h % 60),
+                gender: (h % 2 === 0) ? "Female" : "Male",
+                contact_number: "9" + String(h % 100000000).padStart(8, '0'),
+                address: "Village No. " + (h % 100) + ", block " + (h % 5),
+                tb_treatment_status: (h % 3 === 0) ? "On Treatment" : "Completed",
+                adherence_records: (90 + (h % 10)) + "% Adherent",
+                diagnosis_date: "2026-0" + (1 + (h % 9)) + "-" + (10 + (h % 15)),
+                bank_aadhaar_details: (h % 2 === 0) ? "Aadhaar Verified" : "Bank Account Linked",
+                state: "Tamil Nadu",
+                district: "Tiruvallur",
+                tb_unit: "Tiruvallur TU",
+                tb_classification: (h % 2 === 0) ? "PTB" : "EPTB",
+                bcg_vaccination_status: (h % 2 === 0) ? "Vaccinated" : "Unvaccinated",
+                bcg_vaccination_date: "2026-03-" + (10 + (h % 15)),
+                bcg_scar: (h % 2 === 0) ? "Scar Present" : "Scar Absent",
+                eptb_screened: (h % 2 === 0) ? "Yes" : "No"
+            };
+        }
+        
+        // Update nikshayData object
+        Object.assign(nikshayData, newNikshay);
+        
+        // Reset dynamicDiscovered so it parses new keys if any
+        dynamicDiscovered = false;
+        
+        // Update hidden fields
+        document.getElementById('hidden_nikshay_id').value = newNikshay.nikshay_id;
+        
+        // Recalculate and re-render comparison
+        renderComparison();
+        
+        // Trigger status updates on screen
+        const banner = document.getElementById('status-banner');
+        const alertBox = document.createElement('div');
+        alertBox.className = 'alert alert-info py-2.5 px-4 mb-3.5 small d-flex align-items-center gap-2.5';
+        alertBox.style.borderRadius = '8px';
+        alertBox.innerHTML = `<i class="bi bi-info-circle-fill text-info"></i> <span>Loaded Nikshay Registry values for ID <strong>${newNikshay.nikshay_id}</strong>. Grid updated instantly.</span>`;
+        banner.parentNode.insertBefore(alertBox, banner);
+        setTimeout(() => alertBox.remove(), 4000);
+    }
+
+    // Initialize layout on DOM load
+    document.addEventListener("DOMContentLoaded", function() {
+        // Hydrate default choice inputs
+        handleChoice('name', 'keep_abcg');
+        handleChoice('age', 'keep_abcg');
+        handleChoice('phone', 'keep_abcg');
+        handleChoice('bcg_status', 'keep_abcg');
+        handleChoice('bcg_vaccination_date', 'keep_abcg');
+        handleChoice('bcg_scar', 'keep_abcg');
+        handleChoice('tb_classification', 'keep_abcg');
+        
+        renderComparison();
+    });
+</script>
+{% endblock %}

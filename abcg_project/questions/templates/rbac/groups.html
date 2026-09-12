@@ -1,0 +1,172 @@
+{% extends "layouts/base.html" %}
+{% load rbac_tags %}
+
+{% block title %}Group & Permission Matrix | aBCG{% endblock %}
+
+{% block content %}
+<section class="page-header flex-wrap align-items-center mb-4">
+    <div>
+        <span class="eyebrow">Security Controls</span>
+        <h1 class="h2 fw-bold text-dark m-0">Group & Permission Matrix</h1>
+        <p class="header-copy text-muted small">Configure native Django group permission mappings dynamically. System boundaries adjust in real time.</p>
+    </div>
+</section>
+
+<!-- Matrix Workspace Card -->
+<div class="card border-0 shadow-sm overflow-hidden mb-4" style="border-radius: var(--radius); background: var(--surface);">
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0 text-center" style="min-width: 1000px; border-color: var(--line);">
+            <thead class="bg-light text-muted" style="font-size: 0.85rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                <tr>
+                    <th class="text-start px-4 py-3 bg-light" style="width: 300px;">Feature Modules / Permissions</th>
+                    {% for g in groups %}
+                    <th class="py-3" style="width: 150px;">{{ g }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% csrf_token %}
+                {% for module, perms in codenames %}
+                <!-- Module Divider Header -->
+                <tr class="table-secondary text-start fw-bold text-dark" style="font-size: 0.88rem; background: #eef3f8 !important; border-bottom: 2px solid var(--line);">
+                    <td colspan="{{ groups|length|add:1 }}" class="px-4 py-2.5">
+                        <i class="bi bi-folder-fill text-primary me-1.5"></i> {{ module }}
+                    </td>
+                </tr>
+                
+                {% for codename, action_name in perms %}
+                <tr class="action-row" style="font-size: 0.85rem;">
+                    <!-- Module Action cell -->
+                    <td class="text-start px-5 py-2.5 text-muted fw-semibold" style="border-right: 1px solid var(--line);">
+                        <span class="badge bg-light text-secondary border me-2">{{ action_name }}</span>
+                        <span class="font-monospace small opacity-75">{{ codename }}</span>
+                    </td>
+                    
+                    {% for g in groups %}
+                    <!-- Group check cell -->
+                    <td class="py-2.5" style="border-right: 1px solid var(--line);">
+                        {% if g == "Super Admin" %}
+                        <!-- Super Admin permissions are permanent and cannot be modified -->
+                        <div class="d-flex flex-column align-items-center justify-content-center">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-bold" style="font-size: 0.72rem;">
+                                <i class="bi bi-shield-fill-check me-0.5"></i> ALLOWED
+                            </span>
+                        </div>
+                        {% else %}
+                        <!-- Other groups are toggleable -->
+                        {% with matrix|dict_get:g as g_perms %}
+                        {% with codename|in_list:g_perms as allowed %}
+                        <div class="d-flex flex-column align-items-center justify-content-center gap-1">
+                            <div class="form-check form-switch m-0 p-0 d-flex justify-content-center align-items-center">
+                                <input class="form-check-input perm-switch" type="checkbox" role="switch"
+                                    style="width: 2.4em; height: 1.2em; cursor: pointer;"
+                                    data-group="{{ g }}"
+                                    data-codename="{{ codename }}"
+                                    {% if allowed %}checked{% endif %}>
+                            </div>
+                            <span class="status-badge badge rounded-pill px-2 py-0.5 fw-bold
+                                {% if allowed %}bg-success-subtle text-success border border-success-subtle{% else %}bg-light text-muted border{% endif %}" 
+                                style="font-size: 0.68rem; transition: all 0.3s ease;">
+                                {% if allowed %}ALLOWED{% else %}DENIED{% endif %}
+                            </span>
+                        </div>
+                        {% endwith %}
+                        {% endwith %}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Dynamic toast for save confirmation -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div id="saveToast" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true" style="border-radius: var(--radius);">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <span id="toastMessage">Permission updated successfully.</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .action-row {
+        transition: background-color 0.2s ease;
+    }
+    .action-row:hover {
+        background-color: var(--surface-soft);
+    }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const toastEl = document.getElementById("saveToast");
+    const toast = new bootstrap.Toast(toastEl);
+    const toastMessage = document.getElementById("toastMessage");
+
+    document.querySelectorAll(".perm-switch").forEach(switchInput => {
+        switchInput.addEventListener("change", function () {
+            const group = this.dataset.group;
+            const codename = this.dataset.codename;
+            const allowed = this.checked;
+            
+            const badge = this.closest("td").querySelector(".status-badge");
+            
+            if (allowed) {
+                badge.innerText = "ALLOWED";
+                badge.className = "status-badge badge rounded-pill px-2 py-0.5 fw-bold bg-success-subtle text-success border border-success-subtle";
+            } else {
+                badge.innerText = "DENIED";
+                badge.className = "status-badge badge rounded-pill px-2 py-0.5 fw-bold bg-light text-muted border";
+            }
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch("{% url 'questions:rbac_groups' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({ group, codename, allowed })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    toastMessage.innerText = `Updated ${group}'s permission: ${codename} to ${allowed ? 'Allowed' : 'Denied'}.`;
+                    toast.show();
+                } else {
+                    this.checked = !allowed;
+                    if (!allowed) {
+                        badge.innerText = "ALLOWED";
+                        badge.className = "status-badge badge rounded-pill px-2 py-0.5 fw-bold bg-success-subtle text-success border border-success-subtle";
+                    } else {
+                        badge.innerText = "DENIED";
+                        badge.className = "status-badge badge rounded-pill px-2 py-0.5 fw-bold bg-light text-muted border";
+                    }
+                    alert("Failed to update: " + data.message);
+                }
+            })
+            .catch(err => {
+                this.checked = !allowed;
+                if (!allowed) {
+                    badge.innerText = "ALLOWED";
+                    badge.className = "status-badge badge rounded-pill px-2 py-0.5 fw-bold bg-success-subtle text-success border border-success-subtle";
+                } else {
+                    badge.innerText = "DENIED";
+                    badge.className = "status-badge badge rounded-pill px-2 py-0.5 fw-bold bg-light text-muted border";
+                }
+                alert("Network error: " + err);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

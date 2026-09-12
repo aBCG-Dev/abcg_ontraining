@@ -1,0 +1,90 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Classification - aBCG Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col gap-1 border-b border-border/40 pb-4">
+    <h1 class="text-2xl font-bold tracking-tight">Classification</h1>
+  </div>
+
+  <!-- Breakdown Grid -->
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {% for b in breakdown %}
+      <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex items-center justify-between border-l-4 
+        {% if forloop.counter == 1 %}border-l-blue-500
+        {% elif forloop.counter == 2 %}border-l-amber-500
+        {% elif forloop.counter == 3 %}border-l-purple-500
+        {% else %}border-l-success{% endif %}">
+        <div class="space-y-1">
+          <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider text-[9px]">{{ b.type }}</p>
+          <div class="text-2xl font-bold text-foreground">{{ b.count }}</div>
+        </div>
+        <div class="p-2 rounded-lg 
+          {% if forloop.counter == 1 %}bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400
+          {% elif forloop.counter == 2 %}bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400
+          {% elif forloop.counter == 3 %}bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400
+          {% else %}bg-success/10 text-success{% endif %}">
+          {% if forloop.counter == 1 %}<i data-lucide="stethoscope" class="size-5"></i>
+          {% elif forloop.counter == 2 %}<i data-lucide="scan-line" class="size-5"></i>
+          {% elif forloop.counter == 3 %}<i data-lucide="git-merge" class="size-5"></i>
+          {% else %}<i data-lucide="shield-check" class="size-5"></i>{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Recent Events Table Card -->
+  <div class="space-y-3">
+    <h3 class="font-bold text-sm text-foreground">Classification Logs</h3>
+    <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-border bg-muted/40 font-semibold text-muted-foreground uppercase tracking-wider text-[9px]">
+              <th class="p-3 pl-4">Timestamp</th>
+              <th class="p-3">Study ID</th>
+              <th class="p-3">Verdict</th>
+              <th class="p-3 pr-4 text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border/60">
+            {% for e in events %}
+              <tr class="hover:bg-muted/30 transition-colors">
+                <td class="p-3.5 pl-4 font-mono text-muted-foreground">{{ e.time }}</td>
+                <td class="p-3.5 font-mono font-bold text-foreground">
+                  <a href="{% url 'questions:participant_detail' e.studyId %}" class="hover:underline text-primary">{{ e.studyId }}</a>
+                </td>
+                <td class="p-3.5">
+                  <span class="inline-flex rounded bg-muted/80 px-2 py-0.5 font-bold uppercase tracking-wide text-[9px] text-foreground border border-border/40 font-mono">
+                    {{ e.classification }}
+                  </span>
+                </td>
+                <td class="p-3.5 pr-4 text-right">
+                  <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide
+                    {% if e.result == 'Passed' %}bg-success/15 text-success
+                    {% elif e.result == 'Flagged' %}bg-warning/15 text-warning
+                    {% else %}bg-destructive/15 text-destructive{% endif %}">
+                    {{ e.result }}
+                  </span>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" class="p-6 text-center text-muted-foreground">
+                  <div class="flex flex-col items-center justify-center gap-1.5 py-4">
+                    <i data-lucide="inbox" class="size-7 text-muted-foreground/50"></i>
+                    <p class="text-xs font-semibold">No participants registered yet</p>
+                    <p class="text-[10px] text-muted-foreground">Newly classified participants will appear here in real-time as registrations occur.</p>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

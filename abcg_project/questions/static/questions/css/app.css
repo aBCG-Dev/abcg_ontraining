@@ -1,0 +1,314 @@
+:root {
+    --ink: #172033;
+    --muted: #667085;
+    --line: #d9e2ec;
+    --surface: #ffffff;
+    --surface-soft: #f6f8fb;
+    --brand: #0f4c81;
+    --brand-dark: #09365d;
+    --accent: #1b8a6b;
+    --radius: 8px;
+    --shadow: 0 12px 30px rgba(15, 42, 69, 0.09);
+}
+
+body {
+    color: var(--ink);
+    background: #eef3f8;
+    font-family: "Inter", system-ui, sans-serif;
+    margin: 0;
+    padding-top: 72px;
+}
+
+.app-navbar {
+    min-height: 72px;
+    background: var(--brand);
+    box-shadow: 0 2px 12px rgba(8, 31, 54, 0.2);
+}
+
+.brand-mark {
+    display: inline-grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: var(--radius);
+    color: #ffffff;
+    font-weight: 800;
+}
+
+.app-shell {
+    width: min(1440px, 100%);
+    margin: 0 auto;
+    padding: 32px 24px 36px;
+}
+
+@media (max-width: 768px) {
+    .app-shell {
+        padding: 20px 16px 28px;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-shell {
+        padding: 16px 10px 24px;
+    }
+}
+
+.page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+    color: var(--brand);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.header-copy {
+    max-width: 650px;
+    color: var(--muted);
+    margin-bottom: 0;
+}
+
+.site-summary,
+.metric-grid,
+.workspace-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.site-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.site-summary>div {
+    padding: 18px 20px;
+    border-right: 1px solid var(--line);
+}
+
+.site-summary>div:last-child {
+    border-right: 0;
+}
+
+.summary-label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 28px;
+}
+
+.metric-card,
+.action-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+}
+
+.metric-card strong {
+    display: block;
+    font-size: 2rem;
+    margin-bottom: 6px;
+    line-height: 1;
+}
+
+.metric-card small {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.workspace-grid {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+}
+
+.action-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.action-card {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr) 44px;
+    align-items: center;
+    gap: 16px;
+    padding: 18px;
+}
+
+.action-icon {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    place-items: center;
+    border-radius: var(--radius);
+    color: var(--brand);
+    background: #e8f1f8;
+    font-size: 1.45rem;
+}
+
+.action-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.action-card h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.action-card p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.action-badge {
+    border-radius: var(--radius);
+    padding: 4px 8px;
+    color: var(--brand-dark);
+    background: var(--surface-soft);
+    font-size: 0.74rem;
+    font-weight: 800;
+}
+
+.action-button {
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--brand);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-footer {
+    padding: 24px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-top: 40px;
+}
+
+@media (max-width: 900px) {
+
+    .page-header,
+    .workspace-grid,
+    .site-summary,
+    .metric-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .site-summary>div {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .site-summary>div:last-child {
+        border-bottom: 0;
+    }
+}
+
+/* Workflow & Performance Dashboard Styling */
+.workflow-card {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow: var(--shadow);
+    text-decoration: none !important;
+}
+
+.workflow-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(15, 42, 69, 0.12) !important;
+    border-color: var(--brand) !important;
+}
+
+.workflow-card:hover .action-button-circle {
+    background-color: var(--brand-dark) !important;
+    transform: scale(1.05);
+}
+
+.action-button-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+/* Stat Card Hover Effects & Custom Gradients */
+.stat-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 20px rgba(15, 42, 69, 0.08) !important;
+}
+
+.stat-card-registered {
+    background: linear-gradient(135deg, #ffffff 0%, #f4f8fd 100%) !important;
+}
+
+.stat-card-case {
+    background: linear-gradient(135deg, #ffffff 0%, #f5fdf8 100%) !important;
+}
+
+.stat-card-control {
+    background: linear-gradient(135deg, #ffffff 0%, #fffdf3 100%) !important;
+}
+
+.workflow-card-registration {
+    background: linear-gradient(135deg, #ffffff 0%, #f4fdf8 100%) !important;
+    border-left: 4px solid var(--accent) !important;
+}
+
+.workflow-card-search {
+    background: linear-gradient(135deg, #ffffff 0%, #f4f8fd 100%) !important;
+    border-left: 4px solid var(--brand) !important;
+}
+
+.workflow-card-sync {
+    background: linear-gradient(135deg, #ffffff 0%, #fbf7ff 100%) !important;
+    border-left: 4px solid #8b5cf6 !important;
+}
+
+/* Global Micro-Animations */
+@keyframes bouncePin {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+.animate-bounce {
+    display: inline-block;
+    animation: bouncePin 2s infinite ease-in-out;
+}

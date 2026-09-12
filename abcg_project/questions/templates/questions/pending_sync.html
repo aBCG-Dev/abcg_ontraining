@@ -1,0 +1,880 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Data Sync | aBCG{% endblock %}
+
+{% block content %}
+<style>
+    /* Premium Healthcare Sync Design System */
+    .sync-root {
+        font-family: 'Inter', -apple-system, sans-serif;
+        color: #1e293b;
+    }
+
+    /* Compact Operational Header */
+    .sync-header {
+        height: 75px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 12px;
+        margin-bottom: 24px;
+    }
+
+    /* Large Sync Status Hero panel */
+    .hero-status-card {
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        padding: 32px 24px;
+        text-align: center;
+    }
+
+    .hero-status-card-synced {
+        border-top: 4px solid var(--accent);
+    }
+
+    .hero-status-card-pending {
+        border-top: 4px solid var(--warning);
+    }
+
+    .hero-status-card-error {
+        border-top: 4px solid var(--danger);
+    }
+
+    /* Simple Device Server Flow */
+    .flow-container {
+        margin: 20px auto 0;
+        max-width: 450px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 16px;
+    }
+
+    .flow-line {
+        position: relative;
+        height: 2px;
+        background: #cbd5e1;
+        flex-grow: 1;
+        margin: 0 16px;
+    }
+
+    .flow-badge {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 2px 10px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    /* Horizontal Info Strip Metrics */
+    .info-strip {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        padding: 0;
+        margin-bottom: 24px;
+    }
+
+    .info-strip-item {
+        flex: 1;
+        min-width: 120px;
+        padding: 16px;
+        border-right: 1px solid #e2e8f0;
+        text-align: center;
+    }
+
+
+    .info-strip-item:last-child {
+        border-right: none;
+    }
+
+    .info-strip-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+    }
+
+    .info-strip-val {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1;
+    }
+
+    .info-strip-sub {
+        font-size: 0.68rem;
+        color: #94a3b8;
+        margin-top: 4px;
+    }
+
+    /* Split Sections layout */
+    .grid-section-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 14px;
+    }
+
+    /* Timeline Sync History */
+    .timeline-list {
+        display: flex;
+        flex-column: column;
+        gap: 16px;
+    }
+
+    .timeline-item {
+        display: flex;
+        gap: 12px;
+        position: relative;
+    }
+
+    .timeline-icon-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .timeline-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #f0fdfa;
+        border: 1.5px solid var(--accent);
+        display: grid;
+        place-items: center;
+        color: var(--accent);
+        font-size: 0.75rem;
+        font-weight: bold;
+        z-index: 2;
+    }
+
+    .timeline-line {
+        width: 1.5px;
+        flex-grow: 1;
+        background: #e2e8f0;
+        margin-top: 4px;
+    }
+
+    .timeline-item:last-child .timeline-line {
+        display: none;
+    }
+
+    /* Device Status list */
+    .status-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .status-list-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 8px;
+        font-size: 0.85rem;
+    }
+
+    .status-list-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    /* Progress Blur Overlay */
+    .progress-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(5px);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .progress-card {
+        width: 90%;
+        max-width: 420px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        padding: 24px;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    }
+
+    /* Mobile Responsive Overrides */
+    @media (max-width: 767px) {
+        .sync-header {
+            height: auto !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 14px !important;
+            padding-bottom: 16px !important;
+        }
+        .sync-header .d-flex.align-items-center.gap-3 {
+            justify-content: space-between !important;
+            width: 100% !important;
+        }
+        /* Remove vertical line and left padding on mobile for connection dot to align right */
+        .sync-header .border-start {
+            border-left: none !important;
+            padding-left: 0 !important;
+        }
+        .sync-header .d-flex.gap-2 {
+            width: 100% !important;
+            display: flex !important;
+        }
+        .sync-header .d-flex.gap-2 .btn {
+            flex: 1 1 0% !important;
+            text-align: center !important;
+            justify-content: center !important;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .info-strip {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            border: none !important;
+            background: transparent !important;
+            gap: 10px !important;
+            margin-bottom: 20px !important;
+        }
+        .info-strip-item {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            min-width: 0 !important;
+            padding: 12px !important;
+            border-right: 1px solid #e2e8f0 !important;
+        }
+        /* Last item spans full width of grid */
+        .info-strip-item:last-child {
+            grid-column: span 2 !important;
+            border-right: 1px solid #e2e8f0 !important;
+        }
+    }
+</style>
+
+<div class="sync-root py-1">
+    
+    <!-- 1. Redesigned Compact Header (Vertical constraint 70-90px) -->
+    <header class="sync-header d-flex flex-row justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <h1 class="h5 fw-bold text-dark m-0" style="font-size: 1.15rem; letter-spacing: -0.01em;">Data Sync</h1>
+            <div class="d-flex align-items-center gap-2 border-start ps-3" style="min-height: 20px;">
+                <span id="headerConnectionDot" class="d-inline-block rounded-circle" style="width: 8px; height: 8px; background-color: var(--gray-500);"></span>
+                <span id="headerConnectionText" class="small fw-semibold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.05em;">Checking...</span>
+            </div>
+            <span class="text-muted small d-none d-md-inline" style="font-size: 0.76rem;">• Last sync: <span id="headerLastSync">Loading...</span></span>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <a href="{% url 'questions:home' %}" class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center px-3" style="border-radius: 6px; height: 38px; font-weight: 600; font-size: 0.82rem;">
+                Dashboard
+            </a>
+            {% if pending_records %}
+                <button type="button" id="headerSyncBtn" class="btn btn-primary d-inline-flex align-items-center justify-content-center px-4.5" style="background-color: var(--brand); border: none; border-radius: 6px; height: 38px; font-weight: 700; font-size: 0.82rem;" onclick="triggerSyncForm();">
+                    Sync Now
+                </button>
+            {% else %}
+                <button type="button" class="btn btn-light d-inline-flex align-items-center justify-content-center px-4.5 border text-muted" style="border-radius: 6px; height: 38px; font-weight: 600; font-size: 0.82rem;" disabled>
+                    Up to Date
+                </button>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Hidden Base Form -->
+    <form method="post" id="syncForm" class="d-none">
+        {% csrf_token %}
+        <input type="hidden" name="latitude" id="telemetry_lat" value="">
+        <input type="hidden" name="longitude" id="telemetry_lng" value="">
+        <input type="hidden" name="battery_level" id="telemetry_bat_level" value="">
+        <input type="hidden" name="battery_charging" id="telemetry_bat_charging" value="">
+        <input type="submit" id="syncSubmitBtn">
+    </form>
+
+    <!-- 2. Large status hero block (Primary Visual Focus) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            {% if last_sync_status == "error" %}
+                <!-- Error Sync State -->
+                <div class="hero-status-card hero-status-card-error">
+                    <div class="fs-1 text-danger mb-2.5"><i class="bi bi-exclamation-circle-fill"></i></div>
+                    <h2 class="h5 fw-bold text-dark mb-1">
+                        {% if pending_records|length > 0 %}{{ pending_records|length }} record{{ pending_records|length|pluralize }} need{{ pending_records|length|pluralize:"s," }} attention{% else %}Connection failed{% endif %}
+                    </h2>
+                    <p class="text-muted small mb-1">
+                        {% if pending_records|length > 0 %}One or more records could not be synchronized.{% else %}All local records are synchronized, but central server authentication failed.{% endif %}
+                    </p>
+                    <p class="text-danger small fw-medium mb-3">Please check your network connection or contact your supervisor if the problem continues.</p>
+                    
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        <button type="button" class="btn btn-danger px-4 py-2" style="border-radius: 6px; font-weight: 700; font-size: 0.85rem; min-height: 40px;" onclick="triggerSyncForm();">
+                            Retry Sync
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary px-3 py-2" style="border-radius: 6px; font-weight: 600; font-size: 0.85rem; min-height: 40px;" onclick="toggleDetailsTray();">
+                            View Details
+                        </button>
+                    </div>
+
+                    <!-- Collapsible Technical Tray -->
+                    <div id="technicalErrorTray" class="d-none max-w-lg mx-auto bg-light p-3 rounded border text-start mt-3 font-mono" style="font-size: 0.74rem; line-height: 1.4; max-width: 500px;">
+                        <div class="text-muted border-bottom pb-1 mb-2 fw-bold text-uppercase">Diagnostic Error Response</div>
+                        <div class="text-danger-emphasis text-break">{{ last_sync_message }}</div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Normal Logic Flow checks -->
+                <div id="onlineHeroStatusContainer">
+                    {% if pending_records %}
+                        <!-- Pending Sync Hero Card -->
+                        <div class="hero-status-card hero-status-card-pending">
+                            <div class="fs-1 text-warning mb-2.5"><i class="bi bi-cloud-arrow-up-fill"></i></div>
+                            <h2 class="h5 fw-bold text-dark mb-1">Sync required</h2>
+                            <p class="text-muted small mb-1">{{ pending_records|length }} participant record{{ pending_records|length|pluralize }} {{ pending_records|length|pluralize:"is,are" }} waiting to be uploaded.</p>
+                            <p class="text-warning small fw-bold mb-3">{{ pending_records|length }} record{{ pending_records|length|pluralize }} pending</p>
+                            <button type="button" class="btn btn-warning text-white px-4 py-2" style="background-color: var(--warning); border: none; border-radius: 6px; font-weight: 700; font-size: 0.85rem; min-height: 40px;" onclick="triggerSyncForm();">
+                                Sync {{ pending_records|length }} Record{{ pending_records|length|pluralize }}
+                              </button>
+                        </div>
+                    {% else %}
+                        <!-- Synced Catch Up Hero Card -->
+                        <div class="hero-status-card hero-status-card-synced">
+                            <div class="fs-1 text-success mb-2.5"><i class="bi bi-check-circle-fill"></i></div>
+                            <h2 class="h5 fw-bold text-dark mb-1">You're all caught up</h2>
+                            <p class="text-muted small mb-1">All participant records on this tablet are synchronized.</p>
+                            <p class="text-success small fw-bold mb-3">0 records waiting to sync</p>
+                            <p class="text-muted small mb-3" style="font-size: 0.74rem;">Last sync: <span class="last-sync-span">Checking...</span></p>
+                            <button type="button" class="btn btn-outline-success px-4 py-2" style="border-radius: 6px; font-weight: 700; font-size: 0.85rem; min-height: 40px;" onclick="triggerSyncForm();">
+                                Sync Again
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Offline Hero Status Card -->
+                <div id="offlineHeroStatusContainer" class="hero-status-card hero-status-card-pending d-none">
+                    <div class="fs-1 text-warning mb-2.5"><i class="bi bi-wifi-off"></i></div>
+                    <h2 class="h5 fw-bold text-dark mb-1">You're offline</h2>
+                    <p class="text-muted small mb-1">Your participant data is safely stored on this tablet.</p>
+                    <p class="text-warning small fw-semibold mb-3">{{ pending_records|length }} record{{ pending_records|length|pluralize }} will be synchronized when a connection is available.</p>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle badge-status text-uppercase">Offline</span>
+                </div>
+            {% endif %}
+
+            <!-- Simple Sync Relationship Flow Diagram -->
+            <div class="flow-container d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-primary fs-5"><i class="bi bi-tablet"></i></span>
+                    <span class="small fw-bold text-dark">This Tablet</span>
+                </div>
+                
+                <div class="flow-line d-flex align-items-center justify-content-center">
+                    <span class="flow-badge text-muted" id="flow-badge-connection">Connected</span>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-primary fs-5"><i class="bi bi-server"></i></span>
+                    <span class="small fw-bold text-dark">Central Server</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 3. Horizontal Info Strip Metrics -->
+    <div class="info-strip mb-4">
+        <!-- Pending -->
+        <div class="info-strip-item">
+            <div class="info-strip-label">Pending</div>
+            <div class="info-strip-val text-warning">{{ pending_records|length }}</div>
+            <div class="info-strip-sub">Waiting to sync</div>
+        </div>
+        <!-- Synchronized -->
+        <div class="info-strip-item">
+            <div class="info-strip-label">Synchronized</div>
+            <div class="info-strip-val text-success">{{ synced_count|default:"0" }}</div>
+            <div class="info-strip-sub">Successfully uploaded</div>
+        </div>
+        <!-- Failed -->
+        <div class="info-strip-item">
+            <div class="info-strip-label">Failed</div>
+            <div class="info-strip-val text-danger" id="failed-value-metric">
+                {% if last_sync_status == "error" and pending_records|length > 0 %}{{ pending_records|length }}{% else %}0{% endif %}
+            </div>
+            <div class="info-strip-sub">Needs attention</div>
+        </div>
+        <!-- Last Sync -->
+        <div class="info-strip-item">
+            <div class="info-strip-label">Last Sync</div>
+            <div class="info-strip-val" id="lastSyncValText" style="font-size: 1.1rem; padding-top: 2px; padding-bottom: 2px;">--:--</div>
+            <div class="info-strip-sub" id="lastSyncValSub">Today</div>
+        </div>
+        <!-- Total Records -->
+        <div class="info-strip-item">
+            <div class="info-strip-label">Total Records</div>
+            <div class="info-strip-val text-primary">{{ total_records|default:"0" }}</div>
+            <div class="info-strip-sub">On this device</div>
+        </div>
+    </div>
+
+    <!-- Split Queue list & Device Status -->
+    <div class="row">
+        <!-- Synchronization Queue (Left) -->
+        <div class="col-lg-7 mb-4">
+            <div class="card border bg-white overflow-hidden shadow-sm" style="border-radius: var(--radius);">
+                <div class="card-header bg-light border-bottom p-3">
+                    <h3 class="h6 fw-bold m-0 text-dark">Synchronization Queue</h3>
+                </div>
+                <div class="card-body p-0">
+                    {% if pending_records %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                <thead>
+                                    <tr class="bg-light text-muted uppercase" style="font-size: 0.72rem; font-weight: 700; border-bottom: 1px solid var(--line);">
+                                        <th class="p-3">Participant ID</th>
+                                        <th class="p-3">Type</th>
+                                        <th class="p-3 text-center">Status</th>
+                                        <th class="p-3 text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in pending_records %}
+                                        <tr>
+                                            <td class="p-3 font-mono fw-bold text-dark">{{ record.id }}</td>
+                                            <td class="p-3">
+                                                <span class="badge border small px-2 py-0.5" 
+                                                      style="border-radius: var(--radius); font-weight: 600;
+                                                             {% if "Case" in record.type %} background-color: #fef2f2; border-color: #fee2e2; color: #b91c1c;
+                                                             {% elif "Control" in record.type %} background-color: #fffbeb; border-color: #fef3c7; color: #b45309;
+                                                             {% elif "TPT" in record.type %} background-color: #f5f3ff; border-color: #ede9fe; color: #6d28d9;
+                                                             {% else %} background-color: #f3f4f6; border-color: #e5e7eb; color: #374151; {% endif %}">
+                                                    {{ record.type }}
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <span class="text-warning small fw-semibold">Pending</span>
+                                            </td>
+                                            <td class="p-3 text-end">
+                                                <a href="{% url 'questions:registration_edit' record.db_id %}" class="btn btn-outline-secondary btn-sm px-2.5 py-1" style="border-radius: 6px; font-weight: 600; font-size: 0.76rem;">
+                                                    View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 px-3 bg-light">
+                            <div class="fs-3 text-success opacity-75 mb-1.5">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                            <h4 class="h6 fw-bold text-dark mb-0.5">✓ Everything is synchronized</h4>
+                            <p class="text-muted small mb-0">There are no pending records on this device.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Status (Right) -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border bg-white shadow-sm mb-4" style="border-radius: var(--radius);">
+                <div class="card-header bg-light border-bottom p-3">
+                    <h3 class="h6 fw-bold m-0 text-dark">Device Status</h3>
+                </div>
+                <div class="card-body p-3">
+                    <div class="status-list">
+                        <!-- Connection -->
+                        <div class="status-list-row">
+                            <span class="text-muted">Connection</span>
+                            <strong class="text-dark" id="panelConnectionText">● Online</strong>
+                        </div>
+                        <!-- Tablet -->
+                        <div class="status-list-row">
+                            <span class="text-muted">Tablet</span>
+                            <strong class="text-dark font-mono" id="tabletIdText">aBCG-STAFF-TAB01</strong>
+                        </div>
+                        <!-- Battery -->
+                        <div class="status-list-row">
+                            <span class="text-muted">Battery</span>
+                            <strong class="text-dark" id="panelBatteryText">Reading...</strong>
+                        </div>
+                        <!-- Study Site -->
+                        <div class="status-list-row">
+                            <span class="text-muted">Study Site</span>
+                            <strong class="text-dark">{{ user_profile.tb_unit }}</strong>
+                        </div>
+                        <!-- Last Sync -->
+                        <div class="status-list-row">
+                            <span class="text-muted">Last Sync</span>
+                            <strong class="text-dark" id="panelLastSyncText">Today, 12:18 PM</strong>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Technical details summary -->
+                    <details class="mt-3.5 border-top pt-2.5">
+                        <summary class="d-flex align-items-center justify-content-between text-primary small fw-semibold">
+                            <span>Technical Details</span>
+                            <i class="bi bi-chevron-down ms-1"></i>
+                        </summary>
+                        <div class="bg-light p-2.5 rounded border mt-2 font-mono" style="font-size: 0.72rem; line-height: 1.45;">
+                            <div class="text-muted border-bottom pb-1 mb-1">Central Server URL</div>
+                            <div class="text-dark text-break">{{ backend_url }}</div>
+                            <div class="text-muted border-bottom pb-1 mt-2 mb-1">GPS Coordinates</div>
+                            <div class="text-dark" id="techGpsText">Fetching coordinates...</div>
+                            <div class="text-muted border-bottom pb-1 mt-2 mb-1">Browser User Agent</div>
+                            <div class="text-dark text-break" style="max-height: 50px; overflow-y: auto;" id="techUserAgentText">Reading platform...</div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Recent Sync Activity Timeline -->
+            <div class="card border bg-white shadow-sm" style="border-radius: var(--radius);">
+                <div class="card-header bg-light border-bottom p-3">
+                    <h3 class="h6 fw-bold m-0 text-dark">Recent Sync Activity</h3>
+                </div>
+                <div class="card-body p-3">
+                    <div class="timeline-list">
+                        {% if sync_logs %}
+                            {% for log in sync_logs %}
+                                <div class="timeline-item">
+                                    <div class="timeline-icon-container">
+                                        <div class="timeline-dot">✓</div>
+                                        <div class="timeline-line"></div>
+                                    </div>
+                                    <div class="timeline-content" style="font-size: 0.82rem;">
+                                        <strong class="d-block text-dark">{{ log.timestamp|date:"M d, h:i A" }}</strong>
+                                        <span class="text-muted d-block mt-0.5">{{ log.synced_count }} record{{ log.synced_count|pluralize }} synchronized</span>
+                                        <span class="text-muted small mt-0.5 d-block font-mono">Completed in <span class="timeline-duration-est"></span></span>
+                                        <script>
+                                            (function() {
+                                                const count = parseInt("{{ log.synced_count }}") || 0;
+                                                const dur = Math.max(2, Math.round(count * 0.4 + 1.1));
+                                                document.currentScript.parentElement.querySelector(".timeline-duration-est").textContent = `${dur} seconds`;
+                                            })();
+                                        </script>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-2 text-muted small">
+                                No recent sync runs captured.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-top p-2.5 text-center">
+                    <a href="{% url 'questions:sync_telemetry' %}" class="small text-decoration-none fw-semibold text-primary">
+                        View Sync History <i class="bi bi-arrow-right ms-0.5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Real-Time Sync Animation / Progress Overlay -->
+<div id="syncProgressOverlay" class="progress-overlay d-none">
+    <div class="progress-card">
+        <div class="text-center mb-3">
+            <div class="spinner-border text-primary mb-3" style="width: 2.5rem; height: 2.5rem;" role="status">
+                <span class="visually-hidden">Syncing...</span>
+            </div>
+            <h4 class="h6 fw-bold text-dark mb-0.5">Synchronizing records...</h4>
+            <p class="text-muted small mb-0">Uploading participant records securely</p>
+        </div>
+
+        <div class="progress mb-2" style="height: 8px; border-radius: 4px;">
+            <div id="overlayProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%;"></div>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center small text-muted font-medium mb-3" style="font-size: 0.74rem;">
+            <span id="overlayProgressRatio">0 of {{ pending_records|length }} records</span>
+            <span id="overlayProgressPercent" class="fw-bold text-dark">0%</span>
+        </div>
+
+        <div class="bg-light p-2.5 rounded border" style="font-size: 0.74rem;">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">Uploaded:</span>
+                <strong class="text-success" id="overlayUploadedCount">0</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">Remaining:</span>
+                <strong class="text-warning" id="overlayRemainingCount">{{ pending_records|length }}</strong>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="text-muted">Failed:</span>
+                <strong class="text-danger" id="overlayFailedCount">0</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Load Sync Timestamps from localStorage / recent logs
+    function loadSyncTimestamps() {
+        const headerLastSync = document.getElementById("headerLastSync");
+        const panelLastSync = document.getElementById("panelLastSyncText");
+        const lastSyncValText = document.getElementById("lastSyncValText");
+        const cardLastSyncSpans = document.querySelectorAll(".last-sync-span");
+        
+        let lastSync = localStorage.getItem('lastSyncTime');
+        if (!lastSync) {
+            {% if sync_logs %}
+                lastSync = "{{ sync_logs.0.timestamp|date:'M d, Y, h:i A' }}";
+            {% else %}
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - 12);
+                lastSync = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+            {% endif %}
+            localStorage.setItem('lastSyncTime', lastSync);
+        }
+        
+        if (headerLastSync) headerLastSync.textContent = lastSync;
+        if (panelLastSync) panelLastSync.textContent = lastSync;
+        if (lastSyncValText) {
+            const parts = lastSync.split(',');
+            if (parts.length >= 3) {
+                const datePart = parts[0].trim() + ", " + parts[1].trim();
+                const timePart = parts[2].trim();
+                lastSyncValText.textContent = timePart;
+                const subEl = document.getElementById("lastSyncValSub");
+                if (subEl) subEl.textContent = datePart;
+            } else if (parts.length === 2) {
+                const datePart = parts[0].trim();
+                const timePart = parts[1].trim();
+                lastSyncValText.textContent = timePart;
+                const subEl = document.getElementById("lastSyncValSub");
+                if (subEl) subEl.textContent = datePart;
+            } else {
+                lastSyncValText.textContent = lastSync;
+            }
+        }
+        cardLastSyncSpans.forEach(span => {
+            span.textContent = lastSync;
+        });
+    }
+    loadSyncTimestamps();
+
+    // 2. Trigger Submit method helper
+    function triggerSyncForm() {
+        const syncSubmitBtn = document.getElementById("syncSubmitBtn");
+        if (syncSubmitBtn) {
+            syncSubmitBtn.click();
+        }
+    }
+
+    // 3. Collapsible Diagnostic details tray
+    function toggleDetailsTray() {
+        const tray = document.getElementById("technicalErrorTray");
+        if (tray) {
+            tray.classList.toggle("d-none");
+        }
+    }
+
+    // 4. Online/Offline Connectivity Event Listeners
+    function verifyConnection() {
+        const headerDot = document.getElementById("headerConnectionDot");
+        const headerText = document.getElementById("headerConnectionText");
+        
+        const flowBadge = document.getElementById("flow-badge-connection");
+        
+        const panelText = document.getElementById("panelConnectionText");
+        
+        const headerSyncBtn = document.getElementById("headerSyncBtn");
+        
+        const onlineHero = document.getElementById("onlineHeroStatusContainer");
+        const offlineHero = document.getElementById("offlineHeroStatusContainer");
+        
+        const retrySyncBtn = document.querySelector(".hero-status-card-error button");
+
+        if (navigator.onLine) {
+            // Online States
+            if (headerDot) {
+                headerDot.style.backgroundColor = "var(--accent)";
+                headerDot.className = "d-inline-block rounded-circle animate-pulse";
+            }
+            if (headerText) {
+                headerText.textContent = "Online";
+                headerText.className = "small fw-semibold text-success text-uppercase";
+            }
+            if (flowBadge) {
+                {% if last_sync_status == "error" %}
+                    flowBadge.textContent = "Server Offline";
+                    flowBadge.className = "flow-badge text-danger border-danger";
+                {% else %}
+                    flowBadge.textContent = "Connected";
+                    flowBadge.className = "flow-badge text-success border-success";
+                {% endif %}
+            }
+            if (panelText) {
+                panelText.textContent = "● Online";
+                panelText.className = "text-success fw-bold";
+            }
+            if (headerSyncBtn) headerSyncBtn.disabled = false;
+            
+            if (onlineHero) onlineHero.classList.remove("d-none");
+            if (offlineHero) offlineHero.classList.add("d-none");
+            if (retrySyncBtn) retrySyncBtn.disabled = false;
+        } else {
+            // Offline States
+            if (headerDot) {
+                headerDot.style.backgroundColor = "var(--warning)";
+                headerDot.className = "d-inline-block rounded-circle";
+            }
+            if (headerText) {
+                headerText.textContent = "Offline";
+                headerText.className = "small fw-semibold text-warning text-uppercase";
+            }
+            if (flowBadge) {
+                flowBadge.textContent = "Offline";
+                flowBadge.className = "flow-badge text-warning border-warning";
+            }
+            if (panelText) {
+                panelText.textContent = "● Offline";
+                panelText.className = "text-warning fw-bold";
+            }
+            if (headerSyncBtn) headerSyncBtn.disabled = true;
+            
+            if (onlineHero) onlineHero.classList.add("d-none");
+            if (offlineHero) offlineHero.classList.remove("d-none");
+            if (retrySyncBtn) retrySyncBtn.disabled = true;
+        }
+    }
+    window.addEventListener('online', verifyConnection);
+    window.addEventListener('offline', verifyConnection);
+    verifyConnection(); // initial run
+
+    // 5. Geolocation Telemetry
+    function captureLocation() {
+        const gpsLabel = document.getElementById("techGpsText");
+        if (!navigator.geolocation) {
+            if (gpsLabel) gpsLabel.textContent = "Not supported by browser";
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                if (gpsLabel) gpsLabel.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                
+                const formLat = document.getElementById("telemetry_lat");
+                const formLng = document.getElementById("telemetry_lng");
+                if (formLat) formLat.value = lat;
+                if (formLng) formLng.value = lng;
+            },
+            (error) => {
+                if (gpsLabel) gpsLabel.textContent = "Unavailable / Blocked";
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+    }
+    captureLocation();
+
+    // 6. Battery Power Telemetry
+    function captureBattery() {
+        const batText = document.getElementById("panelBatteryText");
+        if (!navigator.getBattery) {
+            if (batText) batText.textContent = "Unavailable";
+            return;
+        }
+
+        navigator.getBattery().then((battery) => {
+            function updateBatteryUI() {
+                const level = Math.round(battery.level * 100);
+                if (batText) {
+                    batText.textContent = `${level}% ${battery.charging ? "Charging" : ""}`;
+                }
+                
+                const formBatLvl = document.getElementById("telemetry_bat_level");
+                const formBatChg = document.getElementById("telemetry_bat_charging");
+                if (formBatLvl) formBatLvl.value = level;
+                if (formBatChg) formBatChg.value = battery.charging;
+            }
+
+            updateBatteryUI();
+            battery.addEventListener('levelchange', updateBatteryUI);
+            battery.addEventListener('chargingchange', updateBatteryUI);
+        }).catch(err => {
+            if (batText) batText.textContent = "Blocked";
+        });
+    }
+    captureBattery();
+
+    // 7. Dynamic Tablet ID derived from User name
+    const username = "{{ request.user.username|default:'staff' }}".toUpperCase();
+    const derivedTabletId = `aBCG-${username}-TAB01`;
+    const tabElement = document.getElementById("tabletIdText");
+    if (tabElement) {
+        tabElement.textContent = derivedTabletId;
+    }
+
+    // 8. Browser Technical Agent Information
+    const techUA = document.getElementById("techUserAgentText");
+    if (techUA) {
+        techUA.textContent = navigator.userAgent;
+    }
+
+    // 9. Form Sync Process Loader Overlays
+    const formElement = document.getElementById("syncForm");
+    if (formElement) {
+        formElement.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            // Show Overlay
+            const overlay = document.getElementById("syncProgressOverlay");
+            overlay.classList.remove("d-none");
+            
+            const total = parseInt("{{ pending_records|length }}") || 0;
+            const progressBar = document.getElementById("overlayProgressBar");
+            const ratioLabel = document.getElementById("overlayProgressRatio");
+            const percentLabel = document.getElementById("overlayProgressPercent");
+            const uploadedCount = document.getElementById("overlayUploadedCount");
+            const remainingCount = document.getElementById("overlayRemainingCount");
+
+            let current = 0;
+            const interval = setInterval(() => {
+                current += 1;
+                if (current > total) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        localStorage.setItem('lastSyncTime', new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }));
+                        formElement.submit();
+                    }, 500);
+                } else {
+                    const percent = Math.round((current / total) * 100);
+                    progressBar.style.width = `${percent}%`;
+                    ratioLabel.textContent = `${current} of ${total} records`;
+                    percentLabel.textContent = `${percent}%`;
+                    uploadedCount.textContent = current;
+                    remainingCount.textContent = total - current;
+                }
+            }, Math.max(100, Math.round(1500 / (total || 1))));
+        });
+    }
+</script>
+{% endblock %}

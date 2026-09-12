@@ -1,0 +1,582 @@
+{% extends "layouts/base.html" %}
+{% load rbac_tags %}
+
+{% block title %}User Management | aBCG{% endblock %}
+
+{% block content %}
+<section class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="h2 fw-bold text-dark m-0">User Management</h1>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-1.5 px-4 py-2 shadow-sm" style="border-radius: var(--radius); background-color: var(--brand); border: none; font-weight: 600;" data-bs-toggle="modal" data-bs-target="#createUserModal">
+            <i class="bi bi-person-plus-fill"></i> Create New User
+        </button>
+    </div>
+</section>
+
+<!-- Filter Workspace Card -->
+<div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: var(--radius); background: var(--surface);">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label for="q" class="form-label fw-semibold text-muted small">SEARCH SYSTEM USERS</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0" style="border-color: var(--line); border-radius: var(--radius) 0 0 var(--radius);">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" class="form-control border-start-0" id="q" name="q" value="{{ q }}" placeholder="Search by name, username or district..." style="border-color: var(--line); border-radius: 0 var(--radius) var(--radius) 0; font-size: 0.9rem;">
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <label for="role" class="form-label fw-semibold text-muted small">FILTER BY ROLE</label>
+            <select class="form-select" id="role" name="role" style="border-color: var(--line); border-radius: var(--radius); font-size: 0.9rem;">
+                <option value="">All Roles</option>
+                {% for r in roles %}
+                <option value="{{ r }}" {% if role_filter == r %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label for="status" class="form-label fw-semibold text-muted small">STATUS</label>
+            <select class="form-select" id="status" name="status" style="border-color: var(--line); border-radius: var(--radius); font-size: 0.9rem;">
+                <option value="">All Statuses</option>
+                <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>Active</option>
+                <option value="Inactive" {% if status_filter == 'Inactive' %}selected{% endif %}>Inactive</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100 py-2" style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 600; font-size: 0.9rem;">
+                Apply Filters
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Users Table Card -->
+<div class="card border-0 shadow-sm overflow-hidden" style="border-radius: var(--radius); background: var(--surface);">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="min-width: 900px;">
+            <thead class="bg-light text-muted" style="font-size: 0.78rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                <tr>
+                    <th class="px-4 py-3">User & Username</th>
+                    <th class="py-3">Assigned Role</th>
+                    <th class="py-3">State / District</th>
+                    <th class="py-3">TB Unit Jurisdiction</th>
+                    <th class="py-3 text-center">Status</th>
+                    <th class="px-4 py-3 text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody style="font-size: 0.9rem;">
+                {% for u in users %}
+                <tr class="user-row-hover">
+                    <td class="px-4 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="avatar-circle" style="width: 40px; height: 40px; border-radius: 50%; background: #e8f1f8; color: var(--brand); display: grid; place-items: center; font-weight: 700;">
+                                {{ u.username|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ u.profile.full_name|default:u.username }}</div>
+                                <div class="text-muted small">@{{ u.username }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3">
+                        <span class="badge rounded-pill px-2.5 py-1.5 fw-semibold 
+                            {% if u.profile.role == 'Super Admin' %}bg-danger text-white
+                            {% elif u.profile.role == 'Admin' %}bg-primary text-white
+                            {% elif u.profile.role == 'Nodal Officer' %}bg-warning text-dark
+                            {% elif u.profile.role == 'Doctor' %}bg-info text-dark
+                            {% else %}bg-secondary text-white{% endif %}" style="font-size: 0.78rem;">
+                            {{ u.profile.role }}
+                        </span>
+                    </td>
+                    <td class="py-3 text-dark fw-medium">
+                        {{ u.profile.state }} <br>
+                        <span class="text-muted small">{{ u.profile.district }}</span>
+                    </td>
+                    <td class="py-3 text-muted">
+                        <i class="bi bi-geo-alt me-1 text-primary"></i> {{ u.profile.tb_unit }}
+                    </td>
+                    <td class="py-3 text-center">
+                        {% if u.is_active %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold" style="font-size: 0.75rem;">
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-bold" style="font-size: 0.75rem;">
+                            Inactive
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-end">
+                        <button type="button" class="btn btn-outline-primary btn-sm px-3 border-line btn-edit-user"
+                            style="border-radius: 8px; font-weight: 600; font-size: 0.8rem;"
+                            data-user-id="{{ u.pk }}"
+                            data-username="{{ u.username }}"
+                            data-fullname="{{ u.profile.full_name }}"
+                            data-role="{{ u.profile.role }}"
+                            data-state="{{ u.profile.state }}"
+                            data-district="{{ u.profile.district }}"
+                            data-tbunit="{{ u.profile.tb_unit }}"
+                            data-active="{{ u.is_active|yesno:'true,false' }}">
+                            <i class="bi bi-pencil-square me-1"></i> Edit Role
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="bi bi-people display-4 mb-3 d-block text-muted opacity-50"></i>
+                        No users match the search criteria.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Assign / Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold" id="editUserModalLabel">Modify Role & Jurisdiction</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editUserForm">
+                {% csrf_token %}
+                <input type="hidden" id="modalUserId" name="user_id">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small">TARGET USER</label>
+                        <div class="p-3 bg-light rounded border" style="border-radius: var(--radius);">
+                            <div class="fw-bold text-dark" id="modalUserFullName"></div>
+                            <div class="text-muted small" id="modalUserUsername"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="modalRole" class="form-label fw-semibold text-muted small">SYSTEM ROLE ASSIGNMENT</label>
+                        <select class="form-select" id="modalRole" name="role" required style="border-radius: var(--radius);">
+                            {% for r in roles %}
+                            <option value="{{ r }}">{{ r }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalState" class="form-label fw-semibold text-muted small">STATE BOUNDS</label>
+                        <select class="form-select" id="modalState" name="state" required style="border-radius: var(--radius);">
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalDistrict" class="form-label fw-semibold text-muted small">DISTRICT ASSIGNMENT</label>
+                        <select class="form-select" id="modalDistrict" name="district" required style="border-radius: var(--radius);">
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalTbUnit" class="form-label fw-semibold text-muted small">TB UNIT JURISDICTION</label>
+                        <select class="form-select" id="modalTbUnit" name="tb_unit" required style="border-radius: var(--radius);">
+                        </select>
+                    </div>
+
+                    <div class="mb-3 form-check form-switch pt-2">
+                        <input class="form-check-input" type="checkbox" id="modalActive" name="is_active">
+                        <label class="form-check-label fw-semibold text-muted small ms-2" for="modalActive">ENABLE USER STATUS (ACTIVE)</label>
+                    </div>
+                    
+                    <div id="modalAlert" class="alert alert-danger py-2 mt-3 d-none" style="font-size: 0.85rem; border-radius: var(--radius);"></div>
+                </div>
+                <div class="modal-footer bg-light border-0 py-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger btn-delete-user-action px-3" style="border-radius: var(--radius); font-weight: 600;">
+                        <i class="bi bi-trash-fill"></i> Delete User
+                    </button>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary px-4 me-2" data-bs-dismiss="modal" style="border-radius: var(--radius); font-weight: 600;">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4" style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 600;">Save Settings</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold" id="createUserModalLabel">Create New Project Nurse Profile</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createUserForm">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label for="createUsername" class="form-label fw-semibold text-muted small">USERNAME</label>
+                        <input type="text" class="form-control" id="createUsername" name="username" required placeholder="e.g. nurse.tamil" style="border-radius: var(--radius);">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="createPassword" class="form-label fw-semibold text-muted small">PASSWORD</label>
+                        <input type="password" class="form-control" id="createPassword" name="password" required placeholder="Min 8 characters" style="border-radius: var(--radius);">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="createFullName" class="form-label fw-semibold text-muted small">FULL NAME</label>
+                        <input type="text" class="form-control" id="createFullName" name="full_name" required placeholder="e.g. Dr. Rajesh Kumar" style="border-radius: var(--radius);">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="createRole" class="form-label fw-semibold text-muted small">SYSTEM ROLE ASSIGNMENT</label>
+                        <select class="form-select" id="createRole" name="role" required style="border-radius: var(--radius);">
+                            <option value="" disabled selected>Select Role...</option>
+                            {% for r in roles %}
+                            <option value="{{ r }}">{{ r }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="createState" class="form-label fw-semibold text-muted small">STATE BOUNDS</label>
+                        <select class="form-select" id="createState" name="state" required style="border-radius: var(--radius);">
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="createDistrict" class="form-label fw-semibold text-muted small">DISTRICT ASSIGNMENT</label>
+                        <select class="form-select" id="createDistrict" name="district" required style="border-radius: var(--radius);">
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="createTbUnit" class="form-label fw-semibold text-muted small">TB UNIT JURISDICTION</label>
+                        <select class="form-select" id="createTbUnit" name="tb_unit" required style="border-radius: var(--radius);">
+                        </select>
+                    </div>
+
+                    <div class="mb-3 form-check form-switch pt-2">
+                        <input class="form-check-input" type="checkbox" id="createActive" name="is_active" checked>
+                        <label class="form-check-label fw-semibold text-muted small ms-2" for="createActive">ENABLE USER STATUS (ACTIVE)</label>
+                    </div>
+                    
+                    <div id="createModalAlert" class="alert alert-danger py-2 mt-3 d-none" style="font-size: 0.85rem; border-radius: var(--radius);"></div>
+                </div>
+                <div class="modal-footer bg-light border-0 py-3">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal" style="border-radius: var(--radius); font-weight: 600;">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4" style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 600;">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .user-row-hover {
+        transition: background-color 0.2s ease;
+    }
+    .user-row-hover:hover {
+        background-color: var(--surface-soft) !important;
+    }
+    .border-line {
+        border-color: var(--line) !important;
+    }
+</style>
+
+<script id="hierarchy-data" type="application/json">
+    {{ hierarchy_json|safe }}
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const hierarchy = JSON.parse(document.getElementById("hierarchy-data").textContent);
+
+    function populateStates(stateSelect, districtSelect, tbUnitSelect, defaultValue = "") {
+        stateSelect.innerHTML = '<option value="" disabled selected>Select State...</option>';
+        const globalOpt = document.createElement("option");
+        globalOpt.value = "GLOBAL";
+        globalOpt.textContent = "GLOBAL";
+        stateSelect.appendChild(globalOpt);
+
+        Object.keys(hierarchy).forEach(state => {
+            const opt = document.createElement("option");
+            opt.value = state;
+            opt.textContent = state;
+            stateSelect.appendChild(opt);
+        });
+
+        if (defaultValue) {
+            stateSelect.value = defaultValue;
+        }
+    }
+
+    function updateDistricts(selectedState, districtSelect, tbUnitSelect, defaultValue = "") {
+        districtSelect.innerHTML = '<option value="" disabled selected>Select District...</option>';
+        tbUnitSelect.innerHTML = '<option value="" disabled selected>Select TB Unit...</option>';
+
+        if (!selectedState) return;
+
+        if (selectedState === "GLOBAL") {
+            const opt = document.createElement("option");
+            opt.value = "ALL DISTRICTS";
+            opt.textContent = "ALL DISTRICTS";
+            districtSelect.appendChild(opt);
+            districtSelect.value = "ALL DISTRICTS";
+            updateTbUnits(selectedState, "ALL DISTRICTS", tbUnitSelect, "ALL TB UNITS");
+            return;
+        }
+
+        const allDistOpt = document.createElement("option");
+        allDistOpt.value = "ALL DISTRICTS";
+        allDistOpt.textContent = "ALL DISTRICTS";
+        districtSelect.appendChild(allDistOpt);
+
+        const districts = hierarchy[selectedState];
+        if (districts) {
+            Object.keys(districts).forEach(district => {
+                const opt = document.createElement("option");
+                opt.value = district;
+                opt.textContent = district;
+                districtSelect.appendChild(opt);
+            });
+        }
+
+        if (defaultValue) {
+            districtSelect.value = defaultValue;
+        }
+    }
+
+    function updateTbUnits(selectedState, selectedDistrict, tbUnitSelect, defaultValue = "") {
+        tbUnitSelect.innerHTML = '<option value="" disabled selected>Select TB Unit...</option>';
+
+        if (!selectedState || !selectedDistrict) return;
+
+        if (selectedState === "GLOBAL" || selectedDistrict === "ALL DISTRICTS") {
+            const opt = document.createElement("option");
+            opt.value = "ALL TB UNITS";
+            opt.textContent = "ALL TB UNITS";
+            tbUnitSelect.appendChild(opt);
+            tbUnitSelect.value = "ALL TB UNITS";
+            return;
+        }
+
+        const allTbOpt = document.createElement("option");
+        allTbOpt.value = "ALL TB UNITS";
+        allTbOpt.textContent = "ALL TB UNITS";
+        tbUnitSelect.appendChild(allTbOpt);
+
+        const districts = hierarchy[selectedState];
+        if (districts) {
+            const tbUnits = districts[selectedDistrict];
+            if (tbUnits) {
+                tbUnits.forEach(tb => {
+                    const opt = document.createElement("option");
+                    opt.value = tb;
+                    opt.textContent = tb;
+                    tbUnitSelect.appendChild(opt);
+                });
+            }
+        }
+
+        if (defaultValue) {
+            tbUnitSelect.value = defaultValue;
+        }
+    }
+
+    // Initialize triggers for Cascading dropdowns
+    document.getElementById("createState").addEventListener("change", function() {
+        updateDistricts(this.value, document.getElementById("createDistrict"), document.getElementById("createTbUnit"));
+    });
+    document.getElementById("createDistrict").addEventListener("change", function() {
+        updateTbUnits(document.getElementById("createState").value, this.value, document.getElementById("createTbUnit"));
+    });
+
+    document.getElementById("modalState").addEventListener("change", function() {
+        updateDistricts(this.value, document.getElementById("modalDistrict"), document.getElementById("modalTbUnit"));
+    });
+    document.getElementById("modalDistrict").addEventListener("change", function() {
+        updateTbUnits(document.getElementById("modalState").value, this.value, document.getElementById("modalTbUnit"));
+    });
+
+    // Populate Create User Modal dropdowns
+    populateStates(
+        document.getElementById("createState"),
+        document.getElementById("createDistrict"),
+        document.getElementById("createTbUnit")
+    );
+    updateDistricts("Tamil Nadu", document.getElementById("createDistrict"), document.getElementById("createTbUnit"), "Tiruvallur");
+    updateTbUnits("Tamil Nadu", "Tiruvallur", document.getElementById("createTbUnit"), "Tiruvallur TU");
+    document.getElementById("createState").value = "Tamil Nadu";
+
+    const editModal = new bootstrap.Modal(document.getElementById("editUserModal"));
+    const editForm = document.getElementById("editUserForm");
+    const modalAlert = document.getElementById("modalAlert");
+
+    // Populate data when Edit is clicked
+    document.querySelectorAll(".btn-edit-user").forEach(button => {
+        button.addEventListener("click", function () {
+            document.getElementById("modalUserId").value = this.dataset.userId;
+            document.getElementById("modalUserFullName").innerText = this.dataset.fullname || this.dataset.username;
+            document.getElementById("modalUserUsername").innerText = "@" + this.dataset.username;
+            document.getElementById("modalRole").value = this.dataset.role;
+            
+            const targetState = this.dataset.state;
+            const targetDistrict = this.dataset.district;
+            const targetTbUnit = this.dataset.tbunit;
+
+            populateStates(
+                document.getElementById("modalState"),
+                document.getElementById("modalDistrict"),
+                document.getElementById("modalTbUnit"),
+                targetState
+            );
+            updateDistricts(
+                targetState,
+                document.getElementById("modalDistrict"),
+                document.getElementById("modalTbUnit"),
+                targetDistrict
+            );
+            updateTbUnits(
+                targetState,
+                targetDistrict,
+                document.getElementById("modalTbUnit"),
+                targetTbUnit
+            );
+
+            document.getElementById("modalActive").checked = (this.dataset.active === "true");
+
+            modalAlert.classList.add("d-none");
+            editModal.show();
+        });
+    });
+
+    // Form Submit Handlers
+    editForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        modalAlert.classList.add("d-none");
+
+        const data = {
+            user_id: document.getElementById("modalUserId").value,
+            role: document.getElementById("modalRole").value,
+            state: document.getElementById("modalState").value,
+            district: document.getElementById("modalDistrict").value,
+            tb_unit: document.getElementById("modalTbUnit").value,
+            is_active: document.getElementById("modalActive").checked
+        };
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch("{% url 'questions:rbac_users' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json().then(resData => ({ status: response.status, data: resData })))
+        .then(({ status, data }) => {
+            if (status === 200) {
+                editModal.hide();
+                window.location.reload();
+            } else {
+                modalAlert.innerText = data.message || "An unexpected error occurred.";
+                modalAlert.classList.remove("d-none");
+            }
+        })
+        .catch(err => {
+            modalAlert.innerText = "Network failure: " + err;
+            modalAlert.classList.remove("d-none");
+        });
+    });
+
+    // Create User Form Handler
+    const createModal = new bootstrap.Modal(document.getElementById("createUserModal"));
+    const createForm = document.getElementById("createUserForm");
+    const createModalAlert = document.getElementById("createModalAlert");
+
+    createForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        createModalAlert.classList.add("d-none");
+
+        const data = {
+            username: document.getElementById("createUsername").value,
+            password: document.getElementById("createPassword").value,
+            full_name: document.getElementById("createFullName").value,
+            role: document.getElementById("createRole").value,
+            state: document.getElementById("createState").value,
+            district: document.getElementById("createDistrict").value,
+            tb_unit: document.getElementById("createTbUnit").value,
+            is_active: document.getElementById("createActive").checked
+        };
+
+        const csrfToken = document.querySelector('#createUserForm [name=csrfmiddlewaretoken]').value;
+
+        fetch("{% url 'questions:rbac_users' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json().then(resData => ({ status: response.status, data: resData })))
+        .then(({ status, data }) => {
+            if (status === 200) {
+                createModal.hide();
+                window.location.reload();
+            } else {
+                createModalAlert.innerText = data.message || "An unexpected error occurred.";
+                createModalAlert.classList.remove("d-none");
+            }
+        })
+        .catch(err => {
+            createModalAlert.innerText = "Network failure: " + err;
+            createModalAlert.classList.remove("d-none");
+        });
+    });
+
+    // Hook up Delete User button
+    document.querySelector(".btn-delete-user-action").addEventListener("click", function () {
+        const userId = document.getElementById("modalUserId").value;
+        const fullName = document.getElementById("modalUserFullName").innerText;
+        
+        if (confirm(`Are you sure you want to permanently delete user "${fullName}"? This action cannot be undone.`)) {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch("{% url 'questions:rbac_users' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({
+                    action: "delete",
+                    user_id: userId
+                })
+            })
+            .then(response => response.json().then(resData => ({ status: response.status, data: resData })))
+            .then(({ status, data }) => {
+                if (status === 200) {
+                    editModal.hide();
+                    window.location.reload();
+                } else {
+                    modalAlert.innerText = data.message || "An unexpected error occurred.";
+                    modalAlert.classList.remove("d-none");
+                }
+            })
+            .catch(err => {
+                modalAlert.innerText = "Network failure: " + err;
+                modalAlert.classList.remove("d-none");
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

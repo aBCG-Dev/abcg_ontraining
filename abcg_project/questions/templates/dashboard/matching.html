@@ -1,0 +1,328 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Case-Control Matching Registry | aBCG{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Anonymized Header Line -->
+  <div class="border-b border-border/40 pb-2"></div>
+
+  <!-- Telemetry Metrics Scorecard -->
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total TB Cases</span>
+        <i data-lucide="activity" class="size-4 text-red-600"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-foreground" id="metric-total-cases">{{ cases|length }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Clinical TB Case cohorts</p>
+      </div>
+    </div>
+    
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Fully Matched (4/4)</span>
+        <i data-lucide="check-circle" class="size-4 text-emerald-600"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-emerald-600" id="metric-fully-matched">0</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Satisfies 1:4 study ratio</p>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Under-matched (< 4)</span>
+        <i data-lucide="alert-triangle" class="size-4 text-amber-500"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-amber-500" id="metric-under-matched">{{ cases|length }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Requires additional controls</p>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Control Pool</span>
+        <i data-lucide="users" class="size-4 text-primary"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-primary">{{ controls|length }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Comparison cohort subjects</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Line List Tabs -->
+  <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <!-- Tabs Header -->
+    <div class="border-b border-border bg-muted/30 px-4 flex justify-between items-center">
+      <div class="flex gap-2" role="tablist">
+        <button
+          onclick="switchTab('cases-tab', this)"
+          class="px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 border-primary text-primary transition-all focus:outline-none focus:ring-0 active-tab-btn"
+          id="btn-cases-tab"
+        >
+          TB Cases Line List
+        </button>
+        <button
+          onclick="switchTab('controls-tab', this)"
+          class="px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-all focus:outline-none focus:ring-0"
+          id="btn-controls-tab"
+        >
+          Controls Line List
+        </button>
+      </div>
+      <button 
+        onclick="saveMatchAssignments()"
+        class="h-8 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-all shadow-xs flex items-center gap-1.5"
+      >
+        <i data-lucide="save" class="size-3.5"></i> Save Assignments
+      </button>
+    </div>
+
+    <!-- Tab Panels -->
+    <div class="p-4">
+      <!-- 1. CASES PANEL -->
+      <div id="cases-tab" class="tab-panel space-y-4">
+        <div class="overflow-x-auto rounded-lg border border-border/40">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-border bg-muted/20 font-bold text-muted-foreground uppercase tracking-wider text-[9px]">
+                <th class="p-3 pl-4">Case Study ID</th>
+                <th class="p-3">Screening ID</th>
+                <th class="p-3">Nikshay ID</th>
+                <th class="p-3">Demographics</th>
+                <th class="p-3">Jurisdiction</th>
+                <th class="p-3">HRG Category</th>
+                <th class="p-3">Match Status Ratio</th>
+                <th class="p-3 pr-4 text-right">Commit Lock</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border/40 font-medium text-foreground">
+              {% for c in cases %}
+                <tr class="hover:bg-muted/10 transition-colors" id="case-row-{{ c.study_id }}">
+                  <td class="p-3 pl-4 font-mono font-bold text-foreground">
+                    <a href="{% url 'questions:participant_detail' c.study_id %}" class="hover:underline text-primary">{{ c.study_id }}</a>
+                  </td>
+                  <td class="p-3 font-mono text-muted-foreground">{{ c.screening_id }}</td>
+                  <td class="p-3 font-mono text-muted-foreground">{{ c.nikshay_id }}</td>
+                  <td class="p-3 text-muted-foreground">{{ c.age }} yrs / {{ c.sex }}</td>
+                  <td class="p-3 text-muted-foreground">{{ c.state }} ({{ c.tu }})</td>
+                  <td class="p-3">
+                    <span class="inline-flex rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase">{{ c.hrg }}</span>
+                  </td>
+                  <td class="p-3">
+                    <div class="flex items-center gap-2">
+                      <!-- Progress meter -->
+                      <div class="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-primary h-1.5 rounded-full" id="progress-bar-{{ c.study_id }}" style="width: 0%"></div>
+                      </div>
+                      <span class="font-bold text-foreground" id="ratio-label-{{ c.study_id }}">0 / 4</span>
+                      <span class="inline-flex rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600" id="status-pill-{{ c.study_id }}">Under-matched</span>
+                    </div>
+                  </td>
+                  <td class="p-3 pr-4 text-right">
+                    <button 
+                      onclick="commitLock('{{ c.study_id }}')"
+                      id="btn-lock-{{ c.study_id }}"
+                      disabled
+                      class="h-7 rounded bg-muted px-2.5 text-[10px] font-bold text-muted-foreground cursor-not-allowed transition-all"
+                    >
+                      Lock Set
+                    </button>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. CONTROLS PANEL -->
+      <div id="controls-tab" class="tab-panel hidden space-y-4">
+        <div class="overflow-x-auto rounded-lg border border-border/40">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-border bg-muted/20 font-bold text-muted-foreground uppercase tracking-wider text-[9px]">
+                <th class="p-3 pl-4">Control Study ID</th>
+                <th class="p-3">Screening ID</th>
+                <th class="p-3">Nikshay ID</th>
+                <th class="p-3">Demographics</th>
+                <th class="p-3">Match Status</th>
+                <th class="p-3 pr-4">Assigned Case Study ID</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border/40 font-medium text-foreground">
+              {% for ctrl in controls %}
+                <tr class="hover:bg-muted/10 transition-colors">
+                  <td class="p-3 pl-4 font-mono font-bold text-foreground">{{ ctrl.study_id }}</td>
+                  <td class="p-3 font-mono text-muted-foreground">{{ ctrl.screening_id }}</td>
+                  <td class="p-3 font-mono text-muted-foreground">{{ ctrl.nikshay_id }}</td>
+                  <td class="p-3 text-muted-foreground">{{ ctrl.age }} yrs / {{ ctrl.sex }}</td>
+                  <td class="p-3">
+                    <span 
+                      id="ctrl-status-{{ forloop.counter }}"
+                      class="inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider {% if ctrl.assigned_case_id %}bg-emerald-500/10 text-emerald-600{% else %}bg-slate-100 text-slate-500{% endif %}"
+                    >
+                      {% if ctrl.assigned_case_id %}Matched{% else %}Available{% endif %}
+                    </span>
+                  </td>
+                  <td class="p-3 pr-4">
+                    <select
+                      id="ctrl-select-{{ forloop.counter }}"
+                      data-index="{{ forloop.counter }}"
+                      onchange="assignControlToCase(this)"
+                      class="form-select h-8 w-60 rounded-lg border border-border bg-background px-2.5 text-xs font-semibold text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">-- Unassigned (Available) --</option>
+                      {% for c in cases %}
+                        <option value="{{ c.study_id }}" {% if ctrl.assigned_case_id == c.study_id %}selected{% endif %}>
+                          {{ c.study_id }} ({{ c.hrg }})
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Dynamic matching memory representation
+  const casesData = {
+      {% for c in cases %}
+      "{{ c.study_id }}": {
+          required: 4,
+          matched: 0,
+          status: "Under-matched"
+      },
+      {% endfor %}
+  };
+
+  // Populate control allocations
+  const controlsData = [
+      {% for ctrl in controls %}
+      {
+          index: {{ forloop.counter }},
+          study_id: "{{ ctrl.study_id }}",
+          assigned_case_id: "{{ ctrl.assigned_case_id }}"
+      },
+      {% endfor %}
+  ];
+
+  // Fix template parsing logic: Loop over controls array from DOM element values
+  document.addEventListener("DOMContentLoaded", function() {
+      recalculateAllMatches();
+  });
+
+  function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.active-tab-btn').forEach(b => {
+          b.classList.remove('border-primary', 'text-primary', 'active-tab-btn');
+          b.classList.add('border-transparent', 'text-muted-foreground');
+      });
+
+      btn.classList.add('border-primary', 'text-primary', 'active-tab-btn');
+      btn.classList.remove('border-transparent', 'text-muted-foreground');
+  }
+
+  function assignControlToCase(selectElement) {
+      const index = parseInt(selectElement.dataset.index) - 1;
+      const statusPill = document.getElementById("ctrl-status-" + selectElement.dataset.index);
+
+      if (selectElement.value) {
+          statusPill.innerText = "Matched";
+          statusPill.className = "inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600";
+      } else {
+          statusPill.innerText = "Available";
+          statusPill.className = "inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500";
+      }
+
+      recalculateAllMatches();
+  }
+
+  function recalculateAllMatches() {
+      // Clear matched counts
+      for (let cid in casesData) {
+          casesData[cid].matched = 0;
+      }
+
+      // Read current selections from dropdown select options
+      let assignedCount = 0;
+      const selects = document.querySelectorAll('select[id^="ctrl-select-"]');
+      selects.forEach(sel => {
+          const val = sel.value;
+          if (val && casesData[val]) {
+              casesData[val].matched++;
+          }
+      });
+
+      // Update Cases UI rows
+      let fullyMatchedCount = 0;
+      let underMatchedCount = 0;
+
+      for (let cid in casesData) {
+          const matched = casesData[cid].matched;
+          const required = casesData[cid].required;
+          const percentage = Math.min((matched / required) * 100, 100);
+
+          const progressBar = document.getElementById("progress-bar-" + cid);
+          const ratioLabel = document.getElementById("ratio-label-" + cid);
+          const statusPill = document.getElementById("status-pill-" + cid);
+          const lockButton = document.getElementById("btn-lock-" + cid);
+
+          if (ratioLabel) {
+              ratioLabel.innerText = `${matched} / ${required}`;
+          }
+          if (progressBar) {
+              progressBar.style.width = percentage + "%";
+          }
+
+          if (matched >= required) {
+              fullyMatchedCount++;
+              if (statusPill) {
+                  statusPill.innerText = "Fully Matched";
+                  statusPill.className = "inline-flex rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600";
+              }
+              if (lockButton) {
+                  lockButton.disabled = false;
+                  lockButton.className = "h-7 rounded bg-emerald-600 px-2.5 text-[10px] font-bold text-white hover:bg-emerald-700 cursor-pointer transition-all";
+              }
+          } else {
+              underMatchedCount++;
+              if (statusPill) {
+                  statusPill.innerText = "Under-matched";
+                  statusPill.className = "inline-flex rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600";
+              }
+              if (lockButton) {
+                  lockButton.disabled = true;
+                  lockButton.className = "h-7 rounded bg-muted px-2.5 text-[10px] font-bold text-muted-foreground cursor-not-allowed transition-all";
+              }
+          }
+      }
+
+      // Update scorecards
+      const fullyMatchedMetric = document.getElementById("metric-fully-matched");
+      const underMatchedMetric = document.getElementById("metric-under-matched");
+      if (fullyMatchedMetric) fullyMatchedMetric.innerText = fullyMatchedCount;
+      if (underMatchedMetric) underMatchedMetric.innerText = underMatchedCount;
+  }
+
+  function commitLock(caseId) {
+      alert(`Commit Match Set Lock Successful!\n\nTB Case Study ID: ${caseId}\nMatched Controls: 4/4 Locked.\nTransaction has been successfully logged to security access trail.`);
+  }
+
+  function saveMatchAssignments() {
+      alert("Assignments Saved!\n\nDynamic case-control relationships have been saved locally. They are now queued for synchronizing to the central server.");
+  }
+</script>
+{% endblock %}

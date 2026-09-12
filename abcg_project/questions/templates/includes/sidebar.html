@@ -1,0 +1,183 @@
+{% load rbac_tags %}
+
+<aside class="sidebar-container w-full h-full p-3 overflow-y-auto" style="background-color: #0f2942; border-color: #183b5c !important;">
+  <style>
+    .sidebar-container .nav-link {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #cbd5e1 !important;
+      border-radius: 10px;
+      padding: 11px 16px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .sidebar-container .nav-link:hover {
+      background-color: #183b5c !important;
+      color: #ffffff !important;
+    }
+    .sidebar-container .nav-link.active {
+      background-color: #0f4c81 !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 12px rgba(15, 76, 129, 0.35);
+    }
+    .sidebar-container .nav-link svg {
+      color: #94a3b8;
+      stroke: #94a3b8;
+      stroke-width: 2px;
+      width: 18px;
+      height: 18px;
+      transition: all 0.25s ease-in-out;
+      flex-shrink: 0;
+    }
+    .sidebar-container .nav-link:hover svg {
+      color: #ffffff !important;
+      stroke: #ffffff !important;
+    }
+    .sidebar-container .nav-link.active svg {
+      color: #ffffff !important;
+      stroke: #ffffff !important;
+    }
+    .sidebar-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: #ef4444;
+      background-color: rgba(239, 68, 68, 0.15);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 18px;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .sidebar-container .nav-link.active .sidebar-badge {
+      background-color: rgba(255, 255, 255, 0.25) !important;
+      color: #ffffff !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    .sidebar-group-title {
+      font-size: 10px;
+      font-weight: 750;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 16px;
+      margin-bottom: 6px;
+      padding-left: 12px;
+    }
+    .sidebar-container .nav-link.sub-link {
+      padding-left: 32px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+  </style>
+
+  {% if request.user.is_authenticated %}
+    {% if request.user.profile.role == 'Doctor' %}
+      <!-- Clinical Role Custom Hierarchical Sidebar -->
+      <nav class="nav nav-pills flex-column">
+        <a class="nav-link {% if page == 'dashboard' %}active{% endif %}" href="{% url 'questions:dashboard_home' %}">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </a>
+
+        <a class="nav-link {% if page == 'search' and not request.GET.cohort %}active{% endif %}" href="{% url 'questions:search' %}">
+          <i data-lucide="users"></i>
+          <span>All Participants</span>
+        </a>
+        <a class="nav-link {% if request.GET.cohort == 'eligible' %}active{% endif %}" href="{% url 'questions:search' %}?cohort=eligible">
+          <i data-lucide="user-check"></i>
+          <span>Eligible</span>
+        </a>
+        <a class="nav-link {% if request.GET.cohort == 'ineligible' %}active{% endif %}" href="{% url 'questions:search' %}?cohort=ineligible">
+          <i data-lucide="user-x"></i>
+          <span>Ineligible</span>
+        </a>
+
+        <a class="nav-link {% if page == 'registration' and not request.GET.cohort %}active{% endif %}" href="{% url 'questions:registration' %}">
+          <i data-lucide="user-plus"></i>
+          <span>Case Registration</span>
+        </a>
+        <a class="nav-link {% if page == 'cases' %}active{% endif %}" href="{% url 'questions:cases' %}">
+          <i data-lucide="clipboard-list"></i>
+          <span>Registered Cases</span>
+        </a>
+        <a class="nav-link {% if page == 'registration' and request.GET.cohort == 'control' %}active{% endif %}" href="{% url 'questions:registration' %}?cohort=control">
+          <i data-lucide="user-plus"></i>
+          <span>Control Registration</span>
+        </a>
+        <a class="nav-link {% if page == 'controls' %}active{% endif %}" href="{% url 'questions:controls' %}">
+          <i data-lucide="shield-check"></i>
+          <span>Enrolled Controls</span>
+        </a>
+
+        <a class="nav-link {% if page == 'doctor_queue' %}active{% endif %}" href="{% url 'questions:doctor_queue' %}">
+          <i data-lucide="user-check"></i>
+          <span>Verification Pending</span>
+          <span class="ms-auto sidebar-badge">{{ pending_verification_count|default:"0" }}</span>
+        </a>
+        <a class="nav-link {% if page == 'adjudication' %}active{% endif %}" href="{% url 'questions:adjudication' %}">
+          <i data-lucide="alert-circle"></i>
+          <span>My Adjudication Queue</span>
+          <span class="ms-auto sidebar-badge">{{ pending_adjudication_count|default:"0" }}</span>
+        </a>
+        <a class="nav-link {% if page == 'matching' %}active{% endif %}" href="{% url 'questions:matching' %}">
+          <i data-lucide="git-compare"></i>
+          <span>Matching</span>
+        </a>
+
+        <a class="nav-link {% if page == 'recruitment' %}active{% endif %}" href="{% url 'questions:analytics' %}#recruitment">
+          <i data-lucide="trending-up"></i>
+          <span>Recruitment</span>
+        </a>
+        <a class="nav-link {% if page == 'analytics' %}active{% endif %}" href="{% url 'questions:analytics' %}">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Analytics</span>
+        </a>
+        <a class="nav-link {% if page == 'pending_sync' %}active{% endif %}" href="{% url 'questions:pending_sync' %}">
+          <i data-lucide="refresh-cw"></i>
+          <span>Sync Status</span>
+        </a>
+      </nav>
+    {% else %}
+      {% get_sidebar_items request.user as sidebar_items %}
+
+      {% if sidebar_items %}
+        <!-- RBAC-Driven Dynamic Sidebar -->
+        <nav class="nav nav-pills flex-column">
+          {% for item in sidebar_items %}
+            <a class="nav-link {% if page == item.key %}active{% endif %}"
+               href="{% url item.url_name %}"
+               title="{{ item.description }}">
+              <i data-lucide="{{ item.icon }}"></i>
+              <span>{{ item.label }}</span>
+
+              {# Badge counters for specific modules #}
+              {% if item.key == 'adjudication' %}
+                <span class="ms-auto sidebar-badge">{{ pending_adjudication_count|default:"0" }}</span>
+              {% elif item.key == 'data_quality' %}
+                <span class="ms-auto sidebar-badge">{{ data_quality_issues_count|default:"0" }}</span>
+              {% endif %}
+            </a>
+          {% endfor %}
+        </nav>
+      {% else %}
+        <!-- Fallback: No sidebar items accessible -->
+        <div class="text-center text-slate-400 py-4">
+          <small>No modules accessible</small>
+        </div>
+      {% endif %}
+    {% endif %}
+  {% else %}
+    <!-- Not authenticated -->
+    <div class="text-center text-slate-400 py-4">
+      <small>Please log in</small>
+    </div>
+  {% endif %}
+</aside>

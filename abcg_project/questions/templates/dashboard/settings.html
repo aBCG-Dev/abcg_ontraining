@@ -1,0 +1,406 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}BCG Campaign Date Settings - aBCG Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col gap-1 border-b border-border/40 pb-4 md:flex-row md:items-center md:justify-between md:gap-4">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">BCG Campaign Date Settings</h1>
+    </div>
+    <div class="shrink-0">
+      <button
+        type="button"
+        onclick="triggerSaveAlert()"
+        class="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 h-9 text-xs font-bold hover:bg-primary/95 transition-all cursor-pointer active:scale-95 shadow-sm"
+      >
+        <i data-lucide="save" class="size-4"></i>
+        <span>Save Settings</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Success Notification Box -->
+  <div id="save-success-alert" class="hidden flex items-start gap-2.5 rounded-xl bg-success/10 border border-success/20 p-3.5 text-xs text-success animate-fade-in mb-4">
+    <i data-lucide="check-circle" class="size-4 shrink-0 mt-0.5"></i>
+    <span class="font-semibold leading-relaxed">Campaign settings and site parameters updated successfully.</span>
+  </div>
+
+  <!-- Dynamic Location Cascading Selector & Filters -->
+  <div class="rounded-xl border border-border bg-card p-4 shadow-sm">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-border/40">
+      <div class="flex items-center gap-2">
+        <i data-lucide="map-pin" class="size-4 text-primary"></i>
+        <span class="text-xs font-bold uppercase tracking-wider text-foreground">Filter by Jurisdiction & TBU</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="filtered-count-badge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+          Showing {{ sites|length }} TBUs
+        </span>
+        <button
+          type="button"
+          id="btn-reset-filters"
+          onclick="resetSettingsFilters()"
+          class="text-[11px] font-semibold text-muted-foreground hover:text-foreground px-2 py-0.5 rounded transition-colors hidden"
+        >
+          <i data-lucide="rotate-ccw" class="size-3 inline mr-1"></i>Reset
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <!-- State Dropdown -->
+      <div>
+        <label for="settings-state-filter" class="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">State</label>
+        <div class="relative">
+          <select
+            id="settings-state-filter"
+            onchange="onStateFilterChange()"
+            class="w-full h-9 rounded-lg border border-border bg-background pl-3 pr-8 text-xs font-semibold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+          >
+            <option value="">All States</option>
+          </select>
+          <i data-lucide="chevron-down" class="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"></i>
+        </div>
+      </div>
+
+      <!-- District Dropdown -->
+      <div>
+        <label for="settings-district-filter" class="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">District</label>
+        <div class="relative">
+          <select
+            id="settings-district-filter"
+            onchange="onDistrictFilterChange()"
+            class="w-full h-9 rounded-lg border border-border bg-background pl-3 pr-8 text-xs font-semibold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+          >
+            <option value="">All Districts</option>
+          </select>
+          <i data-lucide="chevron-down" class="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"></i>
+        </div>
+      </div>
+
+      <!-- TBU Dropdown -->
+      <div>
+        <label for="settings-tbu-filter" class="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">TB Unit (TBU)</label>
+        <div class="relative">
+          <select
+            id="settings-tbu-filter"
+            onchange="onTbuFilterChange()"
+            class="w-full h-9 rounded-lg border border-border bg-background pl-3 pr-8 text-xs font-semibold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+          >
+            <option value="">All TB Units</option>
+          </select>
+          <i data-lucide="chevron-down" class="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"></i>
+        </div>
+      </div>
+
+      <!-- Search Box -->
+      <div>
+        <label for="settings-search-input" class="block text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Search</label>
+        <div class="relative">
+          <input
+            type="text"
+            id="settings-search-input"
+            oninput="applyAllFilters()"
+            placeholder="Search TBU or district..."
+            class="w-full h-9 rounded-lg border border-border bg-background pl-8 pr-3 text-xs font-medium text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+          <i data-lucide="search" class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Campaign Site Config Card Table -->
+  <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b border-border bg-muted/40 font-semibold text-muted-foreground uppercase tracking-wider text-[9px]">
+            <th class="p-3 pl-4">TB Unit (TBU)</th>
+            <th class="p-3">District</th>
+            <th class="p-3">State Jurisdiction</th>
+            <th class="p-3">Launch Date</th>
+            <th class="p-3">Concluding Date</th>
+            <th class="p-3 pr-4 text-right">Campaign Status</th>
+          </tr>
+        </thead>
+        <tbody id="settings-table-body" class="divide-y divide-border/60">
+          {% for s in sites %}
+            <tr
+              class="site-row hover:bg-muted/30 transition-colors"
+              data-state="{{ s.stateName }}"
+              data-district="{{ s.districtName }}"
+              data-tbu="{{ s.siteCode }}"
+            >
+              <!-- TBU / Site Code -->
+              <td class="p-3.5 pl-4 font-mono font-bold text-foreground">
+                <div class="flex items-center gap-2">
+                  <span class="inline-block size-2 rounded-full bg-primary shrink-0"></span>
+                  <span>{{ s.siteCode }}</span>
+                </div>
+              </td>
+              
+              <!-- District -->
+              <td class="p-3.5 font-medium text-foreground">{{ s.districtName }}</td>
+
+              <!-- State -->
+              <td class="p-3.5 font-medium text-muted-foreground">{{ s.stateName }}</td>
+              
+              <!-- Launch Date (Editable date picker) -->
+              <td class="p-3.5">
+                <input
+                  type="date"
+                  value="{{ s.launch }}"
+                  class="h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                >
+              </td>
+              
+              <!-- Concluding Date (Editable date picker) -->
+              <td class="p-3.5">
+                <input
+                  type="date"
+                  value="{{ s.conclusion }}"
+                  class="h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                >
+              </td>
+              
+              <!-- Status Selector (Editable active toggle) -->
+              <td class="p-3.5 pr-4 text-right">
+                <div class="inline-block relative">
+                  <select
+                    class="h-8 rounded-lg border border-border bg-background pl-2.5 pr-7 text-xs font-semibold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                  >
+                    <option value="active" {% if s.active %}selected{% endif %}>Active</option>
+                    <option value="concluded" {% if not s.active %}selected{% endif %}>Concluded</option>
+                  </select>
+                  <i data-lucide="chevron-down" class="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"></i>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+
+          <!-- Empty Row when no sites match -->
+          <tr id="no-matching-sites" class="hidden">
+            <td colspan="6" class="p-8 text-center text-muted-foreground">
+              <div class="flex flex-col items-center justify-center gap-1.5">
+                <i data-lucide="map-pin-off" class="size-6 text-muted-foreground/50 mb-1"></i>
+                <span class="font-semibold text-xs text-foreground">No TB units found for the selected criteria.</span>
+                <span class="text-[11px] text-muted-foreground">Try clearing or selecting a different district or state.</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Location Hierarchy from Backend
+  const locationHierarchy = {{ hierarchy_json|safe }};
+  const activeInitialState = "{{ active_state|default:'' }}";
+  const activeInitialDistrict = "{{ active_district|default:'' }}";
+  const activeInitialTbu = "{{ active_tb_unit|default:'' }}";
+
+  function populateStateOptions() {
+    const stateSelect = document.getElementById('settings-state-filter');
+    if (!stateSelect) return;
+
+    stateSelect.innerHTML = '<option value="">All States</option>';
+    const states = Object.keys(locationHierarchy).sort();
+    states.forEach(st => {
+      const opt = document.createElement('option');
+      opt.value = st;
+      opt.textContent = st;
+      if (st === activeInitialState) opt.selected = true;
+      stateSelect.appendChild(opt);
+    });
+  }
+
+  function updateDistrictOptions(selectedState, preselectedDistrict = '') {
+    const distSelect = document.getElementById('settings-district-filter');
+    if (!distSelect) return;
+
+    distSelect.innerHTML = '<option value="">All Districts</option>';
+
+    if (!selectedState) {
+      const allDists = new Set();
+      Object.values(locationHierarchy).forEach(dists => {
+        Object.keys(dists).forEach(d => allDists.add(d));
+      });
+      Array.from(allDists).sort().forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        if (d === preselectedDistrict) opt.selected = true;
+        distSelect.appendChild(opt);
+      });
+    } else if (locationHierarchy[selectedState]) {
+      const dists = Object.keys(locationHierarchy[selectedState]).sort();
+      dists.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        if (d === preselectedDistrict) opt.selected = true;
+        distSelect.appendChild(opt);
+      });
+    }
+  }
+
+  function updateTbuOptions(selectedState, selectedDistrict, preselectedTbu = '') {
+    const tbuSelect = document.getElementById('settings-tbu-filter');
+    if (!tbuSelect) return;
+
+    tbuSelect.innerHTML = '<option value="">All TB Units</option>';
+    const tbus = new Set();
+
+    if (selectedState && selectedDistrict) {
+      if (locationHierarchy[selectedState] && locationHierarchy[selectedState][selectedDistrict]) {
+        locationHierarchy[selectedState][selectedDistrict].forEach(t => tbus.add(t));
+      }
+    } else if (selectedDistrict) {
+      Object.values(locationHierarchy).forEach(stateDists => {
+        if (stateDists[selectedDistrict]) {
+          stateDists[selectedDistrict].forEach(t => tbus.add(t));
+        }
+      });
+    } else if (selectedState) {
+      if (locationHierarchy[selectedState]) {
+        Object.values(locationHierarchy[selectedState]).forEach(distTbus => {
+          distTbus.forEach(t => tbus.add(t));
+        });
+      }
+    } else {
+      Object.values(locationHierarchy).forEach(stateDists => {
+        Object.values(stateDists).forEach(distTbus => {
+          distTbus.forEach(t => tbus.add(t));
+        });
+      });
+    }
+
+    Array.from(tbus).sort().forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      if (t === preselectedTbu) opt.selected = true;
+      tbuSelect.appendChild(opt);
+    });
+  }
+
+  function onStateFilterChange() {
+    const selectedState = document.getElementById('settings-state-filter')?.value || '';
+    updateDistrictOptions(selectedState, '');
+    updateTbuOptions(selectedState, '', '');
+    applyAllFilters();
+  }
+
+  function onDistrictFilterChange() {
+    const selectedState = document.getElementById('settings-state-filter')?.value || '';
+    const selectedDistrict = document.getElementById('settings-district-filter')?.value || '';
+    updateTbuOptions(selectedState, selectedDistrict, '');
+    applyAllFilters();
+  }
+
+  function onTbuFilterChange() {
+    applyAllFilters();
+  }
+
+  function applyAllFilters() {
+    const selectedState = (document.getElementById('settings-state-filter')?.value || '').toLowerCase();
+    const selectedDistrict = (document.getElementById('settings-district-filter')?.value || '').toLowerCase();
+    const selectedTbu = (document.getElementById('settings-tbu-filter')?.value || '').toLowerCase();
+    const searchVal = (document.getElementById('settings-search-input')?.value || '').toLowerCase().trim();
+
+    const rows = document.querySelectorAll('.site-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const rowState = (row.dataset.state || '').toLowerCase();
+      const rowDistrict = (row.dataset.district || '').toLowerCase();
+      const rowTbu = (row.dataset.tbu || '').toLowerCase();
+
+      let match = true;
+      if (selectedState && rowState !== selectedState) match = false;
+      if (selectedDistrict && rowDistrict !== selectedDistrict) match = false;
+      if (selectedTbu && rowTbu !== selectedTbu) match = false;
+
+      if (searchVal) {
+        const textContent = (row.textContent || '').toLowerCase();
+        if (!textContent.includes(searchVal)) match = false;
+      }
+
+      if (match) {
+        row.classList.remove('hidden');
+        visibleCount++;
+      } else {
+        row.classList.add('hidden');
+      }
+    });
+
+    // Toggle Empty State message
+    const emptyRow = document.getElementById('no-matching-sites');
+    if (emptyRow) {
+      if (visibleCount === 0) {
+        emptyRow.classList.remove('hidden');
+      } else {
+        emptyRow.classList.add('hidden');
+      }
+    }
+
+    // Update Counter Badge
+    const badge = document.getElementById('filtered-count-badge');
+    if (badge) {
+      badge.textContent = `Showing ${visibleCount} TBUs`;
+    }
+
+    // Toggle Reset Button
+    const resetBtn = document.getElementById('btn-reset-filters');
+    if (resetBtn) {
+      const isFiltered = Boolean(selectedState || selectedDistrict || selectedTbu || searchVal);
+      if (isFiltered) {
+        resetBtn.classList.remove('hidden');
+      } else {
+        resetBtn.classList.add('hidden');
+      }
+    }
+  }
+
+  function resetSettingsFilters() {
+    const stateSelect = document.getElementById('settings-state-filter');
+    const distSelect = document.getElementById('settings-district-filter');
+    const tbuSelect = document.getElementById('settings-tbu-filter');
+    const searchInput = document.getElementById('settings-search-input');
+
+    if (stateSelect) stateSelect.value = '';
+    if (searchInput) searchInput.value = '';
+
+    updateDistrictOptions('', '');
+    updateTbuOptions('', '', '');
+    applyAllFilters();
+  }
+
+  function triggerSaveAlert() {
+    const alertBox = document.getElementById('save-success-alert');
+    if (alertBox) {
+      alertBox.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        alertBox.classList.add('hidden');
+      }, 4000);
+    }
+  }
+
+  // Initialization on DOM Load
+  document.addEventListener('DOMContentLoaded', function() {
+    populateStateOptions();
+    updateDistrictOptions(activeInitialState, activeInitialDistrict);
+    updateTbuOptions(activeInitialState, activeInitialDistrict, activeInitialTbu);
+    applyAllFilters();
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  });
+</script>
+{% endblock %}

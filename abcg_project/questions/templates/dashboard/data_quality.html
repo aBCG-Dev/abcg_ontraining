@@ -1,0 +1,76 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Data Quality - aBCG Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col gap-1 border-b border-border/40 pb-4">
+    <h1 class="text-2xl font-bold tracking-tight">Data Quality</h1>
+  </div>
+
+  <!-- Exceptions List Table Card -->
+  <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div class="overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
+      <table class="w-full text-left text-xs border-collapse min-w-[760px]">
+        <thead>
+          <tr class="border-b border-border bg-muted/40 font-semibold text-muted-foreground uppercase tracking-wider text-[9px]">
+            <th class="p-3 pl-4">Exception ID</th>
+            <th class="p-3">Study ID</th>
+            <th class="p-3">Quality Rule Violation</th>
+            <th class="p-3">Severity</th>
+            <th class="p-3">Diagnostics Note</th>
+            <th class="p-3">Raised Date</th>
+            <th class="p-3 pr-4 text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/60">
+          {% for item in exceptions %}
+            <tr class="hover:bg-muted/30 transition-colors">
+              <td class="p-3.5 pl-4 font-mono font-bold text-foreground">{{ item.exceptionId }}</td>
+              <td class="p-3.5 font-mono font-bold text-foreground">
+                <a href="{% url 'questions:participant_detail' item.studyId %}" class="hover:underline text-primary">{{ item.studyId }}</a>
+              </td>
+              <td class="p-3.5">
+                <span class="inline-flex rounded bg-muted/80 px-2 py-0.5 font-bold uppercase tracking-wide text-[9px] text-foreground border border-border/40 font-mono">
+                  {{ item.rule }}
+                </span>
+              </td>
+              <td class="p-3.5">
+                <span class="inline-flex rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide
+                  {% if item.severity == 'Critical' %}bg-destructive/15 text-destructive
+                  {% elif item.severity == 'High' %}bg-warning/15 text-warning
+                  {% else %}bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300{% endif %}">
+                  {{ item.severity }}
+                </span>
+              </td>
+              <td class="p-3.5 text-muted-foreground font-medium max-w-xs truncate" title="{{ item.note }}">{{ item.note }}</td>
+              <td class="p-3.5 text-muted-foreground font-medium">{{ item.raised }}</td>
+              <td class="p-3.5 pr-4 text-right">
+                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide
+                  {% if item.status == 'Resolved' %}bg-success/15 text-success
+                  {% elif item.status == 'Open' %}bg-destructive/15 text-destructive
+                  {% else %}bg-warning/15 text-warning{% endif %}">
+                  {{ item.status }}
+                </span>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="p-12 text-center text-muted-foreground">
+                <div class="flex flex-col items-center justify-center">
+                  <div class="size-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 dark:bg-emerald-950/40 dark:text-emerald-400">
+                    <i data-lucide="shield-check" class="size-6"></i>
+                  </div>
+                  <span class="text-sm font-bold text-foreground">No Quality Rule Violations</span>
+                  <p class="text-xs text-muted-foreground mt-1 max-w-sm">All participant records and clinical metrics conform to study validation protocols in real time.</p>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

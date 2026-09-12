@@ -1,0 +1,328 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Doctor Verification Queue | aBCG{% endblock %}
+
+{% block content %}
+<section class="page-header flex-wrap align-items-center mb-4">
+    <div>
+        <span class="eyebrow">Clinical Approvals</span>
+        <h1 class="h2 fw-bold text-dark m-0">Verification Pending</h1>
+        <p class="header-copy text-muted small">Review and verify study participant records requiring clinical sign-off in your TB Unit.</p>
+    </div>
+    
+    <div class="mt-3 mt-md-0">
+        <div class="d-flex align-items-center border px-3 py-2 rounded bg-white shadow-sm" style="border-radius: var(--radius); border-color: var(--line);">
+            <i class="bi bi-person-fill-gear text-brand me-2"></i>
+            <span class="small text-muted fw-bold" style="font-size: 0.85rem;">TB Unit: <span class="text-dark">{{ jurisdiction }}</span></span>
+        </div>
+    </div>
+</section>
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs border-bottom mb-4 gap-2" id="doctorTabs" role="tablist" style="border-color: var(--line) !important;">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold px-4 py-2.5 d-flex align-items-center gap-2 border-0 position-relative" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true" style="font-size: 0.92rem; border-radius: 8px 8px 0 0;">
+            <i class="bi bi-clock-history"></i> Pending Verification
+            <span class="badge bg-danger ms-1" style="font-size: 0.72rem; padding: 4px 8px; border-radius: 6px;">{{ pending_list|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold px-4 py-2.5 d-flex align-items-center gap-2 border-0" id="verified-tab" data-bs-toggle="tab" data-bs-target="#verified" type="button" role="tab" aria-controls="verified" aria-selected="false" style="font-size: 0.92rem; border-radius: 8px 8px 0 0;">
+            <i class="bi bi-check2-all text-success"></i> Recently Audited
+            <span class="badge bg-secondary ms-1" style="font-size: 0.72rem; padding: 4px 8px; border-radius: 6px;">{{ verified_list|length }}</span>
+        </button>
+    </li>
+</ul>
+
+<!-- Tabs Contents -->
+<div class="tab-content" id="doctorTabsContent">
+    
+    <!-- PENDING QUEUE TAB -->
+    <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+        <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: var(--radius); background: var(--surface);">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="min-width: 950px;">
+                    <thead class="bg-light text-muted" style="font-size: 0.78rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                        <tr>
+                            <th class="px-4 py-3">Patient Name & ID</th>
+                            <th class="py-3">NAAT Findings</th>
+                            <th class="py-3">CXR Diagnostics</th>
+                            <th class="py-3">EPTB Findings</th>
+                            <th class="py-3">Enrollment Date</th>
+                            <th class="px-4 py-3 text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 0.9rem;">
+                        {% for item in pending_list %}
+                        <tr class="patient-row-hover">
+                            <td class="px-4 py-3">
+                                <div class="fw-bold text-dark">{{ item.record.full_name }}</div>
+                                <div class="text-muted small">
+                                    Study ID: <span class="font-monospace fw-bold">{{ item.record.study_id }}</span> &bull; 
+                                    Age: {{ item.record.age }} &bull; {{ item.record.gender }}
+                                </div>
+                            </td>
+                            <td class="py-3">
+                                {% if "Detected" in item.naat_status and "Not" not in item.naat_status %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1.5 fw-bold">
+                                    <i class="bi bi-exclamation-octagon me-1"></i> {{ item.naat_status }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-light text-secondary border px-2.5 py-1.5 fw-semibold">
+                                    {{ item.naat_status }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3">
+                                {% if item.cxr_status == 'Suggestive of TB' %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1.5 fw-bold">
+                                    <i class="bi bi-lungs me-1 text-danger"></i> Suggestive
+                                </span>
+                                {% else %}
+                                <span class="badge bg-light text-secondary border px-2.5 py-1.5 fw-semibold">
+                                    {{ item.cxr_status }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3">
+                                {% if item.record.eptb_screened %}
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2.5 py-1.5 fw-bold">
+                                    <i class="bi bi-activity me-1"></i> {{ item.eptb_findings }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-light text-muted border px-2 py-1 small opacity-75">
+                                    Not Done
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 text-muted">
+                                {{ item.record.date_enroll|date:"Y-m-d" }}
+                            </td>
+                            <td class="px-4 py-3 text-end">
+                                <button type="button" class="btn btn-outline-primary btn-sm px-3.5 py-2 btn-review-clinical"
+                                    style="border-radius: 8px; font-weight: 700; font-size: 0.8rem;"
+                                    data-pk="{{ item.record.pk }}"
+                                    data-fullname="{{ item.record.full_name }}"
+                                    data-studyid="{{ item.record.study_id }}"
+                                    data-age="{{ item.record.age }}"
+                                    data-gender="{{ item.record.gender }}"
+                                    data-symptoms="{{ item.record.symptoms }}"
+                                    data-riskfactors="{{ item.record.risk_factors }}"
+                                    data-naat="{{ item.naat_status }}"
+                                    data-cxr="{{ item.cxr_status }}"
+                                    data-eptb="{{ item.eptb_findings }}"
+                                    data-classification="{{ item.record.classification }}">
+                                    Review & Verify <i class="bi bi-chevron-right ms-0.5"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-clipboard2-check display-4 mb-3 d-block text-success opacity-75"></i>
+                                Verification queue is empty. All patients are audited!
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AUDITED HISTORY TAB -->
+    <div class="tab-pane fade" id="verified" role="tabpanel" aria-labelledby="verified-tab">
+        <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: var(--radius); background: var(--surface);">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="min-width: 950px;">
+                    <thead class="bg-light text-muted" style="font-size: 0.78rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                        <tr>
+                            <th class="px-4 py-3">Patient Name & ID</th>
+                            <th class="py-3">NAAT status</th>
+                            <th class="py-3">CXR status</th>
+                            <th class="py-3">Clinical Outcome</th>
+                            <th class="py-3">Audited Justification</th>
+                            <th class="px-4 py-3 text-end">Outcome</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 0.9rem;">
+                        {% for item in verified_list %}
+                        <tr class="patient-row-hover text-muted">
+                            <td class="px-4 py-3">
+                                <div class="fw-bold text-dark">{{ item.record.full_name }}</div>
+                                <div class="small">
+                                    Study ID: <span class="font-monospace fw-bold">{{ item.record.study_id }}</span>
+                                </div>
+                            </td>
+                            <td class="py-3 small">{{ item.naat_status }}</td>
+                            <td class="py-3 small">{{ item.cxr_status }}</td>
+                            <td class="py-3">
+                                <span class="badge rounded-pill px-2.5 py-1.5 fw-semibold
+                                    {% if item.record.classification == 'Case' %}bg-danger text-white
+                                    {% elif item.record.classification == 'Control' %}bg-success text-white
+                                    {% else %}bg-secondary text-white{% endif %}" style="font-size: 0.75rem;">
+                                    {{ item.record.classification }}
+                                </span>
+                            </td>
+                            <td class="py-3 small text-truncate" style="max-width: 250px;">
+                                {{ item.record.classification_reason|default:"No notes left." }}
+                            </td>
+                            <td class="px-4 py-3 text-end text-success fw-bold" style="font-size: 0.8rem;">
+                                <i class="bi bi-patch-check-fill me-1"></i> VERIFIED
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                No recently verified records found in your database segment.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<!-- Review & Verify Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold" id="reviewModalLabel"><i class="bi bi-clipboard2-pulse me-1"></i> Clinical Review Dashboard</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="reviewVerifyForm" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4 bg-light">
+                    <!-- Patient metadata summary -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-7">
+                            <div class="p-3 bg-white border rounded h-100" style="border-radius: var(--radius); border-color: var(--line) !important;">
+                                <label class="fw-semibold text-muted small mb-2 d-block">PATIENT BIOLOGICAL DATA</label>
+                                <h4 class="fw-bold text-dark m-0" id="modalPatientName"></h4>
+                                <div class="text-muted small mt-1">
+                                    Study ID: <span class="font-monospace fw-bold" id="modalStudyId"></span> &bull; 
+                                    Age: <span id="modalAge"></span> &bull; <span id="modalGender"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="p-3 bg-white border rounded h-100" style="border-radius: var(--radius); border-color: var(--line) !important;">
+                                <label class="fw-semibold text-muted small mb-2 d-block">CLINICAL CLASSIFICATION</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-warning text-dark px-3 py-2 fw-extrabold" style="font-size: 0.82rem;" id="modalCurrentClass"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Symptoms and Diagnostic inputs side-by-side -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-white border rounded h-100" style="border-radius: var(--radius); border-color: var(--line) !important;">
+                                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-virus text-danger me-1"></i> Clinical Profile</h6>
+                                <div class="mb-3">
+                                    <label class="fw-semibold text-muted small d-block">SYMPTOMS RECORDED</label>
+                                    <span class="text-dark small" id="modalSymptoms"></span>
+                                </div>
+                                <div class="mb-0">
+                                    <label class="fw-semibold text-muted small d-block">RISK PROFILE (HRG)</label>
+                                    <span class="text-dark small" id="modalRiskFactors"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-white border rounded h-100" style="border-radius: var(--radius); border-color: var(--line) !important;">
+                                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-clipboard2-data text-brand me-1"></i> Diagnostic Inputs</h6>
+                                <div class="mb-2 d-flex justify-content-between">
+                                    <span class="text-muted small">NAAT Result:</span>
+                                    <strong class="text-dark small" id="modalNaat"></strong>
+                                </div>
+                                <div class="mb-2 d-flex justify-content-between">
+                                    <span class="text-muted small">CXR Finding:</span>
+                                    <strong class="text-dark small" id="modalCxr"></strong>
+                                </div>
+                                <div class="mb-0 d-flex justify-content-between">
+                                    <span class="text-muted small">EPTB Specimen:</span>
+                                    <strong class="text-dark small" id="modalEptb"></strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Classification approval panel -->
+                    <div class="p-3 bg-white border rounded" style="border-radius: var(--radius); border-color: var(--line) !important;">
+                        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-shield-check text-success me-1"></i> Doctor Classification Verification</h6>
+                        
+                        <div class="mb-3">
+                            <label for="modalSelectClass" class="form-label fw-semibold text-muted small">CONFIRM / OVERRIDE CLASSIFICATION</label>
+                            <select class="form-select" id="modalSelectClass" name="classification" required style="border-radius: var(--radius);">
+                                <option value="Case">Case (TB Confirmed)</option>
+                                <option value="Control">Control (Healthy)</option>
+                                <option value="Excluded">Excluded</option>
+                                <option value="Pending">Pending (Requires Further Tests)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-0">
+                            <label for="modalReason" class="form-label fw-semibold text-muted small">CLINICAL JUSTIFICATION & AUDIT NOTES</label>
+                            <textarea class="form-control" id="modalReason" name="classification_reason" rows="3" required placeholder="Describe clinical reasoning for this diagnosis/override..." style="border-radius: var(--radius); font-size: 0.9rem;"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 py-3">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal" style="border-radius: var(--radius); font-weight: 600;">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4" style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 600;">Approve Classification</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .patient-row-hover {
+        transition: background-color 0.2s ease;
+    }
+    .patient-row-hover:hover {
+        background-color: var(--surface-soft);
+    }
+    .text-brand {
+        color: var(--brand);
+    }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const reviewModal = new bootstrap.Modal(document.getElementById("reviewModal"));
+    const reviewForm = document.getElementById("reviewVerifyForm");
+
+    document.querySelectorAll(".btn-review-clinical").forEach(button => {
+        button.addEventListener("click", function () {
+            const pk = this.dataset.pk;
+            document.getElementById("modalPatientName").innerText = this.dataset.fullname;
+            document.getElementById("modalStudyId").innerText = this.dataset.studyid;
+            document.getElementById("modalAge").innerText = this.dataset.age;
+            document.getElementById("modalGender").innerText = this.dataset.gender;
+            
+            document.getElementById("modalSymptoms").innerText = this.dataset.symptoms || "No symptoms checked.";
+            document.getElementById("modalRiskFactors").innerText = this.dataset.riskfactors || "No risk factors checked.";
+            
+            document.getElementById("modalNaat").innerText = this.dataset.naat;
+            document.getElementById("modalCxr").innerText = this.dataset.cxr;
+            document.getElementById("modalEptb").innerText = this.dataset.eptb;
+            
+            document.getElementById("modalCurrentClass").innerText = this.dataset.classification;
+            document.getElementById("modalSelectClass").value = this.dataset.classification === "Pending" ? "Case" : this.dataset.classification;
+
+            // Set Form action endpoint dynamically
+            reviewForm.action = `/dashboard/doctor/verify/${pk}/`;
+
+            reviewModal.show();
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,437 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}PTB Screening Module | aBCG{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Module 02</p>
+        {% if participant %}
+        <h1>Screen Participant for PTB</h1>
+        <p class="header-copy">Clinical screening and diagnostic testing registry for participant <strong>{{ participant.full_name }}</strong>.</p>
+        {% else %}
+        <h1>PTB Screening &amp; Testing Workspace</h1>
+        <p class="header-copy">Select an active participant to evaluate clinical TB symptoms and log diagnosis results.</p>
+        {% endif %}
+    </div>
+    <div>
+        <a href="{% url 'questions:home' %}" class="btn btn-outline-secondary d-inline-flex align-items-center" style="border-radius: var(--radius); font-size: 0.9rem; font-weight: 600; border-color: var(--line); color: var(--brand);">
+            <i class="bi bi-arrow-left me-2"></i> Back to Dashboard
+        </a>
+    </div>
+</section>
+
+{% if participant %}
+<!-- Screening Form Mode -->
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <!-- Participant Summary Card -->
+        <div class="card border shadow-sm p-4 bg-white mb-4" style="border-radius: var(--radius);">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h3 class="h5 fw-bold mb-1 text-dark">{{ participant.full_name }}</h3>
+                    <div class="text-muted small">
+                        <strong>Study ID:</strong> <code class="text-secondary fw-semibold">{{ participant.study_id }}</code> &nbsp;|&nbsp;
+                        <strong>Age:</strong> {{ participant.age }} &nbsp;|&nbsp;
+                        <strong>Gender:</strong> {{ participant.gender }}
+                    </div>
+                </div>
+                <span class="badge bg-secondary-subtle text-secondary border px-3 py-2" style="border-radius: var(--radius); font-size: 0.85rem;">
+                    Classification: {{ participant.classification }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Symptoms Checklist Card -->
+        <div class="card border shadow-sm p-4 bg-white mb-4" style="border-radius: var(--radius);">
+            <h2 class="h5 fw-bold mb-4 text-dark border-bottom pb-2 d-flex align-items-center">
+                <i class="bi bi-heart-pulse-fill text-danger me-2"></i> Clinical Symptoms Screening
+            </h2>
+
+            <form method="post" id="ptbForm" class="needs-validation" novalidate>
+                {% csrf_token %}
+                <span class="summary-label fw-bold d-block text-muted mb-3 text-uppercase">Symptoms *</span>
+                
+                <div class="row g-2 mb-4">
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100 bg-light-subtle" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symAsymp" value="Asymptomatic" checked>
+                            <label class="form-check-label text-dark small ps-2 fw-semibold" for="symAsymp">Asymptomatic</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symCough" value="Cough for more than 2 weeks">
+                            <label class="form-check-label text-dark small ps-2" for="symCough">Cough &gt; 2 weeks</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symHemoptysis" value="Coughing up blood">
+                            <label class="form-check-label text-dark small ps-2" for="symHemoptysis">Coughing up blood</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symFever" value="Fever">
+                            <label class="form-check-label text-dark small ps-2" for="symFever">Fever</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symWeight" value="Weight loss">
+                            <label class="form-check-label text-dark small ps-2" for="symWeight">Weight loss</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symNight" value="Night sweat">
+                            <label class="form-check-label text-dark small ps-2" for="symNight">Night sweat</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symChest" value="Chest pain">
+                            <label class="form-check-label text-dark small ps-2" for="symChest">Chest pain</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symShortness" value="Shortness of breath">
+                            <label class="form-check-label text-dark small ps-2" for="symShortness">Shortness of breath</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symFatigue" value="Fatigue">
+                            <label class="form-check-label text-dark small ps-2" for="symFatigue">Fatigue</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symFailWeight" value="Failure to gain weight (in children)">
+                            <label class="form-check-label text-dark small ps-2" for="symFailWeight">Failure to gain weight (children)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symPlay" value="Decreased activity or playfulness (in children)">
+                            <label class="form-check-label text-dark small ps-2" for="symPlay">Decreased playfulness (children)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
+                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symOthers" value="Others">
+                            <label class="form-check-label text-dark small ps-2" for="symOthers">Others (specify below)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Others description input (conditional) -->
+                <div class="mb-4 d-none" id="otherSymptomInput">
+                    <label for="otherSymptomText" class="form-label fw-semibold text-muted small">SPECIFY OTHER CLINICAL SYMPTOM</label>
+                    <input type="text" class="form-control" id="otherSymptomText" name="other_symptom" placeholder="Describe symptoms in English..." style="border-radius: var(--radius); border-color: var(--line);">
+                </div>
+
+                <!-- Dynamic display area depending on symptom selection -->
+                <div class="p-3 border rounded bg-light mb-4" id="screeningHelperArea" style="border-radius: var(--radius);">
+                    <div id="asymptomaticAlert">
+                        <div class="d-flex align-items-center text-success mb-2">
+                            <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+                            <strong class="small fw-bold">Asymptomatic Participant</strong>
+                        </div>
+                        <p class="small text-muted mb-0">Participant exhibits no active symptoms. They do not require TB diagnostic testing. You can save and complete the screening now.</p>
+                    </div>
+                    <div id="symptomaticAlert" class="d-none">
+                        <div class="d-flex align-items-center text-warning mb-2">
+                            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                            <strong class="small fw-bold">Symptomatic Participant (TB Suspect)</strong>
+                        </div>
+                        <p class="small text-muted mb-3">One or more active symptoms checked. Enforce study guidelines: the participant must undergo TB Diagnostic Testing.</p>
+                        <button type="button" class="btn btn-warning btn-sm text-dark fw-bold" id="proceedToTestBtn" style="border-radius: var(--radius);">
+                            <i class="bi bi-virus me-1"></i> Proceed to TB Testing / Add Test
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TB Test Details Card (Shown conditionally when Proceed to Testing is clicked) -->
+                <div class="card border border-warning shadow-sm p-4 bg-white mb-4 d-none" id="testDetailsContainer" style="border-radius: var(--radius);">
+                    <h3 class="h6 fw-bold mb-3 text-warning border-bottom pb-2 d-flex align-items-center">
+                        <i class="bi bi-clipboard2-pulse me-2"></i> TB Diagnostic Test Registration
+                    </h3>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="testType" class="form-label fw-semibold text-muted small">DIAGNOSTIC TEST TYPE *</label>
+                            <select class="form-select" id="testType" name="test_type" style="border-radius: var(--radius); border-color: var(--line);">
+                                <option value="" disabled selected>Select Test Type...</option>
+                                <option value="CBNAAT / GeneXpert">CBNAAT / GeneXpert</option>
+                                <option value="Sputum Smear microscopy">Sputum Smear microscopy</option>
+                                <option value="Chest X-Ray">Chest X-Ray</option>
+                                <option value="Sputum Culture">Sputum Culture</option>
+                                <option value="Truenat">Truenat</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <div class="invalid-feedback">Test type is required.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="testResult" class="form-label fw-semibold text-muted small">TEST DIAGNOSIS RESULT *</label>
+                            <select class="form-select" id="testResult" name="test_result" style="border-radius: var(--radius); border-color: var(--line);">
+                                <option value="" disabled selected>Select Diagnosis...</option>
+                                <option value="Positive" class="text-danger fw-bold">Positive (TB Case)</option>
+                                <option value="Negative" class="text-success fw-bold">Negative (TB Control)</option>
+                                <option value="Indeterminate" class="text-muted">Indeterminate</option>
+                            </select>
+                            <div class="invalid-feedback">Test result is required.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="testDate" class="form-label fw-semibold text-muted small">TEST REPORT DATE *</label>
+                            <input type="date" class="form-control" id="testDate" name="test_date" style="border-radius: var(--radius); border-color: var(--line);">
+                            <div class="invalid-feedback">Test date is required.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="testFacility" class="form-label fw-semibold text-muted small">LAB TESTING FACILITY *</label>
+                            <input type="text" class="form-control" id="testFacility" name="test_facility" placeholder="Hospital or Lab Name" style="border-radius: var(--radius); border-color: var(--line);">
+                            <div class="invalid-feedback">Testing facility is required.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Submission Controls -->
+                <div class="d-flex justify-content-between border-top pt-3">
+                    <a href="{% url 'questions:ptb' %}" class="btn btn-light" style="border-radius: var(--radius); border-color: var(--line); font-weight: 600;">
+                        Cancel
+                    </a>
+                    
+                    <button type="submit" class="btn btn-success" id="saveAsymptomaticBtn" style="background-color: var(--accent); border: none; border-radius: var(--radius); font-weight: 600; padding: 10px 24px;">
+                        Save &amp; Finish (Asymptomatic) <i class="bi bi-check-circle ms-1"></i>
+                    </button>
+                    
+                    <button type="submit" class="btn btn-primary d-none" id="saveTestBtn" style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 600; padding: 10px 24px;">
+                        Save Test Result <i class="bi bi-check-circle ms-1"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const cbs = document.querySelectorAll(".symptom-cb");
+        const symAsymp = document.getElementById("symAsymp");
+        const symOthers = document.getElementById("symOthers");
+        
+        const otherSymptomInput = document.getElementById("otherSymptomInput");
+        const otherSymptomText = document.getElementById("otherSymptomText");
+        
+        const asymptomaticAlert = document.getElementById("asymptomaticAlert");
+        const symptomaticAlert = document.getElementById("symptomaticAlert");
+        const proceedToTestBtn = document.getElementById("proceedToTestBtn");
+        
+        const testDetailsContainer = document.getElementById("testDetailsContainer");
+        const saveAsymptomaticBtn = document.getElementById("saveAsymptomaticBtn");
+        const saveTestBtn = document.getElementById("saveTestBtn");
+        
+        // TB Test fields
+        const testType = document.getElementById("testType");
+        const testResult = document.getElementById("testResult");
+        const testDate = document.getElementById("testDate");
+        const testFacility = document.getElementById("testFacility");
+
+        function updateUIState() {
+            // Check if others is checked
+            if (symOthers.checked) {
+                otherSymptomInput.classList.remove("d-none");
+                otherSymptomText.setAttribute("required", "required");
+            } else {
+                otherSymptomInput.classList.add("d-none");
+                otherSymptomText.removeAttribute("required");
+                otherSymptomText.value = "";
+            }
+
+            // Check if symptomatic
+            let isSymptomatic = false;
+            cbs.forEach(cb => {
+                if (cb !== symAsymp && cb.checked) {
+                    isSymptomatic = true;
+                }
+            });
+
+            if (isSymptomatic) {
+                symptomaticAlert.classList.remove("d-none");
+                asymptomaticAlert.classList.add("d-none");
+                
+                // Show test block if previously opened
+                if (testDetailsContainer.classList.contains("open")) {
+                    testDetailsContainer.classList.remove("d-none");
+                    saveTestBtn.classList.remove("d-none");
+                    saveAsymptomaticBtn.classList.add("d-none");
+                    
+                    testType.setAttribute("required", "required");
+                    testResult.setAttribute("required", "required");
+                    testDate.setAttribute("required", "required");
+                    testFacility.setAttribute("required", "required");
+                } else {
+                    saveTestBtn.classList.add("d-none");
+                    saveAsymptomaticBtn.classList.add("d-none");
+                }
+            } else {
+                symptomaticAlert.classList.add("d-none");
+                asymptomaticAlert.classList.remove("d-none");
+                
+                testDetailsContainer.classList.add("d-none");
+                testDetailsContainer.classList.remove("open");
+                saveTestBtn.classList.add("d-none");
+                saveAsymptomaticBtn.classList.remove("d-none");
+                
+                testType.removeAttribute("required");
+                testResult.removeAttribute("required");
+                testDate.removeAttribute("required");
+                testFacility.removeAttribute("required");
+                
+                testType.value = "";
+                testResult.value = "";
+                testDate.value = "";
+                testFacility.value = "";
+            }
+        }
+
+        cbs.forEach(cb => {
+            cb.addEventListener("change", function() {
+                if (cb === symAsymp && symAsymp.checked) {
+                    // Clear all others
+                    cbs.forEach(otherCb => {
+                        if (otherCb !== symAsymp) {
+                            otherCb.checked = false;
+                            otherCb.closest(".form-check").classList.remove("bg-light");
+                        }
+                    });
+                    symAsymp.closest(".form-check").classList.add("bg-light");
+                } else if (cb !== symAsymp && cb.checked) {
+                    symAsymp.checked = false;
+                    symAsymp.closest(".form-check").classList.remove("bg-light");
+                    cb.closest(".form-check").classList.add("bg-light");
+                } else if (!cb.checked) {
+                    cb.closest(".form-check").classList.remove("bg-light");
+                }
+                updateUIState();
+            });
+        });
+
+        proceedToTestBtn.addEventListener("click", function() {
+            testDetailsContainer.classList.remove("d-none");
+            testDetailsContainer.classList.add("open");
+            saveTestBtn.classList.remove("d-none");
+            saveAsymptomaticBtn.classList.add("d-none");
+            
+            testType.setAttribute("required", "required");
+            testResult.setAttribute("required", "required");
+            testDate.setAttribute("required", "required");
+            testFacility.setAttribute("required", "required");
+        });
+
+        // Initialize state
+        updateUIState();
+        if (symAsymp.checked) {
+            symAsymp.closest(".form-check").classList.add("bg-light");
+        }
+
+        // Form custom validation
+        const form = document.getElementById("ptbForm");
+        form.addEventListener("submit", function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Show native error message for the first invalid field
+                const invalidField = form.querySelector(":invalid");
+                if (invalidField) {
+                    invalidField.reportValidity();
+                }
+            }
+            form.classList.add("was-validated");
+        });
+    });
+</script>
+
+{% else %}
+<!-- Participant Listing Mode -->
+<!-- Search Box -->
+<div class="card border shadow-sm p-4 bg-white mb-4" style="border-radius: var(--radius);">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-9">
+            <label for="searchQuery" class="form-label fw-semibold text-muted small">SEARCH PARTICIPANTS</label>
+            <div class="input-group">
+                <span class="input-group-text bg-white" style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" class="form-control" id="searchQuery" name="q" value="{{ query }}" placeholder="Search by name, Study ID, or contact number..." style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100" style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 600; padding: 10px;">
+                <i class="bi bi-search me-1"></i> Find Participants
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Participant Grid/Table -->
+<div class="card border shadow-sm bg-white overflow-hidden" style="border-radius: var(--radius);">
+    <div class="card-header bg-light border-bottom p-3 d-flex align-items-center justify-content-between">
+        <h2 class="h6 fw-bold m-0 text-dark">Study Participants</h2>
+        <span class="badge bg-secondary" style="border-radius: var(--radius); font-weight: 600;">{{ participants|length }} Registered</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="fw-bold text-muted small ps-4">PARTICIPANT NAME</th>
+                    <th class="fw-bold text-muted small">STUDY ID</th>
+                    <th class="fw-bold text-muted small">SCREENING STATUS</th>
+                    <th class="fw-bold text-muted small">DIAGNOSIS TYPE</th>
+                    <th class="fw-bold text-muted small text-end pe-4">ACTION</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in participants %}
+                <tr>
+                    <td class="ps-4">
+                        <div class="fw-bold text-dark">{{ p.full_name }}</div>
+                        <div class="text-muted small">Age: {{ p.age }} | {{ p.gender }} | Phone: {{ p.contact_number }}</div>
+                    </td>
+                    <td><code class="text-secondary fw-semibold">{{ p.study_id }}</code></td>
+                    <td>
+                        {% if p.ptb_screened %}
+                        <span class="badge bg-success" style="border-radius: var(--radius);"><i class="bi bi-check-circle me-1"></i> Screened</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark" style="border-radius: var(--radius);"><i class="bi bi-clock me-1"></i> Pending Screen</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.ptb_test_registered %}
+                        <span class="badge bg-secondary-subtle text-secondary border" style="border-radius: var(--radius);">Tested ({{ p.ptb_test_result }})</span>
+                        {% else %}
+                        <span class="text-muted small">No test recorded</span>
+                        {% endif %}
+                        <span class="badge bg-secondary-subtle text-secondary border ms-1" style="border-radius: var(--radius);">{{ p.classification }}</span>
+                    </td>
+                    <td class="text-end pe-4">
+                        <a href="{% url 'questions:ptb_screen' p.pk %}" class="btn btn-sm {% if p.ptb_screened %}btn-outline-primary{% else %}btn-primary{% endif %}" style="border-radius: var(--radius); font-weight: 600;">
+                            {% if p.ptb_screened %}
+                            <i class="bi bi-pencil-square me-1"></i> Edit Screen
+                            {% else %}
+                            <i class="bi bi-heart-pulse me-1"></i> Screen for PTB
+                            {% endif %}
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted small">No active registered participants eligible for the aBCG VE study found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,392 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %}Participants | aBCG{% endblock %}
+
+{% block content %}
+<style>
+    /* Controlled Content Width Constraint */
+    .container-search {
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+        padding-top: 2rem;
+        padding-bottom: 4rem;
+    }
+    
+    /* Premium visual styling */
+    .search-card {
+        border-radius: 12px;
+        border: 1px solid #e2e8f0 !important;
+        background-color: #ffffff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        padding: 2rem !important;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #0f2942 !important;
+        box-shadow: 0 0 0 3px rgba(15, 41, 66, 0.15) !important;
+    }
+    
+    /* Table hover and style controls */
+    .premium-table tbody tr {
+        transition: all 0.15s ease;
+    }
+    .premium-table tbody tr:hover {
+        background-color: #f8fafc;
+        cursor: pointer;
+    }
+
+    .premium-table thead th {
+        padding-top: 1.15rem !important;
+        padding-bottom: 1.15rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+    
+    .premium-table tbody td {
+        padding-top: 1.15rem !important;
+        padding-bottom: 1.15rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+
+    /* Avatar circle styling */
+    .avatar-cell {
+        width: 34px;
+        height: 34px;
+        font-size: 0.82rem;
+        line-height: 34px;
+        flex-shrink: 0;
+        display: grid;
+        place-content: center;
+    }
+
+    /* Accessible Pagination */
+    .pagination .page-link {
+        color: #0f2942;
+        font-weight: 600;
+        border: 1px solid #e2e8f0;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        margin: 0 2px;
+        transition: all 0.2s ease;
+    }
+    .pagination .page-item.active .page-link {
+        background-color: #0f2942 !important;
+        border-color: #0f2942 !important;
+        color: #ffffff !important;
+    }
+    .pagination .page-link:hover:not(.active) {
+        background-color: #f1f5f9;
+        color: #0f2942;
+    }
+</style>
+
+<div class="container-search">
+    <!-- Title Section -->
+    <div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2">
+        <div>
+            <h1 class="fw-extrabold text-dark mb-0" style="font-size: 2rem; letter-spacing: -0.5px;">Participants</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'questions:home' %}" class="btn btn-outline-secondary px-3 py-2 fw-bold d-inline-flex align-items-center justify-content-center shadow-sm" style="border-radius: 8px; font-size: 0.9rem; border-color: #cbd5e1; color: #475569;">
+                <i class="bi bi-arrow-left me-1.5"></i> Back to Home
+            </a>
+            <a href="{% url 'questions:registration' %}" class="btn btn-primary px-4 py-2 fw-bold d-inline-flex align-items-center justify-content-center shadow-sm" style="background-color: #0f2942; border: none; border-radius: 8px; font-size: 0.9rem;">
+                <i class="bi bi-person-plus me-1.5" style="font-size: 1.1rem;"></i> Register Participant
+            </a>
+        </div>
+    </div>
+    
+    <!-- Search & Filters Section -->
+    <form method="get" id="searchDirectoryForm" class="mb-4">
+        <div class="card p-4 search-card border border-slate-200">
+            <div class="row g-3">
+                <!-- Search Query -->
+                <div class="col-12 col-lg-4">
+                    <label for="searchQueryInput" class="form-label small fw-bold text-secondary mb-1">Search Name, IDs or Phone</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-1" id="searchQueryInput" name="q" value="{{ query|default:'' }}" placeholder="Type name, Study ID, Nikshay ID..." style="height: 42px; font-size: 0.9rem; border-radius: 0 8px 8px 0;">
+                    </div>
+                </div>
+                
+                <!-- Status Filter -->
+                <div class="col-6 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label small fw-bold text-secondary mb-1">Reconciled Status</label>
+                    <select class="form-select" name="status" onchange="this.form.submit()" style="height: 42px; font-size: 0.9rem; border-radius: 8px;">
+                        <option value="All" {% if status_filter == "All" or not status_filter %}selected{% endif %}>All Statuses</option>
+                        <option value="Draft" {% if status_filter == "Draft" %}selected{% endif %}>Draft</option>
+                        <option value="Pending" {% if status_filter == "Pending" %}selected{% endif %}>Pending</option>
+                        <option value="Synced" {% if status_filter == "Synced" %}selected{% endif %}>Synced</option>
+                        <option value="Control" {% if status_filter == "Control" %}selected{% endif %}>Control</option>
+                        <option value="Completed" {% if status_filter == "Completed" %}selected{% endif %}>Completed</option>
+                    </select>
+                </div>
+                
+                <!-- Source Filter -->
+                <div class="col-6 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label small fw-bold text-secondary mb-1">Data Source</label>
+                    <select class="form-select" name="source" onchange="this.form.submit()" style="height: 42px; font-size: 0.9rem; border-radius: 8px;">
+                        <option value="All" {% if source_filter == "All" or not source_filter %}selected{% endif %}>All Sources</option>
+                        <option value="Nikshay" {% if source_filter == "Nikshay" %}selected{% endif %}>Nikshay</option>
+                        <option value="aBCG Local" {% if source_filter == "aBCG Local" %}selected{% endif %}>aBCG Local</option>
+                        <option value="Nikshay + aBCG" {% if source_filter == "Nikshay + aBCG" %}selected{% endif %}>Nikshay + aBCG</option>
+                    </select>
+                </div>
+                
+                <!-- Participant Type -->
+                <div class="col-6 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label small fw-bold text-secondary mb-1">Participant Type</label>
+                    <select class="form-select" name="type" onchange="this.form.submit()" style="height: 42px; font-size: 0.9rem; border-radius: 8px;">
+                        <option value="All" {% if type_filter == "All" or not type_filter %}selected{% endif %}>All Types</option>
+                        <option value="Case" {% if type_filter == "Case" %}selected{% endif %}>Case</option>
+                        <option value="Control" {% if type_filter == "Control" %}selected{% endif %}>Control</option>
+                        <option value="Screening" {% if type_filter == "Screening" %}selected{% endif %}>Screening</option>
+                        <option value="Registered" {% if type_filter == "Registered" %}selected{% endif %}>Registered</option>
+                    </select>
+                </div>
+                
+                <!-- Sort By -->
+                <div class="col-6 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label small fw-bold text-secondary mb-1">Sort By</label>
+                    <select class="form-select" name="sort" onchange="this.form.submit()" style="height: 42px; font-size: 0.9rem; border-radius: 8px;">
+                        <option value="Recently Updated" {% if sort_filter == "Recently Updated" or not sort_filter %}selected{% endif %}>Recently Updated</option>
+                        <option value="Name A-Z" {% if sort_filter == "Name A-Z" %}selected{% endif %}>Name A–Z</option>
+                        <option value="Name Z-A" {% if sort_filter == "Name Z-A" %}selected{% endif %}>Name Z–A</option>
+                        <option value="Study ID" {% if sort_filter == "Study ID" %}selected{% endif %}>Study ID</option>
+                        <option value="Status" {% if sort_filter == "Status" %}selected{% endif %}>Reconciled Status</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Filters Metadata / Active Actions -->
+            <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-slate-100 flex-wrap gap-2">
+                <div>
+                    {% if active_filters_count > 0 or query %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2.5 py-1.5 rounded-pill" style="font-size: 0.78rem;">
+                        {{ active_filters_count }} active filter{% if active_filters_count != 1 %}s{% endif %}
+                    </span>
+                    <a href="{% url 'questions:search' %}" class="btn btn-sm btn-link text-decoration-none fw-bold text-danger ms-2" style="font-size: 0.85rem;"><i class="bi bi-trash3 me-1"></i> Clear Filters</a>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-secondary px-4 fw-bold" style="height: 38px; border-radius: 6px;">
+                        <i class="bi bi-search me-1.5"></i> Search
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+    
+    {% if nikshay_search_match %}
+    <!-- NIKSHAY REGISTRY SEARCH MATCH CARD -->
+    <div class="card p-4 border mb-4 shadow-sm" style="border-radius: 10px; {% if nikshay_search_match.local_match_id %}background-color: #fffbeb; border-color: #fde68a !important;{% else %}background-color: #f0fdf4; border-color: #bbf7d0 !important;{% endif %}">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                {% if nikshay_search_match.local_match_id %}
+                <span class="badge fw-bold mb-2 px-2.5 py-1.5" style="font-size:0.75rem; border-radius:6px; color: #b45309 !important; background-color: rgba(217, 119, 6, 0.08) !important;">
+                    <i class="bi bi-cloud-check-fill me-1"></i> Nikshay Registry Match Found (Registered)
+                </span>
+                {% else %}
+                <span class="badge fw-bold mb-2 px-2.5 py-1.5" style="font-size:0.75rem; border-radius:6px; color: #16a34a !important; background-color: rgba(22, 163, 74, 0.08) !important;">
+                    <i class="bi bi-cloud-check-fill me-1"></i> Nikshay Registry Match Found (Available)
+                </span>
+                {% endif %}
+                <h4 class="fw-extrabold text-dark mb-1" style="font-size: 1.25rem;">{{ nikshay_search_match.full_name }}</h4>
+                <p class="text-secondary small mb-2.5">
+                    <strong>Nikshay ID:</strong> <code class="text-dark font-monospace fw-bold bg-white px-2 py-0.5 border rounded" style="font-size:0.88rem;">{{ nikshay_search_match.nikshay_id }}</code> &middot; 
+                    {{ nikshay_search_match.age }} years &middot; {{ nikshay_search_match.gender }} &middot; 
+                    <strong>Phone:</strong> {{ nikshay_search_match.contact_number }}
+                </p>
+                <div class="text-secondary small">
+                    <i class="bi bi-geo-alt-fill me-1" style="color: #0284c7;"></i> {{ nikshay_search_match.tb_unit }}, {{ nikshay_search_match.district }}, {{ nikshay_search_match.state }}
+                </div>
+            </div>
+            <div>
+                {% if nikshay_search_match.local_match_id %}
+                    <!-- Local Match Found -->
+                    <div class="text-md-end">
+                        <span class="text-success small fw-bold d-block mb-2"><i class="bi bi-check-circle-fill"></i> Already registered locally</span>
+                        <a href="{% url 'questions:reconcile' nikshay_search_match.local_match_id %}" class="btn btn-sm btn-success fw-bold px-4 shadow-sm" style="height:38px; line-height:24px; border-radius:6px; background-color:#16a34a; border:none;">
+                            <i class="bi bi-arrow-repeat me-1"></i> Go to Reconciliation
+                        </a>
+                    </div>
+                {% else %}
+                    <!-- No Local Match, allow enrolling/collecting EPTB/BCG -->
+                    <div class="text-md-end">
+                        <span class="text-secondary small fw-bold d-block mb-2"><i class="bi bi-info-circle"></i> Record not registered locally</span>
+                        <a href="{% url 'questions:registration' %}?nikshay_id={{ nikshay_search_match.nikshay_id }}" class="btn btn-sm btn-primary fw-bold px-4 shadow-sm" style="height:38px; line-height:24px; border-radius:6px; background-color:#0f2942; border:none;">
+                            <i class="bi bi-person-plus me-1"></i> Enroll &amp; Collect EPTB/BCG
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Directory Output View -->
+    <div class="card p-0 border border-slate-200 bg-white mb-4 shadow-sm overflow-hidden" style="border-radius: 10px;">
+        
+        <!-- DESKTOP TABLE VIEW (Screens >= 768px) -->
+        <div class="table-responsive d-none d-md-block">
+            <table class="table premium-table table-hover align-middle mb-0" id="directoryTable" style="font-size: 0.9rem;">
+                <thead class="bg-light text-secondary small" style="border-bottom: 2px solid #cbd5e1;">
+                    <tr class="text-uppercase tracking-wider font-bold" style="font-size: 0.72rem; color: #475569;">
+                        <th class="text-start px-4 py-3" style="width: 20%;">Participant</th>
+                        <th class="py-3" style="width: 13%;">Study ID</th>
+                        <th class="py-3" style="width: 13%;">Screening ID</th>
+                        <th class="py-3" style="width: 13%;">Nikshay ID</th>
+                        <th class="py-3" style="width: 12%;">Age / Gender</th>
+                        <th class="py-3" style="width: 11%;">Source</th>
+                        <th class="py-3" style="width: 10%;">Status</th>
+                        <th class="text-end px-4 py-3" style="width: 8%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for p in participants %}
+                    <tr class="fw-semibold text-slate-700" onclick="window.location='{% url 'questions:participant_detail' p.study_id %}'">
+                        <td class="text-start px-4 py-3">
+                            <div style="min-width: 0;">
+                                <div class="fw-bold text-dark text-truncate" style="max-width: 220px;" title="{{ p.full_name }}">{{ p.full_name }}</div>
+                                <div class="text-secondary small font-medium" style="font-size: 0.72rem;">{{ p.village }}, {{ p.district }}</div>
+                            </div>
+                        </td>
+                        <td class="py-3">
+                            {% if p.eligible %}
+                            <code class="text-secondary fw-bold font-monospace" style="font-size: 0.85rem;">{{ p.study_id }}</code>
+                            {% else %}
+                            <span class="text-muted small">Not Assigned</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3"><code class="text-primary fw-bold font-monospace" style="font-size: 0.85rem;">{{ p.screening_id|default:"" }}</code></td>
+                        <td class="py-3 font-monospace text-secondary" style="font-size: 0.85rem;">{{ p.nikshay_id|default:"" }}</td>
+                        <td class="py-3 text-slate-800">{{ p.age }} / {{ p.gender }}</td>
+                        <td class="py-3">
+                            <span class="small fw-semibold text-slate-600">
+                                {% if p.nikshay_id and p.synced %}Nikshay + aBCG{% elif p.nikshay_id %}Nikshay{% else %}aBCG Local{% endif %}
+                            </span>
+                        </td>
+                        <td class="py-3">
+                            {% if p.synced %}
+                            <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.72rem; color: #15803d !important; background-color: #dcfce7 !important;">Synced</span>
+                            {% else %}
+                            <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.72rem; color: #b45309 !important; background-color: #fef3c7 !important;">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end px-4 py-3" onclick="event.stopPropagation();">
+                            <a href="{% url 'questions:participant_detail' p.study_id %}" class="btn btn-sm btn-outline-secondary py-1 px-2.5 fw-bold" style="font-size: 0.78rem; border-radius: 6px;">
+                                View <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="p-5 text-center text-muted">
+                            <i class="bi bi-person-badge fs-2 mb-2 text-secondary opacity-50"></i>
+                            <h5 class="fw-bold text-dark mb-1">No participants found</h5>
+                            <p class="small text-secondary mb-3">No participant records match your current search or filters.</p>
+                            <a href="{% url 'questions:search' %}" class="btn btn-sm btn-outline-secondary px-3 py-2 fw-semibold" style="border-radius: 6px;">Clear Filters</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="d-block d-md-none p-4 bg-light">
+            {% for p in participants %}
+            <div class="card p-4 mb-3 border border-slate-200 shadow-sm" style="border-radius: 10px; background: #ffffff;" onclick="window.location='{% url 'questions:participant_detail' p.study_id %}'">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <div class="fw-bold text-dark" style="font-size: 0.95rem;">{{ p.full_name }}</div>
+                        <div class="text-secondary" style="font-size: 0.72rem;">{{ p.village }}, {{ p.district }}</div>
+                    </div>
+                    <div>
+                        {% if p.synced %}
+                        <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.7rem; color: #15803d !important; background-color: #dcfce7 !important;">Synced</span>
+                        {% else %}
+                        <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.7rem; color: #b45309 !important; background-color: #fef3c7 !important;">Pending</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row g-2 border-top border-slate-100 pt-2.5 mt-1" style="font-size: 0.82rem;">
+                    <div class="col-6">
+                        <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.65rem;">Study ID</div>
+                        <div class="font-monospace text-dark fw-bold">{% if p.eligible %}{{ p.study_id }}{% else %}<span class="text-muted small">Not Assigned</span>{% endif %}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.65rem;">Screening ID</div>
+                        <div class="font-monospace text-primary fw-bold">{{ p.screening_id|default:"" }}</div>
+                    </div>
+                    <div class="col-6 mt-1.5">
+                        <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.65rem;">Nikshay ID</div>
+                        <div class="font-monospace text-secondary">{{ p.nikshay_id|default:"" }}</div>
+                    </div>
+                    <div class="col-6 mt-1.5">
+                        <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.65rem;">Age / Gender</div>
+                        <div class="text-slate-800">{{ p.age }}y / {{ p.gender }}</div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-2.5 border-top border-slate-100">
+                    <span class="small fw-semibold text-secondary" style="font-size: 0.75rem;">
+                        Source: <span class="text-slate-700">{% if p.nikshay_id and p.synced %}Nikshay + aBCG{% elif p.nikshay_id %}Nikshay{% else %}aBCG Local{% endif %}</span>
+                    </span>
+                    <a href="{% url 'questions:participant_detail' p.study_id %}" class="text-decoration-none fw-bold text-primary" style="font-size: 0.8rem;">
+                        View Dossier <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-5 text-center text-muted bg-white border border-slate-200 rounded" style="border-radius: 8px;">
+                <i class="bi bi-person-badge fs-2 mb-2 text-secondary opacity-50"></i>
+                <h5 class="fw-bold text-dark mb-1">No participants found</h5>
+                <p class="small text-secondary mb-0">No records match your search or filters.</p>
+            </div>
+            {% endfor %}
+        </div>
+        
+    </div>
+    
+    <!-- Accessible Pagination -->
+    {% if paginator.num_pages > 1 %}
+    <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-2">
+        <span class="text-muted small fw-semibold">Showing {{ participants.start_index }}–{{ participants.end_index }} of {{ paginator.count }} participants</span>
+        <nav aria-label="Page navigation">
+            <ul class="pagination pagination-sm mb-0">
+                {% if participants.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ participants.previous_page_number }}&q={{ query }}&status={{ status_filter }}&source={{ source_filter }}&type={{ type_filter }}&sort={{ sort_filter }}">Previous</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                {% endif %}
+                
+                {% for num in paginator.page_range %}
+                    {% if participants.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > participants.number|add:'-3' and num < participants.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&q={{ query }}&status={{ status_filter }}&source={{ source_filter }}&type={{ type_filter }}&sort={{ sort_filter }}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if participants.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ participants.next_page_number }}&q={{ query }}&status={{ status_filter }}&source={{ source_filter }}&type={{ type_filter }}&sort={{ sort_filter }}">Next</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

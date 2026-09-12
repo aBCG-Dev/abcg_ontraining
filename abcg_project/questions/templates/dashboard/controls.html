@@ -1,0 +1,208 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Controls - aBCG Clinical Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header (Anonymized) -->
+  <div class="flex items-center justify-end border-b border-border/40 pb-2">
+    <div>
+      {% if is_mock %}
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600 border border-amber-500/20">
+          <span class="size-1.5 rounded-full bg-amber-500 animate-ping"></span>
+          Simulated Fallback Mode
+        </span>
+      {% else %}
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 border border-emerald-500/20">
+          <span class="size-1.5 rounded-full bg-emerald-500"></span>
+          Live Database Active
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="rounded-xl border border-border bg-card p-4 shadow-sm">
+    <form method="GET" class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex flex-1 flex-col md:flex-row items-stretch md:items-center gap-3">
+        <!-- Text Search -->
+        <div class="relative flex-1">
+          <i data-lucide="search" class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" style="margin-top: -2px;"></i>
+          <input
+            type="text"
+            name="q"
+            value="{{ filters.q }}"
+            placeholder="Search Study ID, Demographics, or Nikshay ID..."
+            class="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-4 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+        </div>
+        
+        <!-- Status Filter -->
+        <div class="relative min-w-[150px]">
+          <select name="status" onchange="this.form.submit()" class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground appearance-none cursor-pointer hover:bg-muted focus:outline-none">
+            <option value="">All Sync Status</option>
+            <option value="synced" {% if filters.status == 'synced' %}selected{% endif %}>Synced / Locked</option>
+            <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>Pending Sync</option>
+          </select>
+          <i data-lucide="chevron-down" class="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" style="margin-top: -2px;"></i>
+        </div>
+        
+        <!-- HRG Category Filter -->
+        <div class="relative min-w-[180px]">
+          <select name="hrg" onchange="this.form.submit()" class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground appearance-none cursor-pointer hover:bg-muted focus:outline-none">
+            <option value="">All High-Risk Groups</option>
+            <option value="Past TB" {% if filters.hrg == 'Past TB' %}selected{% endif %}>Past TB History</option>
+            <option value="Household Contact" {% if filters.hrg == 'Household Contact' %}selected{% endif %}>Household Contact</option>
+            <option value="Diabetes" {% if filters.hrg == 'Diabetes' %}selected{% endif %}>Diabetes Mellitus</option>
+            <option value="Elderly" {% if filters.hrg == 'Elderly' %}selected{% endif %}>Elderly (>60y)</option>
+            <option value="Smoker" {% if filters.hrg == 'Smoker' %}selected{% endif %}>Smoker / Tobacco</option>
+            <option value="Low BMI" {% if filters.hrg == 'Low BMI' %}selected{% endif %}>Low BMI (<18.5)</option>
+          </select>
+          <i data-lucide="chevron-down" class="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" style="margin-top: -2px;"></i>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <button type="submit" class="h-9 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-all shadow-sm active:scale-95">
+          Filter
+        </button>
+        <a href="{% url 'questions:controls' %}" class="h-9 rounded-lg border border-border bg-background px-4 text-xs font-semibold text-foreground hover:bg-muted transition-all flex items-center justify-center shadow-sm text-decoration-none">
+          Clear
+        </a>
+        
+        {% if is_mock %}
+          <a href="?mock=false" class="h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 text-xs font-semibold text-amber-600 hover:bg-amber-500/20 transition-all flex items-center justify-center shadow-sm text-decoration-none" title="Currently showing simulated fallback data. Click to try loading live.">
+            <i data-lucide="info" class="size-3.5 mr-1.5 animate-pulse"></i>
+            <span>Mock Mode</span>
+          </a>
+        {% else %}
+          <a href="?mock=true" class="h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 text-xs font-semibold text-emerald-600 hover:bg-emerald-500/20 transition-all flex items-center justify-center shadow-sm text-decoration-none" title="Showing live records from database. Click to preview simulated dataset.">
+            <i data-lucide="check-circle-2" class="size-3.5 mr-1.5"></i>
+            <span>Live Query</span>
+          </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Table Card -->
+  <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b border-border bg-muted/40 font-semibold text-muted-foreground uppercase tracking-wider text-[9px]">
+            <th class="p-3 pl-4">Study ID</th>
+            <th class="p-3">Demographics</th>
+            <th class="p-3">Location</th>
+            <th class="p-3">High-Risk Category</th>
+            <th class="p-3">Enrollment Date</th>
+            <th class="p-3">Matched Set ID</th>
+            <th class="p-3 pr-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/60">
+          {% for c in controls %}
+            <tr class="hover:bg-muted/30 transition-colors">
+              <td class="p-3.5 pl-4">
+                <div class="font-mono font-bold text-foreground">{{ c.studyId }}</div>
+                <div class="text-[10px] text-muted-foreground font-mono mt-0.5">{{ c.nikshayId }}</div>
+              </td>
+              <td class="p-3.5">
+                <div class="font-semibold text-foreground">{{ c.age }} yrs / {{ c.sex }}</div>
+                <div class="text-[10px] text-muted-foreground font-medium mt-0.5">Control Participant</div>
+              </td>
+              <td class="p-3.5">
+                <div class="font-medium text-foreground">{{ c.district }}, {{ c.stateCode }}</div>
+                <div class="text-[10px] text-muted-foreground font-mono mt-0.5">{{ c.tuCode }}</div>
+              </td>
+              <td class="p-3.5">
+                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-bold uppercase bg-muted text-muted-foreground border border-border/40 font-mono">
+                  Track {{ c.matchHrg }}
+                </span>
+              </td>
+              <td class="p-3.5 text-muted-foreground font-medium">{{ c.enrolmentDate }}</td>
+              <td class="p-3.5 font-mono text-[10px] font-bold text-foreground/80">
+                {% if c.matchSetId %}
+                  <span class="text-success fw-bold">{{ c.matchSetId }}</span>
+                {% else %}
+                  <span class="italic text-muted-foreground/60 font-semibold">— Unmatched</span>
+                {% endif %}
+              </td>
+              <td class="p-3.5 pr-4 text-right">
+                <a
+                  href="{% url 'questions:participant_detail' c.studyId %}"
+                  class="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer active:scale-95 shadow-sm text-decoration-none"
+                >
+                  View Dossier
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="text-center py-8 text-muted-foreground">
+                <i data-lucide="clipboard-x" class="size-8 mx-auto text-muted-foreground/60 mb-2"></i>
+                No controls match the selected filters or exist in your scoped jurisdiction.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if controls.has_other_pages %}
+    <div class="flex items-center justify-between border-t border-border bg-card px-4 py-3 sm:px-6">
+      <div class="flex flex-1 justify-between sm:hidden">
+        {% if controls.has_previous %}
+          <a href="?page={{ controls.previous_page_number }}{% if filters.q %}&q={{ filters.q }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.hrg %}&hrg={{ filters.hrg }}{% endif %}{% if not is_mock %}&mock=false{% endif %}" class="relative inline-flex items-center rounded-md border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-all">Previous</a>
+        {% else %}
+          <span class="relative inline-flex items-center rounded-md border border-border bg-background/50 px-4 py-2 text-xs font-semibold text-muted-foreground/60 cursor-not-allowed">Previous</span>
+        {% endif %}
+        {% if controls.has_next %}
+          <a href="?page={{ controls.next_page_number }}{% if filters.q %}&q={{ filters.q }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.hrg %}&hrg={{ filters.hrg }}{% endif %}{% if not is_mock %}&mock=false{% endif %}" class="relative inline-flex items-center rounded-md border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-all">Next</a>
+        {% else %}
+          <span class="relative inline-flex items-center rounded-md border border-border bg-background/50 px-4 py-2 text-xs font-semibold text-muted-foreground/60 cursor-not-allowed">Next</span>
+        {% endif %}
+      </div>
+      <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+          <p class="text-xs text-muted-foreground">
+            Showing
+            <span class="font-bold text-foreground">{{ controls.start_index }}</span>
+            to
+            <span class="font-bold text-foreground">{{ controls.end_index }}</span>
+            of
+            <span class="font-bold text-foreground">{{ controls.paginator.count }}</span>
+            results
+          </p>
+        </div>
+        <div>
+          <nav class="isolate inline-flex -space-x-px rounded-md shadow-xs" aria-label="Pagination">
+            {% if controls.has_previous %}
+              <a href="?page={{ controls.previous_page_number }}{% if filters.q %}&q={{ filters.q }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.hrg %}&hrg={{ filters.hrg }}{% endif %}{% if not is_mock %}&mock=false{% endif %}" class="relative inline-flex items-center rounded-l-md px-2.5 py-2 text-muted-foreground hover:bg-muted border border-border transition-all"><i data-lucide="chevron-left" class="size-4"></i></a>
+            {% else %}
+              <span class="relative inline-flex items-center rounded-l-md px-2.5 py-2 text-muted-foreground/40 border border-border bg-muted/20 cursor-not-allowed"><i data-lucide="chevron-left" class="size-4"></i></span>
+            {% endif %}
+
+            {% for page in controls.paginator.page_range %}
+              {% if page == controls.number %}
+                <span aria-current="page" class="relative z-10 inline-flex items-center bg-primary px-3 py-2 text-xs font-bold text-primary-foreground focus:z-20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{{ page }}</span>
+              {% else %}
+                <a href="?page={{ page }}{% if filters.q %}&q={{ filters.q }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.hrg %}&hrg={{ filters.hrg }}{% endif %}{% if not is_mock %}&mock=false{% endif %}" class="relative inline-flex items-center px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted border border-border transition-all">{{ page }}</a>
+              {% endif %}
+            {% endfor %}
+
+            {% if controls.has_next %}
+              <a href="?page={{ controls.next_page_number }}{% if filters.q %}&q={{ filters.q }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.hrg %}&hrg={{ filters.hrg }}{% endif %}{% if not is_mock %}&mock=false{% endif %}" class="relative inline-flex items-center rounded-r-md px-2.5 py-2 text-muted-foreground hover:bg-muted border border-border transition-all"><i data-lucide="chevron-right" class="size-4"></i></a>
+            {% else %}
+              <span class="relative inline-flex items-center rounded-r-md px-2.5 py-2 text-muted-foreground/40 border border-border bg-muted/20 cursor-not-allowed"><i data-lucide="chevron-right" class="size-4"></i></span>
+            {% endif %}
+          </nav>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

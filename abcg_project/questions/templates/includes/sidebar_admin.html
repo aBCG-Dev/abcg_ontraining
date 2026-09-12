@@ -1,0 +1,174 @@
+<nav aria-label="Primary" class="flex h-full flex-col gap-1.5 overflow-y-auto px-3 py-4 bg-sidebar text-sidebar-foreground">
+  
+  <!-- OVERVIEW -->
+  <div class="px-2.5 mb-1 mt-2">
+    <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Overview</div>
+  </div>
+
+  <a
+    href="{% url 'questions:dashboard_home' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'dashboard' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="layout-dashboard" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Dashboard</span>
+  </a>
+
+  <!-- STUDY MANAGEMENT -->
+  <div class="px-2.5 mb-1 mt-4">
+    <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Study Management</div>
+  </div>
+
+  <a
+    href="{% url 'questions:classification' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'classification' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="flask-conical" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Classification</span>
+  </a>
+
+  <a
+    href="{% url 'questions:cases' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'cases' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="users" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Cases</span>
+  </a>
+
+  <a
+    href="{% url 'questions:controls' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'controls' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="user-square" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Controls</span>
+  </a>
+
+  <a
+    href="{% url 'questions:matching' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'matching' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="git-compare-arrows" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Matching</span>
+  </a>
+
+  {% if request.user.profile.role == 'Doctor' %}
+  <a
+    href="{% url 'questions:adjudication' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'adjudication' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="clipboard-check" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Adjudication</span>
+    {% if pending_adjudication_count %}
+    <span class="rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-destructive/15 text-red-600">{{ pending_adjudication_count }}</span>
+    {% endif %}
+  </a>
+  {% endif %}
+
+  <!-- MONITORING -->
+  <div class="px-2.5 mb-1 mt-4">
+    <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Monitoring</div>
+  </div>
+
+  <a
+    href="{% url 'questions:analytics' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'analytics' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="gauge" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Analytics</span>
+  </a>
+
+  <a
+    href="{% url 'questions:data_quality' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'data_quality' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="shield-alert" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Data Quality</span>
+    {% if dq_count %}
+    <span class="rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-destructive/15 text-red-600">{{ dq_count }}</span>
+    {% endif %}
+  </a>
+
+  <a
+    href="{% url 'questions:study_site' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'study_site' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="monitor-smartphone" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Study Site</span>
+  </a>
+
+  <a
+    href="{% url 'questions:sync_telemetry' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'sync_telemetry' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="radio-tower" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Sync Telemetry</span>
+  </a>
+
+  <!-- DATA -->
+  <div class="px-2.5 mb-1 mt-4">
+    <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Data</div>
+  </div>
+
+  <a
+    href="{% url 'questions:data_export' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'data_export' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="download" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Data Export</span>
+  </a>
+
+  <!-- ADMINISTRATION -->
+  {% if request.user|has_any_role:"Super Admin,Admin,Nodal Officer" %}
+  <div class="px-2.5 mb-1 mt-4">
+    <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Administration</div>
+  </div>
+
+  {% if request.user|has_any_role:"Super Admin,Admin" %}
+  <a
+    href="{% url 'questions:rbac_users' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'users' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="users" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">User Management</span>
+  </a>
+  {% endif %}
+
+  {% if request.user|has_role:"Super Admin" %}
+  <a
+    href="{% url 'questions:rbac_roles' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'roles' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="shield-check" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">RBAC Management</span>
+  </a>
+
+  <a
+    href="{% url 'questions:rbac_groups' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'groups' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="lock" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Groups Management</span>
+  </a>
+  {% endif %}
+
+  <a
+    href="{% url 'questions:rbac_audit_logs' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'audit_logs' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="scroll" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Audit Logs</span>
+  </a>
+
+  <a
+    href="{% url 'questions:settings' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'settings' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="settings" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">BCG Campaign Date Settings</span>
+  </a>
+  {% endif %}
+
+  <div class="mt-auto px-2 py-3 border-t border-sidebar-border text-center text-[10px] text-slate-400 font-semibold bg-sidebar/50 rounded-lg">
+    Logged in: @{{ request.user.username }}
+    <div class="text-slate-500 font-mono mt-0.5">({{ request.user.profile.role }})</div>
+  </div>
+</nav>

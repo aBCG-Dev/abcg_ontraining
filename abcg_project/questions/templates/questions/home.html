@@ -1,0 +1,472 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}
+{% if is_login_page %}Login | aBCG{% else %}Dashboard | aBCG{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if is_login_page %}
+<!-- Login Interface -->
+<div class="row justify-content-center align-items-center" style="min-height: calc(100vh - 200px);">
+    <div class="col-md-5">
+        <div class="card border shadow-lg p-4 bg-white" style="border-radius: var(--radius);">
+            <div class="text-center mb-4">
+                <span class="brand-mark mb-2"
+                    style="background-color: var(--brand); color: #fff; width: 50px; height: 50px; font-size: 1.5rem;">aB</span>
+                <h1 class="h4 fw-bold text-dark mt-2 mb-1">Adult BCG Vaccine Study</h1>
+                <p class="text-muted small">Please sign in to access the data collection workspace.</p>
+            </div>
+
+            {% if error_message %}
+            <div class="alert alert-danger d-flex align-items-center py-2" role="alert"
+                style="border-radius: var(--radius); font-size: 0.9rem;">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <div>{{ error_message }}</div>
+            </div>
+            {% endif %}
+
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="username" class="form-label fw-semibold text-muted small">USERNAME</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"
+                            style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);"><i
+                                class="bi bi-person-fill text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0" id="username" name="username"
+                            placeholder="Enter username" required
+                            style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line); font-size: 0.95rem;">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="password" class="form-label fw-semibold text-muted small">PASSWORD</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"
+                            style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);"><i
+                                class="bi bi-lock-fill text-muted"></i></span>
+                        <input type="password" class="form-control border-start-0" id="password" name="password"
+                            placeholder="Enter password" required
+                            style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line); font-size: 0.95rem;">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2.5 mb-3"
+                    style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 600;">
+                    Sign In to Dashboard <i class="bi bi-box-arrow-in-right ms-1"></i>
+                </button>
+
+                <div class="bg-light p-3 border rounded text-muted"
+                    style="border-radius: var(--radius); font-size: 0.82rem;">
+                    <i class="bi bi-info-circle-fill text-primary me-1"></i>
+                    <strong>Demo Credentials:</strong><br>
+                    • Username: <code class="text-dark">staff</code> &nbsp; Password: <code
+                        class="text-dark">password123</code> (Tiruvallur Site)<br>
+                    • Username: <code class="text-dark">admin</code> &nbsp; Password: <code
+                        class="text-dark">adminpassword</code> (Chennai Site)
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Form client-side validation logic
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
+
+{% else %}
+<!-- Main Dashboard -->
+
+<!-- 1. Header Section -->
+<section class="page-header flex-wrap align-items-center">
+    <div>
+        <h1 class="h2 fw-bold text-dark m-0">Welcome, {{ user.profile.full_name }}</h1>
+    </div>
+
+    <!-- Real-time Online/Offline Connectivity Status & Last Sync -->
+    <div class="d-flex flex-column align-items-md-end gap-2 mt-3 mt-md-0">
+        <div id="connection-status" class="d-flex align-items-center border px-3 py-2 rounded bg-white shadow-sm"
+            style="border-radius: var(--radius); border-color: var(--line);">
+            <span id="status-dot" class="d-inline-block bg-success rounded-circle me-2"
+                style="width: 10px; height: 10px; transition: background-color 0.3s ease;"></span>
+            <span id="status-text" class="small text-muted fw-semibold" style="font-size: 0.85rem;">Checking
+                connectivity...</span>
+        </div>
+        <div class="small text-muted fw-medium" style="font-size: 0.8rem;">
+            <i class="bi bi-clock-history me-1 text-primary"></i> Last Sync: <span
+                id="last-sync-time">Checking...</span>
+        </div>
+    </div>
+</section>
+
+<!-- 2. Geographic Context Scope -->
+<section class="site-summary mt-4" aria-label="Study Site Context">
+    <div>
+        <span class="summary-label">State</span>
+        <strong class="text-dark">{{ site.state }}</strong>
+    </div>
+    <div>
+        <span class="summary-label">District</span>
+        <strong class="text-dark">{{ site.district }}</strong>
+    </div>
+    <div>
+        <span class="summary-label">TB Unit</span>
+        <strong class="text-dark">{{ site.tb_unit }}</strong>
+    </div>
+</section>
+
+<!-- 3. Primary Workspace Routing Cards (Full-Width) -->
+<section class="mt-4">
+    <p class="eyebrow mb-3">Workflows</p>
+
+    <div class="row g-3">
+        {% for action in actions %}
+        <div class="col-lg-4 col-md-6">
+            <article class="workflow-card {{ action.card_class }} position-relative h-100 d-flex flex-column justify-content-between p-4">
+                <div class="d-flex gap-3">
+                    <div class="action-icon flex-shrink-0"
+                        style="width: 50px; height: 50px; background: #e8f1f8; color: var(--brand); border-radius: var(--radius); display: grid; place-items: center; font-size: 1.3rem;">
+                        <i class="bi {{ action.icon }}"></i>
+                    </div>
+                    <div>
+                        <h3 class="h6 fw-bold mb-1 text-dark">
+                            <a href="{% url action.url_name %}"
+                                class="text-decoration-none text-dark stretched-link">
+                                {{ action.title }}
+                            </a>
+                        </h3>
+                        <p class="text-muted small mb-0">{{ action.description }}</p>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end mt-4">
+                    <div class="action-button-circle">
+                        <i class="bi bi-arrow-right"></i>
+                    </div>
+                </div>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- 4. Daily Statistics Board -->
+<section class="mt-5 border-top pt-4">
+    <p class="eyebrow mb-2">Performance &amp; Metrics</p>
+    <h2 class="h5 fw-bold text-dark mb-4">Daily Statistics</h2>
+
+    <div class="row g-3">
+        <!-- Registered Today -->
+        <div class="col-md-4">
+            <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-registered"
+                style="border-radius: var(--radius); border-left: 5px solid var(--brand) !important;">
+                <div>
+                    <span class="summary-label mb-1">Registered Today</span>
+                    <strong class="text-dark fs-2 d-block" style="line-height: 1.1;">{{ stats.registered_today }}</strong>
+                    <small class="text-muted">New enrollments on this date</small>
+                </div>
+                <div class="fs-1 text-primary-emphasis opacity-25">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Cases -->
+        <div class="col-md-4">
+            <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-case"
+                style="border-radius: var(--radius); border-left: 5px solid var(--accent) !important;">
+                <div>
+                    <span class="summary-label mb-1">Total Cases</span>
+                    <strong class="text-dark fs-2 d-block" style="line-height: 1.1;">{{ stats.cases }}</strong>
+                    <small class="text-muted">Active tuberculosis positive cases</small>
+                </div>
+                <div class="fs-1 text-success-emphasis opacity-25">
+                    <i class="bi bi-heart-pulse-fill"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Controls -->
+        <div class="col-md-4">
+            <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-control"
+                style="border-radius: var(--radius); border-left: 5px solid #d97706 !important;">
+                <div>
+                    <span class="summary-label mb-1">Total Controls</span>
+                    <strong class="text-dark fs-2 d-block" style="line-height: 1.1;">{{ stats.controls }}</strong>
+                    <small class="text-muted">Healthy matched comparison subjects</small>
+                </div>
+                <div class="fs-1 text-warning-emphasis opacity-25">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<!-- Connection Status Real-Time Event Listener & Last Sync Loader -->
+<script>
+    function updateConnectionStatus() {
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+        if (!dot || !text) return;
+
+        if (navigator.onLine) {
+            dot.className = "d-inline-block bg-success rounded-circle me-2";
+            dot.style.boxShadow = "0 0 8px var(--accent)";
+            text.textContent = "Online Connection Active";
+        } else {
+            dot.className = "d-inline-block bg-danger rounded-circle me-2";
+            dot.style.boxShadow = "0 0 8px #dc3545";
+            text.textContent = "Offline Mode Enabled";
+        }
+    }
+
+    function loadLastSyncTime() {
+        const syncText = document.getElementById('last-sync-time');
+        if (!syncText) return;
+        let lastSync = localStorage.getItem('lastSyncTime');
+        if (!lastSync) {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - 15);
+            lastSync = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+            localStorage.setItem('lastSyncTime', lastSync);
+        }
+        syncText.textContent = lastSync;
+    }
+
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+
+    // Execute immediately on load
+    updateConnectionStatus();
+    loadLastSyncTime();
+</script>
+
+<!-- Classification Result Modals -->
+{% if show_classification_modal and classified_participant %}
+
+<!-- Case Modal -->
+<div class="modal fade" id="classificationCaseModal" tabindex="-1" aria-labelledby="classificationCaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius); border: 2px solid #dc3545;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger d-flex align-items-center" id="classificationCaseModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i> Case Classification
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 text-center">
+                <div class="fs-1 text-danger mb-2">
+                    <i class="bi bi-clipboard2-pulse-fill"></i>
+                </div>
+                <p class="fw-semibold text-dark mb-1">Participant Classified as <span class="badge bg-danger fs-6">CASE</span></p>
+                <p class="small text-muted mb-3">The participant has been enrolled as a <strong>Case</strong> in the Primary Database based on the investigation results.</p>
+                <div class="p-3 bg-danger-subtle text-danger rounded border border-danger-subtle mb-3 d-inline-block w-100"
+                    style="border-radius: var(--radius);">
+                    <span class="small d-block fw-bold text-uppercase mb-1">Study ID</span>
+                    <strong class="fs-5 text-dark d-block">{{ classified_participant.study_id }}</strong>
+                </div>
+                <div class="p-3 bg-light rounded border mb-2 text-start" style="border-radius: var(--radius);">
+                    <div class="small fw-bold text-uppercase text-muted mb-1"><i class="bi bi-info-circle me-1"></i> Classification Reason</div>
+                    <p class="mb-0 small text-dark">{{ classified_participant.classification_reason }}</p>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-danger w-100 py-2" data-bs-dismiss="modal"
+                    style="border-radius: var(--radius); font-weight: 600;">
+                    Close <i class="bi bi-x-circle ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Control Modal -->
+<div class="modal fade" id="classificationControlModal" tabindex="-1" aria-labelledby="classificationControlModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius); border: 2px solid #d97706;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold d-flex align-items-center" id="classificationControlModalLabel" style="color: #d97706;">
+                    <i class="bi bi-people-fill me-2 fs-4"></i> Control Classification
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 text-center">
+                <div class="fs-1 mb-2" style="color: #d97706;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <p class="fw-semibold text-dark mb-1">Participant Classified as <span class="badge fs-6" style="background-color: #d97706;">CONTROL</span></p>
+                <p class="small text-muted mb-3">The participant has been enrolled as a <strong>Control</strong> in the Primary Database. All investigation results indicate no active TB.</p>
+                <div class="p-3 rounded border mb-3 d-inline-block w-100" style="border-radius: var(--radius); background-color: #fef3c7; border-color: #fcd34d; color: #92400e;">
+                    <span class="small d-block fw-bold text-uppercase mb-1">Study ID</span>
+                    <strong class="fs-5 d-block" style="color: #78350f;">{{ classified_participant.study_id }}</strong>
+                </div>
+                <div class="p-3 bg-light rounded border mb-2 text-start" style="border-radius: var(--radius);">
+                    <div class="small fw-bold text-uppercase text-muted mb-1"><i class="bi bi-info-circle me-1"></i> Classification Reason</div>
+                    <p class="mb-0 small text-dark">{{ classified_participant.classification_reason }}</p>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn w-100 py-2" data-bs-dismiss="modal"
+                    style="border-radius: var(--radius); font-weight: 600; background-color: #d97706; color: #fff; border: none;">
+                    Close <i class="bi bi-x-circle ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TPT+BCG Modal -->
+<div class="modal fade" id="classificationTptBcgModal" tabindex="-1" aria-labelledby="classificationTptBcgModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius); border: 2px solid #7c3aed;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold d-flex align-items-center" id="classificationTptBcgModalLabel" style="color: #6b21a8;">
+                    <i class="bi bi-shield-check-fill me-2 fs-4"></i> BCG + TPT Classification
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 text-center">
+                <div class="fs-1 mb-2" style="color: #6b21a8;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <p class="fw-semibold text-dark mb-1">Participant Classified as <span class="badge fs-6" style="background: linear-gradient(135deg, #6b21a8, #4c1d95);">BCG + TPT</span></p>
+                <p class="small text-muted mb-3">The participant has been enrolled in the <strong>Exploratory Database</strong> as BCG + TPT cohort.</p>
+                <div class="p-3 rounded border mb-3 d-inline-block w-100" style="border-radius: var(--radius); background-color: #f3e8ff; border-color: #e9d5ff; color: #6b21a8;">
+                    <span class="small d-block fw-bold text-uppercase mb-1">Study ID</span>
+                    <strong class="fs-5 d-block" style="color: #5b1b8f;">{{ classified_participant.study_id }}</strong>
+                </div>
+                <div class="p-3 bg-light rounded border mb-2 text-start" style="border-radius: var(--radius);">
+                    <div class="small fw-bold text-uppercase text-muted mb-1"><i class="bi bi-info-circle me-1"></i> Classification Reason</div>
+                    <p class="mb-0 small text-dark">{{ classified_participant.classification_reason }}</p>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn w-100 py-2" data-bs-dismiss="modal"
+                    style="border-radius: var(--radius); font-weight: 600; background: linear-gradient(135deg, #6b21a8, #4c1d95); color: #fff; border: none;">
+                    Close <i class="bi bi-x-circle ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Excluded Modal -->
+<div class="modal fade" id="classificationExcludedModal" tabindex="-1" aria-labelledby="classificationExcludedModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius); border: 2px solid #6b7280;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-secondary d-flex align-items-center" id="classificationExcludedModalLabel">
+                    <i class="bi bi-slash-circle-fill me-2 fs-4"></i> Excluded from Study
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 text-center">
+                <div class="fs-1 text-secondary mb-2">
+                    <i class="bi bi-x-octagon-fill"></i>
+                </div>
+                <p class="fw-semibold text-dark mb-1">Participant <span class="badge bg-secondary fs-6">EXCLUDED</span></p>
+                <p class="small text-muted mb-3">Based on the available investigation results, the participant does not meet the eligibility criteria for enrollment in the study.</p>
+                <div class="p-3 bg-light rounded border mb-3 d-inline-block w-100" style="border-radius: var(--radius);">
+                    <span class="small d-block fw-bold text-uppercase mb-1 text-muted">Study ID</span>
+                    <strong class="fs-5 text-dark d-block">{{ classified_participant.study_id }}</strong>
+                </div>
+                <div class="p-3 bg-light rounded border mb-2 text-start" style="border-radius: var(--radius);">
+                    <div class="small fw-bold text-uppercase text-muted mb-1"><i class="bi bi-info-circle me-1"></i> Exclusion Reason</div>
+                    <p class="mb-0 small text-dark">{{ classified_participant.classification_reason }}</p>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-secondary w-100 py-2" data-bs-dismiss="modal"
+                    style="border-radius: var(--radius); font-weight: 600;">
+                    Close <i class="bi bi-x-circle ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending (Waiting for Results) Modal -->
+<div class="modal fade" id="classificationPendingModal" tabindex="-1" aria-labelledby="classificationPendingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius); border: 2px solid #0ea5e9;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold d-flex align-items-center" id="classificationPendingModalLabel" style="color: #0369a1;">
+                    <i class="bi bi-hourglass-split me-2 fs-4"></i> Waiting for Investigation Results
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 text-center">
+                <div class="fs-1 mb-2" style="color: #0ea5e9;">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <p class="fw-semibold text-dark mb-1">Status: <span class="badge fs-6" style="background-color: #0ea5e9;">PENDING</span></p>
+                <p class="small text-muted mb-3">One or more required investigation results are not yet available. Case/Control eligibility cannot be determined at this time. Please check again once all investigation results have been updated.</p>
+                <div class="p-3 rounded border mb-3 d-inline-block w-100" style="border-radius: var(--radius); background-color: #e0f2fe; border-color: #bae6fd; color: #0369a1;">
+                    <span class="small d-block fw-bold text-uppercase mb-1">Study ID</span>
+                    <strong class="fs-5 d-block" style="color: #0c4a6e;">{{ classified_participant.study_id }}</strong>
+                </div>
+                <div class="p-3 bg-light rounded border mb-2 text-start" style="border-radius: var(--radius);">
+                    <div class="small fw-bold text-uppercase text-muted mb-1"><i class="bi bi-info-circle me-1"></i> Pending Reason</div>
+                    <p class="mb-0 small text-dark">{{ classified_participant.classification_reason }}</p>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary flex-fill py-2" onclick="window.location.href='{% url 'questions:home' %}?classified_id={{ classified_participant.id }}'"
+                    style="border-radius: var(--radius); font-weight: 600;">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh Status
+                </button>
+                <button type="button" class="btn flex-fill py-2" data-bs-dismiss="modal"
+                    style="border-radius: var(--radius); font-weight: 600; background-color: #0ea5e9; color: #fff; border: none;">
+                    Close <i class="bi bi-x-circle ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-show classification modal script -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const classification = "{{ classified_participant.classification }}";
+        let modalId = "";
+        if (classification === "Case") {
+            modalId = "classificationCaseModal";
+        } else if (classification === "Control") {
+            modalId = "classificationControlModal";
+        } else if (classification === "TPT+BCG") {
+            modalId = "classificationTptBcgModal";
+        } else if (classification === "Excluded" || classification === "Not Eligible") {
+            modalId = "classificationExcludedModal";
+        } else {
+            modalId = "classificationPendingModal";
+        }
+        
+        if (modalId) {
+            const modalEl = document.getElementById(modalId);
+            if (modalEl) {
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        }
+    });
+</script>
+{% endif %}
+
+{% endif %}
+{% endblock %}

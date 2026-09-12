@@ -1,0 +1,106 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Sync Telemetry - aBCG Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col gap-1 border-b border-border/40 pb-4">
+    <h1 class="text-2xl font-bold tracking-tight">Sync Telemetry</h1>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- Active Sync Jobs (Left) -->
+    <div class="lg:col-span-2 space-y-4">
+      <h3 class="font-bold text-sm text-foreground">Integration Job Pipeline</h3>
+      
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% for job in jobs %}
+          <div class="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs text-foreground">{{ job.name }}</span>
+              <span class="inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide
+                {% if job.status == 'success' %}bg-success/15 text-success
+                {% elif job.status == 'warning' %}bg-warning/15 text-warning
+                {% else %}bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300{% endif %}">
+                {{ job.status }}
+              </span>
+            </div>
+            
+            <div class="space-y-1 text-[11px] leading-relaxed text-muted-foreground font-medium">
+              <div class="flex items-center justify-between border-b border-border/40 pb-1">
+                <span>Schedule</span>
+                <span class="text-foreground font-semibold">{{ job.schedule }}</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-border/40 pb-1">
+                <span>Last Action Run</span>
+                <span class="text-foreground font-semibold">{{ job.lastRun }}</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-border/40 pb-1">
+                <span>Duration</span>
+                <span class="text-foreground font-semibold">{{ job.duration }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Records Synchronised</span>
+                <span class="text-foreground font-bold">{{ job.records }}</span>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Sync Throughput Chart (Right) -->
+    <div class="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col min-h-[300px] h-[340px] w-full">
+      <div class="mb-4">
+        <h3 class="font-bold text-sm text-foreground">Hourly Sync Throughput</h3>
+        <p class="text-xs text-muted-foreground">Synchronized payloads volume past 24 hours</p>
+      </div>
+      <div class="flex-1 relative min-h-0">
+        <canvas id="throughputChart" class="w-full h-full"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Throughput Line Chart
+  const throughputData = JSON.parse('{{ throughput_json|escapejs }}');
+  const labels = throughputData.map(d => d.hour);
+  const payloads = throughputData.map(d => d.payloads);
+
+  new Chart(document.getElementById('throughputChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Payloads',
+        data: payloads,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.05)',
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          grid: { color: 'rgba(156, 163, 175, 0.08)' },
+          ticks: { color: '#64748b', font: { size: 10 } }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748b', font: { size: 9 } }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

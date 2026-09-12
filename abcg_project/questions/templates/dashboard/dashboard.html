@@ -1,0 +1,298 @@
+{% extends 'dashboard/base.html' %}
+{% load rbac_tags %}
+
+{% block title %}Project Control Center - aBCG Clinical System{% endblock %}
+
+{% block content %}
+<div class="space-y-6 pb-8">
+
+  <!-- Redesigned KPI Cards Grid -->
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Total Screened -->
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between min-h-24">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Screened</span>
+        <i data-lucide="scan-search" class="size-4.5 text-primary"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-foreground">{{ metrics.total_screened }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Total individuals screened</p>
+      </div>
+    </div>
+
+    <!-- Ineligible Participants -->
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between min-h-24">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ineligible Participants</span>
+        <i data-lucide="shield-alert" class="size-4.5 text-red-500"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-red-500">{{ metrics.ineligible_participants }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Screened but ineligible</p>
+      </div>
+    </div>
+
+    <!-- Eligible Participants -->
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between min-h-24">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Eligible Participants</span>
+        <i data-lucide="user-check" class="size-4.5 text-emerald-600"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-emerald-600">{{ metrics.eligible_participants }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Eligible for further study</p>
+      </div>
+    </div>
+
+    <!-- Confirmed TB Cases -->
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between min-h-24">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Confirmed TB Cases</span>
+        <i data-lucide="activity" class="size-4.5 text-red-600"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-red-600">{{ metrics.confirmed_cases }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Confirmed cases in study</p>
+      </div>
+    </div>
+
+    <!-- Total Enrolled -->
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between min-h-24">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Enrolled</span>
+        <i data-lucide="award" class="size-4.5 text-primary"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-primary">{{ metrics.total_enrolled }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Cases &amp; controls enrolled</p>
+      </div>
+    </div>
+
+    <!-- Total Cases -->
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between min-h-24">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Cases</span>
+        <i data-lucide="activity" class="size-4.5 text-indigo-600"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-indigo-600">{{ metrics.total_cases }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Confirmed cases in study</p>
+      </div>
+    </div>
+
+    <!-- Total Controls -->
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between min-h-24">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Controls</span>
+        <i data-lucide="users" class="size-4.5 text-violet-600"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-violet-600">{{ metrics.total_controls }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Matched study controls</p>
+      </div>
+    </div>
+
+    <!-- Total Matches -->
+    <div class="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col justify-between min-h-24 bg-muted/30">
+      <div class="flex items-center justify-between pb-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Matches</span>
+        <i data-lucide="check-check" class="size-4.5 text-emerald-600"></i>
+      </div>
+      <div>
+        <div class="text-2xl font-black text-emerald-600">{{ metrics.total_matches }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Fully matched cohorts (1:4)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary Operations Grid -->
+  <div class="grid grid-cols-1 gap-6">
+    <!-- Recruitment Trend Chart -->
+    <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div class="mb-4">
+        <h3 class="font-bold text-sm text-foreground">7-Day Registration Trend</h3>
+        <p class="text-[11px] text-muted-foreground">Daily screened participants and confirmed TB cases</p>
+      </div>
+      <div class="relative h-[280px]">
+        <canvas id="trendsChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- State Performance Section -->
+  <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+    <div class="mb-4">
+      <h3 class="font-bold text-sm text-foreground">State Performance</h3>
+      <p class="text-[11px] text-muted-foreground">Study metrics across participating states and regional sites</p>
+    </div>
+    <div class="overflow-x-auto rounded-lg border border-border/40">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b border-border/60 bg-muted/40 font-bold text-muted-foreground uppercase tracking-wider text-[9px]">
+            <th class="p-3 pl-4">State</th>
+            <th class="p-3 text-right">Districts</th>
+            <th class="p-3 text-right">TB Units</th>
+            <th class="p-3 text-right">Screened</th>
+            <th class="p-3 text-right">Eligible</th>
+            <th class="p-3 text-right">Enrolled</th>
+            <th class="p-3 text-right text-red-600">Cases</th>
+            <th class="p-3 pr-4 text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/40 font-medium text-foreground">
+          {% for s in states_performance %}
+          <tr class="hover:bg-muted/30 transition-colors">
+            <td class="p-3 pl-4">
+              <a href="?state={{ s.state }}" class="font-bold text-primary hover:underline text-decoration-none">
+                {{ s.state }}
+              </a>
+            </td>
+            <td class="p-3 text-right text-muted-foreground">{{ s.districts_count }}</td>
+            <td class="p-3 text-right text-muted-foreground">{{ s.tb_units_count }}</td>
+            <td class="p-3 text-right font-semibold">{{ s.screened_count }}</td>
+            <td class="p-3 text-right">{{ s.eligible_count }}</td>
+            <td class="p-3 text-right font-bold text-indigo-600">{{ s.enrolled_count }}</td>
+            <td class="p-3 text-right font-bold text-red-600">{{ s.cases_count }}</td>
+            <td class="p-3 pr-4 text-center">
+              <span class="inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider
+                {% if s.status == 'Active' %}bg-success/15 text-success-emphasis{% else %}bg-muted text-muted-foreground{% endif %}">
+                {{ s.status }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Data Quality Overview -->
+  <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+    <div class="mb-4 flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-sm text-foreground">Data Quality Overview</h3>
+        <p class="text-[11px] text-muted-foreground">Compliance, validation errors, and completeness metrics</p>
+      </div>
+      <a href="{% url 'questions:data_quality' %}" class="text-xs font-bold text-primary hover:underline">
+        Manage Quality &rarr;
+      </a>
+    </div>
+    
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
+      <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
+        <div class="text-[10px] font-bold uppercase text-muted-foreground">Complete Records</div>
+        <div class="text-xl font-black text-emerald-600 mt-1">{{ dq_overview.complete_records }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Synced with central server</p>
+      </div>
+      <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
+        <div class="text-[10px] font-bold uppercase text-muted-foreground">Incomplete Records</div>
+        <div class="text-xl font-black text-amber-600 mt-1">{{ dq_overview.incomplete_records }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Records pending synchronization</p>
+      </div>
+      <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
+        <div class="text-[10px] font-bold uppercase text-muted-foreground">Validation Errors</div>
+        <div class="text-xl font-black text-red-600 mt-1">{{ dq_overview.validation_errors }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Requires site corrections</p>
+      </div>
+      <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
+        <div class="text-[10px] font-bold uppercase text-muted-foreground">Verification Backlog</div>
+        <div class="text-xl font-black text-blue-600 mt-1">{{ dq_overview.pending_verification }}</div>
+        <p class="text-[9px] text-muted-foreground mt-0.5">Awaiting diagnostic verification</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Access Shortcuts -->
+  <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+    <div class="mb-4">
+      <h3 class="font-bold text-sm text-foreground">Quick Access Shortcuts</h3>
+      <p class="text-[11px] text-muted-foreground">Quick navigation to common administrative panels</p>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <a href="{% url 'questions:cases' %}" class="flex items-center gap-2.5 rounded-lg border border-border bg-muted/15 p-3 hover:bg-muted/40 transition-all text-decoration-none text-foreground font-semibold">
+        <i data-lucide="users" class="size-4 text-primary shrink-0"></i>
+        <span class="truncate">View Cases</span>
+      </a>
+      <a href="{% url 'questions:study_site' %}" class="flex items-center gap-2.5 rounded-lg border border-border bg-muted/15 p-3 hover:bg-muted/40 transition-all text-decoration-none text-foreground font-semibold">
+        <i data-lucide="monitor-smartphone" class="size-4 text-indigo-600 shrink-0"></i>
+        <span class="truncate">Study Site</span>
+      </a>
+      <a href="{% url 'questions:sync_telemetry' %}" class="flex items-center gap-2.5 rounded-lg border border-border bg-muted/15 p-3 hover:bg-muted/40 transition-all text-decoration-none text-foreground font-semibold">
+        <i data-lucide="radio-tower" class="size-4 text-emerald-600 shrink-0"></i>
+        <span class="truncate">Sync Monitor</span>
+      </a>
+      <a href="{% url 'questions:data_export' %}" class="flex items-center gap-2.5 rounded-lg border border-border bg-muted/15 p-3 hover:bg-muted/40 transition-all text-decoration-none text-foreground font-semibold">
+        <i data-lucide="download" class="size-4 text-violet-600 shrink-0"></i>
+        <span class="truncate">Export Data</span>
+      </a>
+      <a href="{% url 'questions:rbac_users' %}" class="flex items-center gap-2.5 rounded-lg border border-border bg-muted/15 p-3 hover:bg-muted/40 transition-all text-decoration-none text-foreground font-semibold">
+        <i data-lucide="users" class="size-4 text-primary shrink-0"></i>
+        <span class="truncate">Manage Users</span>
+      </a>
+      <a href="{% url 'questions:rbac_audit_logs' %}" class="flex items-center gap-2.5 rounded-lg border border-border bg-muted/15 p-3 hover:bg-muted/40 transition-all text-decoration-none text-foreground font-semibold">
+        <i data-lucide="scroll" class="size-4 text-slate-500 shrink-0"></i>
+        <span class="truncate">Audit Logs</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const trendData = JSON.parse('{{ trend_json|safe }}');
+    
+    const ctx = document.getElementById('trendsChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: trendData.labels,
+        datasets: [
+          {
+            label: 'Participant Registrations',
+            data: trendData.registrations,
+            borderColor: '#0f4c81',
+            backgroundColor: 'rgba(15, 76, 129, 0.04)',
+            borderWidth: 2.5,
+            tension: 0.35,
+            fill: true
+          },
+          {
+            label: 'Confirmed TB Cases',
+            data: trendData.cases,
+            borderColor: '#dc2626',
+            backgroundColor: 'rgba(220, 38, 38, 0.04)',
+            borderWidth: 2.5,
+            tension: 0.35,
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              font: { size: 10, weight: 'semibold' }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 9 } }
+          },
+          y: {
+            grid: { color: 'rgba(0, 0, 0, 0.04)' },
+            ticks: { font: { size: 9 } },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}
