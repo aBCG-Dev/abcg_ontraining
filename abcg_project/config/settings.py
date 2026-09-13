@@ -114,7 +114,26 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+if os.environ.get("VERCEL"):
+    import shutil
+    MEDIA_ROOT = Path("/tmp/media")
+    try:
+        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+        bundled_media = BASE_DIR / "media"
+        if bundled_media.exists():
+            for item in bundled_media.iterdir():
+                dest = MEDIA_ROOT / item.name
+                if not dest.exists():
+                    if item.is_dir():
+                        shutil.copytree(item, dest)
+                    else:
+                        shutil.copy2(item, dest)
+    except Exception:
+        pass
+    FILE_UPLOAD_TEMP_DIR = "/tmp"
+else:
+    MEDIA_ROOT = BASE_DIR / "media"
+
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB limit per photo
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
