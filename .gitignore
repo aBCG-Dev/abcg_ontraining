@@ -31,3 +31,5 @@ media/
 # Static files
 staticfiles/
 */staticfiles/
+staticfiles_build/
+*/staticfiles_build/
