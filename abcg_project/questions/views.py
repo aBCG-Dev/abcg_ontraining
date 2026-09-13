@@ -5096,11 +5096,29 @@ def data_export_view(request):
 @group_required("Super Admin", "Admin", "Nodal Officer", "Doctor")
 def settings_view(request):
     import json
+    import datetime
     from django.http import JsonResponse
     from django.shortcuts import redirect
     from django.contrib import messages
     from questions.context_processors import get_location_hierarchy
     from questions.models import StudySite
+
+    def to_iso_date_str(val):
+        if not val:
+            return ""
+        if hasattr(val, "strftime"):
+            return val.strftime("%Y-%m-%d")
+        return str(val).strip()[:10]
+
+    def to_date_obj(val):
+        if not val:
+            return None
+        if isinstance(val, (datetime.date, datetime.datetime)):
+            return val if isinstance(val, datetime.date) else val.date()
+        try:
+            return datetime.date.fromisoformat(str(val).strip()[:10])
+        except Exception:
+            return None
 
     hierarchy = get_location_hierarchy()
 
@@ -5133,9 +5151,9 @@ def settings_view(request):
                         dist = item.get("districtName", "Tiruvallur")
                         site = StudySite(tb_unit=code, state=st, district=dist)
                     if launch:
-                        site.launch_date = launch
+                        site.launch_date = to_date_obj(launch) or timezone.localdate()
                     if conclusion:
-                        site.concluding_date = conclusion
+                        site.concluding_date = to_date_obj(conclusion)
                     elif conclusion == "":
                         site.concluding_date = None
                     if active is not None:
@@ -5173,15 +5191,17 @@ def settings_view(request):
             for tu in tbus:
                 site_obj = db_sites.get(tu)
                 if not site_obj:
-                    l_date = "2025-01-01" if tu == "Tiruvallur TU" else "2024-06-01"
-                    c_date = "2025-03-31" if tu == "Tiruvallur TU" else "2024-08-31"
-                    site_obj = StudySite.objects.create(
+                    l_date = datetime.date(2025, 1, 1) if tu == "Tiruvallur TU" else datetime.date(2024, 6, 1)
+                    c_date = datetime.date(2025, 3, 31) if tu == "Tiruvallur TU" else datetime.date(2024, 8, 31)
+                    site_obj, _ = StudySite.objects.get_or_create(
                         tb_unit=tu,
-                        state=state,
-                        district=dist,
-                        launch_date=l_date,
-                        concluding_date=c_date,
-                        is_active=True
+                        defaults={
+                            "state": state,
+                            "district": dist,
+                            "launch_date": l_date,
+                            "concluding_date": c_date,
+                            "is_active": True
+                        }
                     )
                     db_sites[tu] = site_obj
 
@@ -5189,8 +5209,8 @@ def settings_view(request):
                     "siteCode": site_obj.tb_unit,
                     "districtName": site_obj.district,
                     "stateName": site_obj.state,
-                    "launch": site_obj.launch_date.strftime("%Y-%m-%d") if site_obj.launch_date else "",
-                    "conclusion": site_obj.concluding_date.strftime("%Y-%m-%d") if site_obj.concluding_date else "",
+                    "launch": to_iso_date_str(site_obj.launch_date),
+                    "conclusion": to_iso_date_str(site_obj.concluding_date),
                     "active": site_obj.is_active,
                     "campaignPeriod": site_obj.campaign_period_display
                 })

@@ -2191,4 +2191,22 @@ class StudySiteAndCampaignSettingsTestCase(TestCase):
         self.assertEqual(response.context["site"]["campaign_period"], "Sep 2025 - Nov 2025")
         self.assertContains(response, "Sep 2025 - Nov 2025")
 
+    def test_settings_view_with_string_dates(self):
+        """Verify settings_view renders without AttributeError when launch_date/concluding_date are strings or dates."""
+        from questions.models import StudySite
+        self.client.login(username=self.username, password=self.password)
+        StudySite.objects.create(
+            tb_unit="Salem TU",
+            district="Salem",
+            state="Tamil Nadu",
+            launch_date="2025-05-01",
+            concluding_date="2025-10-31",
+            is_active=True
+        )
+        response = self.client.get(reverse("questions:settings"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Salem TU")
+        self.assertContains(response, "2025-05-01")
+        self.assertContains(response, "2025-10-31")
+
 
