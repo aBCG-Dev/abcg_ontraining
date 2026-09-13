@@ -371,7 +371,7 @@
             <div>
                 <strong class="d-block mb-0.5 text-uppercase"
                     style="letter-spacing: 0.5px; font-size: 0.75rem; opacity: 0.85;">BCG Vaccination Campaign</strong>
-                <span class="fw-bold" style="font-size: 0.95rem;">Active Period: {{ site.campaign_period|default:"Jun 2024 - Aug 2024" }}</span>
+                <span class="fw-bold" style="font-size: 0.95rem;">Active Period: <span id="bannerCampaignPeriod">{{ site.campaign_period|default:"Jun 2024 - Aug 2024" }}</span></span>
             </div>
         </div>
     </div>
@@ -2524,14 +2524,22 @@
         // Dynamic Campaign District & Period auto-population inside the question label
         const dynDistrictSpan = document.getElementById("dynDistrict");
         const dynCampaignPeriodSpan = document.getElementById("dynCampaignPeriod");
+        const bannerCampaignPeriod = document.getElementById("bannerCampaignPeriod");
+        const siteCampaignPeriods = {{ site_campaign_periods_json|default:"{}"|safe }};
 
         function updateDynamicCampaignPeriodAndDistrict() {
             if (dynDistrictSpan && districtInput && districtInput.value) {
                 dynDistrictSpan.textContent = districtInput.value;
             }
-            if (dynCampaignPeriodSpan && tbUnitInput) {
-                const period = (tbUnitInput.value === "Tiruvallur TU") ? "Jan 2025 - Mar 2025" : "Jun 2024 - Aug 2024";
-                dynCampaignPeriodSpan.textContent = period;
+            if (tbUnitInput) {
+                const tbuVal = (tbUnitInput.value || "").trim();
+                const period = siteCampaignPeriods[tbuVal] || "{{ site.campaign_period|default:'Jun 2024 - Aug 2024' }}";
+                if (dynCampaignPeriodSpan) {
+                    dynCampaignPeriodSpan.textContent = period;
+                }
+                if (bannerCampaignPeriod) {
+                    bannerCampaignPeriod.textContent = period;
+                }
                 document.querySelectorAll(".dynCampaignPeriod").forEach(span => {
                     span.textContent = period;
                 });

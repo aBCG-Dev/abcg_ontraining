@@ -172,13 +172,64 @@ class CentralBackendSyncTests(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("receipt_id", response.data)
+        self.assertIn("checksums", response.data)
+        self.assertIn("bcg_scar_file", response.data["checksums"])
+        self.assertIn("cxr_record_file", response.data["checksums"])
+        
         p.refresh_from_db()
-        print(f"DEBUG: bcg_scar_file.name={p.bcg_scar_file.name}")
-        print(f"DEBUG: bcg_record_file.name={p.bcg_record_file.name}")
-        print(f"DEBUG: cxr_record_file.name={p.cxr_record_file.name}")
         self.assertTrue(p.bcg_scar_file.name.startswith("bcg_scar_records/scar"))
         self.assertTrue(p.bcg_record_file.name.startswith("bcg_records/card"))
         self.assertTrue(p.cxr_record_file.name.startswith("cxr_records/cxr"))
+        self.assertTrue(bool(p.sync_receipt_id))
+        self.assertIsNotNone(p.sync_verified_at)
+        self.assertIn("bcg_scar_file", p.media_checksums)
+
+    def test_media_sync_ineligible_and_tpt_cohorts(self):
+        # Test Ineligible individual photo upload
+        inel = IneligibleIndividual.objects.create(
+            study_id="INEL-MEDIA-001",
+            full_name="Ineligible Media Tester",
+            age=35,
+            date_enroll=datetime.date.today()
+        )
+        scar_file = SimpleUploadedFile("inel_scar.jpg", b"ineligible_scar_bytes", content_type="image/jpeg")
+        
+        resp_inel = self.client.post(
+            reverse("api:media_sync"),
+            data={"study_id": "INEL-MEDIA-001", "bcg_scar_file": scar_file},
+            format="multipart"
+        )
+        self.assertEqual(resp_inel.status_code, status.HTTP_200_OK)
+        self.assertIn("receipt_id", resp_inel.data)
+        self.assertEqual(resp_inel.data["cohort"], "IneligibleIndividual")
+        
+        inel.refresh_from_db()
+        self.assertTrue(inel.bcg_scar_file.name.startswith("bcg_scar_records/inel_scar"))
+        self.assertTrue(bool(inel.sync_receipt_id))
+        self.assertIn("inel_scar.jpg", inel.media_checksums)
+
+        # Test TPT individual CXR upload
+        tpt = TptIndividual.objects.create(
+            study_id="TPT-MEDIA-002",
+            full_name="TPT Media Tester",
+            age=50,
+            gender="Male",
+            date_enroll=datetime.date.today()
+        )
+        cxr_file = SimpleUploadedFile("tpt_cxr.jpg", b"tpt_cxr_bytes", content_type="image/jpeg")
+        resp_tpt = self.client.post(
+            reverse("api:media_sync"),
+            data={"study_id": "TPT-MEDIA-002", "cxr_record_file": cxr_file},
+            format="multipart"
+        )
+        self.assertEqual(resp_tpt.status_code, status.HTTP_200_OK)
+        self.assertIn("receipt_id", resp_tpt.data)
+        self.assertEqual(resp_tpt.data["cohort"], "TptIndividual")
+        
+        tpt.refresh_from_db()
+        self.assertTrue(tpt.cxr_record_file.name.startswith("cxr_records/tpt_cxr"))
+        self.assertTrue(bool(tpt.sync_receipt_id))
 
     def test_questions_list_returns_dynamic_questions(self):
         response = self.client.get(reverse("api:questions_list"))

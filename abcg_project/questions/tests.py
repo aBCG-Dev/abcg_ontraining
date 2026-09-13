@@ -1910,3 +1910,285 @@ class SearchReconciliationTests(TestCase):
         self.participant.refresh_from_db()
         self.assertEqual(self.participant.classification, "Case")
         self.assertEqual(self.participant.classification_reason, "Confirmed microbiologically")
+
+
+class SingleRecordSyncAndSerializationTestCase(TestCase):
+    def setUp(self):
+        from questions.models import Participant, TptIndividual, IneligibleIndividual
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.username = "syncstaff"
+        self.password = "password123"
+        self.user = User.objects.create_user(
+            username=self.username,
+            email="syncstaff@example.com",
+            password=self.password
+        )
+        
+        # Create test participant with scar
+        self.participant = Participant.objects.create(
+            first_name="Anita",
+            last_name="Roy",
+            full_name="Anita Roy",
+            study_id="TEST-SYNC-001",
+            age=32,
+            gender="Female",
+            date_enroll=timezone.localdate(),
+            state="Tamil Nadu",
+            district="Tiruvallur",
+            tb_unit="Tiruvallur TU",
+            classification="Pending",
+            created_by=self.user,
+            bcg_scar="Yes",
+            bcg_scar_file=SimpleUploadedFile("test_scar.jpg", b"fake_scar_data", content_type="image/jpeg")
+        )
+        
+        self.tpt = TptIndividual.objects.create(
+            first_name="Sunil",
+            last_name="Kumar",
+            full_name="Sunil Kumar",
+            study_id="TEST-TPT-001",
+            age=28,
+            gender="Male",
+            date_enroll=timezone.localdate(),
+            state="Tamil Nadu",
+            district="Tiruvallur",
+            tb_unit="Tiruvallur TU",
+            created_by=self.user,
+            tpt_undergone="Yes"
+        )
+        
+        self.ineligible = IneligibleIndividual.objects.create(
+            first_name="Raju",
+            last_name="Varma",
+            full_name="Raju Varma",
+            study_id="TEST-INEL-001",
+            age=40,
+            gender="Male",
+            date_enroll=timezone.localdate(),
+            state="Tamil Nadu",
+            district="Tiruvallur",
+            tb_unit="Tiruvallur TU",
+            created_by=self.user,
+            classification_reason="Age criteria not met"
+        )
+
+    def tearDown(self):
+        if self.participant.bcg_scar_file:
+            try:
+                self.participant.bcg_scar_file.delete(save=False)
+            except Exception:
+                pass
+
+    def test_serialization_helpers(self):
+        from questions.views import serialize_participant_record, serialize_tpt_record, serialize_ineligible_record
+        
+        p_data = serialize_participant_record(self.participant)
+        self.assertEqual(p_data["study_id"], "TEST-SYNC-001")
+        self.assertEqual(p_data["bcg_scar"], "Yes")
+        self.assertIn("questionnaire_answers", p_data)
+        
+        t_data = serialize_tpt_record(self.tpt)
+        self.assertEqual(t_data["study_id"], "TEST-TPT-001")
+        self.assertEqual(t_data["tpt_undergone"], "Yes")
+        
+        i_data = serialize_ineligible_record(self.ineligible)
+        self.assertEqual(i_data["study_id"], "TEST-INEL-001")
+        self.assertEqual(i_data["classification_reason"], "Age criteria not met")
+
+    def test_sync_single_record_api_unauthenticated(self):
+        url = reverse("questions:sync_single_record_api", kwargs={"study_id": self.participant.study_id})
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 401)
+
+    def test_sync_single_record_api_not_found(self):
+        self.client.login(username=self.username, password=self.password)
+        url = reverse("questions:sync_single_record_api", kwargs={"study_id": "NON-EXISTENT-ID"})
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_sync_single_record_success_with_media(self):
+        from unittest.mock import patch, MagicMock
+        from questions.views import sync_single_record
+        
+        with patch("requests.post") as mock_post:
+            # 1. Login mock
+            login_mock = MagicMock()
+            login_mock.status_code = 200
+            login_mock.json.return_value = {"token": "mock-token-xyz"}
+            
+            # 2. Sync mock
+            sync_mock = MagicMock()
+            sync_mock.status_code = 200
+            sync_mock.json.return_value = {
+                "status": "success",
+                "receipts": {
+                    "TEST-SYNC-001": {
+                        "receipt_id": "REC-TEST-SYNC-001-9999",
+                        "verified_at": "2026-09-13T12:00:00Z"
+                    }
+                }
+            }
+            
+            # 3. Media mock
+            media_mock = MagicMock()
+            media_mock.status_code = 200
+            media_mock.json.return_value = {
+                "status": "success",
+                "receipt_id": "REC-TEST-SYNC-001-MEDIA-1234",
+                "checksums": {"bcg_scar_file": "fakehash123"}
+            }
+            
+            mock_post.side_effect = [login_mock, sync_mock, media_mock]
+            
+            result = sync_single_record(self.participant)
+            self.assertTrue(result["success"])
+            self.assertEqual(result["receipt_id"], "REC-TEST-SYNC-001-MEDIA-1234")
+            
+            self.participant.refresh_from_db()
+            self.assertTrue(self.participant.synced)
+            self.assertEqual(self.participant.sync_receipt_id, "REC-TEST-SYNC-001-MEDIA-1234")
+            self.assertIsNotNone(self.participant.sync_verified_at)
+
+    def test_sync_single_record_api_endpoint(self):
+        from unittest.mock import patch
+        self.client.login(username=self.username, password=self.password)
+        
+        with patch("questions.views.sync_single_record") as mock_sync:
+            mock_sync.return_value = {
+                "success": True,
+                "receipt_id": "REC-TEST-SYNC-001-API",
+                "verified_at": "2026-09-13T12:00:00Z",
+                "has_media": True
+            }
+            
+            url = reverse("questions:sync_single_record_api", kwargs={"study_id": self.participant.study_id})
+            response = self.client.post(url)
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data["status"], "success")
+            self.assertEqual(data["receipt_id"], "REC-TEST-SYNC-001-API")
+
+
+class StudySiteAndCampaignSettingsTestCase(TestCase):
+    def setUp(self):
+        from questions.models import UserProfile, StudySite, StudyDevice
+        self.username = "adminuser"
+        self.password = "secretpass123"
+        self.user = User.objects.create_user(
+            username=self.username,
+            email="admin@example.com",
+            password=self.password
+        )
+        profile = self.user.profile
+        profile.role = "Super Admin"
+        profile.save()
+
+    def test_login_page_has_no_demo_credentials(self):
+        response = self.client.get(reverse("questions:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Demo Credentials")
+        self.assertNotContains(response, "password123")
+
+    def test_study_site_and_helper(self):
+        from questions.models import StudySite, get_campaign_period_for_site
+        site = StudySite.objects.create(
+            tb_unit="Custom Site TBU",
+            district="Custom District",
+            state="Tamil Nadu",
+            launch_date="2025-04-01",
+            concluding_date="2025-07-31",
+            is_active=True
+        )
+        self.assertEqual(site.campaign_period_display, "Apr 2025 - Jul 2025")
+        
+        period = get_campaign_period_for_site(tb_unit="Custom Site TBU")
+        self.assertEqual(period, "Apr 2025 - Jul 2025")
+
+    def test_settings_view_post_updates_dates_in_db(self):
+        import json
+        from questions.models import StudySite
+        self.client.login(username=self.username, password=self.password)
+        
+        site = StudySite.objects.create(
+            tb_unit="Madurai TU1",
+            district="Madurai",
+            state="Tamil Nadu",
+            launch_date="2024-01-01",
+            concluding_date="2024-06-30",
+            is_active=True
+        )
+        
+        payload = {
+            "sites": [{
+                "siteCode": "Madurai TU1",
+                "launch": "2025-02-01",
+                "conclusion": "2025-05-31",
+                "active": True
+            }]
+        }
+        
+        url = reverse("questions:settings")
+        response = self.client.post(
+            url,
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json().get("status"), "success")
+        
+        site.refresh_from_db()
+        self.assertEqual(str(site.launch_date), "2025-02-01")
+        self.assertEqual(str(site.concluding_date), "2025-05-31")
+        self.assertEqual(site.campaign_period_display, "Feb 2025 - May 2025")
+
+    def test_study_site_view_post_add_and_delete(self):
+        from questions.models import StudySite, StudyDevice
+        self.client.login(username=self.username, password=self.password)
+        url = reverse("questions:study_site")
+        
+        # Add site
+        response = self.client.post(url, {
+            "action": "add_site",
+            "state": "Tamil Nadu",
+            "district": "Coimbatore",
+            "tb_unit": "Coimbatore North TU"
+        })
+        self.assertRedirects(response, "/dashboard/study-site/?tab=sites")
+        site = StudySite.objects.filter(tb_unit="Coimbatore North TU").first()
+        self.assertIsNotNone(site)
+        self.assertTrue(site.is_active)
+        
+        # Delete site (deactivates)
+        response = self.client.post(url, {
+            "action": "delete_site",
+            "tu_code": "Coimbatore North TU"
+        })
+        self.assertRedirects(response, "/dashboard/study-site/?tab=sites")
+        site.refresh_from_db()
+        self.assertFalse(site.is_active)
+
+    def test_registration_view_dynamic_campaign_period(self):
+        from questions.models import StudySite
+        self.client.login(username=self.username, password=self.password)
+        profile = self.user.profile
+        profile.tb_unit = "Erode TU"
+        profile.district = "Erode"
+        profile.state = "Tamil Nadu"
+        profile.save()
+        
+        StudySite.objects.create(
+            tb_unit="Erode TU",
+            district="Erode",
+            state="Tamil Nadu",
+            launch_date="2025-09-01",
+            concluding_date="2025-11-30",
+            is_active=True
+        )
+        
+        response = self.client.get(reverse("questions:registration"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["site"]["campaign_period"], "Sep 2025 - Nov 2025")
+        self.assertContains(response, "Sep 2025 - Nov 2025")
+
+

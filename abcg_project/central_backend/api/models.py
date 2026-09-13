@@ -61,13 +61,20 @@ from django.dispatch import receiver
 @receiver(post_save, sender=User)
 def create_central_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance, full_name=instance.get_full_name() or instance.username)
+        try:
+            UserProfile.objects.create(user=instance, full_name=instance.get_full_name() or instance.username)
+        except Exception:
+            pass
 
 @receiver(post_save, sender=User)
 def save_central_profile(sender, instance, **kwargs):
-    if not hasattr(instance, "central_profile"):
-        UserProfile.objects.create(user=instance, full_name=instance.get_full_name() or instance.username)
-    instance.central_profile.save()
+    try:
+        if not hasattr(instance, "central_profile"):
+            UserProfile.objects.create(user=instance, full_name=instance.get_full_name() or instance.username)
+        else:
+            instance.central_profile.save()
+    except Exception:
+        pass
 
 
 class Participant(models.Model):
@@ -200,7 +207,10 @@ class Participant(models.Model):
     classification = models.CharField(max_length=25, default="Pending")
     classification_reason = models.TextField(blank=True, default="")
     
-    # Telemetry
+    # Telemetry & Sync Receipt
+    sync_receipt_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    sync_verified_at = models.DateTimeField(null=True, blank=True)
+    media_checksums = models.TextField(blank=True, default="{}")
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     client_app_version = models.CharField(max_length=50, default="1.0.0")
@@ -257,6 +267,15 @@ class TptIndividual(models.Model):
     tpt_duration_months = models.IntegerField(blank=True, null=True)
     tpt_regimen = models.CharField(max_length=250, blank=True, null=True)
     tpt_risk_factor = models.CharField(max_length=250, blank=True, null=True)
+    # Media & Verification Attachments
+    bcg_scar = models.CharField(max_length=20, blank=True, null=True)
+    bcg_has_record = models.CharField(max_length=20, blank=True, null=True)
+    bcg_scar_file = models.FileField(upload_to="bcg_scar_records/", blank=True, null=True)
+    bcg_record_file = models.FileField(upload_to="bcg_records/", blank=True, null=True)
+    cxr_record_file = models.FileField(upload_to="cxr_records/", blank=True, null=True)
+    sync_receipt_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    sync_verified_at = models.DateTimeField(null=True, blank=True)
+    media_checksums = models.TextField(blank=True, default="{}")
     
     classification = models.CharField(max_length=25, default="TPT+BCG")
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
@@ -304,6 +323,16 @@ class IneligibleIndividual(models.Model):
     taluka_block = models.CharField(max_length=150, blank=True, null=True)
     landmark = models.CharField(max_length=250, blank=True, null=True)
     
+    # Media & Verification Attachments
+    bcg_scar = models.CharField(max_length=20, blank=True, null=True)
+    bcg_has_record = models.CharField(max_length=20, blank=True, null=True)
+    bcg_scar_file = models.FileField(upload_to="bcg_scar_records/", blank=True, null=True)
+    bcg_record_file = models.FileField(upload_to="bcg_records/", blank=True, null=True)
+    cxr_record_file = models.FileField(upload_to="cxr_records/", blank=True, null=True)
+    sync_receipt_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    sync_verified_at = models.DateTimeField(null=True, blank=True)
+    media_checksums = models.TextField(blank=True, default="{}")
+
     classification = models.CharField(max_length=25, default="Not Eligible")
     classification_reason = models.TextField(blank=True, default="")
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)

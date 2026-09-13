@@ -12,6 +12,7 @@ urlpatterns = [
     path("search/", views.search, name="search"),
     path("registration/verify-beneficiary/", views.verify_beneficiary, name="verify_beneficiary"),
     path("pending-sync/", views.pending_sync, name="pending_sync"),
+    path("api/sync/single/<str:study_id>/", views.sync_single_record_api, name="sync_single_record_api"),
     path("reconcile/<int:pk>/", views.reconcile, name="reconcile"),
     path("api/nikshay/<str:nikshay_id>/", views.nikshay_api, name="nikshay_api"),
     path("api/reconcile/match/", views.reconcile_match_api, name="reconcile_match_api"),

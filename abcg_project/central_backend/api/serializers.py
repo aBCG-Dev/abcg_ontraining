@@ -10,13 +10,13 @@ class ParticipantSerializer(serializers.ModelSerializer):
 class TptIndividualSerializer(serializers.ModelSerializer):
     class Meta:
         model = TptIndividual
-        exclude = ('uploaded_by', 'uploaded_at')
+        exclude = ('uploaded_by', 'uploaded_at', 'bcg_scar_file', 'bcg_record_file', 'cxr_record_file')
 
 
 class IneligibleIndividualSerializer(serializers.ModelSerializer):
     class Meta:
         model = IneligibleIndividual
-        exclude = ('uploaded_by', 'uploaded_at')
+        exclude = ('uploaded_by', 'uploaded_at', 'bcg_scar_file', 'bcg_record_file', 'cxr_record_file')
 
 
 class DeviceSyncLogSerializer(serializers.ModelSerializer):

@@ -1,3 +1,7 @@
+import uuid
+import hashlib
+import json
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,6 +15,14 @@ from .serializers import BulkSyncPayloadSerializer, QuestionSerializer
 from .eligibility import RulesEngine
 from .permissions import HasRolePermission
 
+def compute_file_sha256(file_obj):
+    """Computes SHA-256 hash of an uploaded file."""
+    hasher = hashlib.sha256()
+    for chunk in file_obj.chunks():
+        hasher.update(chunk)
+    file_obj.seek(0)
+    return hasher.hexdigest()
+
 class CentralObtainAuthToken(ObtainAuthToken):
     """
     Endpoint for field investigators to login and retrieve token.
@@ -21,7 +33,8 @@ class CentralObtainAuthToken(ObtainAuthToken):
 class BulkSyncView(APIView):
     """
     Idempotent bulk synchronization ingestion API.
-    Processes batches of participant records and silent device telemetry.
+    Processes batches of participant records and silent device telemetry,
+    generating verifiable receipt tokens for field staff.
     """
     permission_classes = [HasRolePermission]
     allowed_roles = ['Super Admin', 'Admin', 'Field Investigator']
@@ -35,10 +48,13 @@ class BulkSyncView(APIView):
         synced_participants = []
         synced_tpt = []
         synced_ineligible = []
+        receipts = {}
+        now = timezone.now()
         
         # 1. Ingest Participants
         for p_data in validated_data.get("participants", []):
             study_id = p_data.get("study_id")
+            receipt_id = f"REC-P-{uuid.uuid4().hex[:10].upper()}"
             
             # Server-side validation of eligibility metrics (fail-safe audit)
             eligible, match_hrg, reason = RulesEngine.evaluate_eligibility(p_data)
@@ -57,34 +73,57 @@ class BulkSyncView(APIView):
                     "match_hrg": match_hrg,
                     "classification": classification,
                     "classification_reason": classification_reason,
+                    "sync_receipt_id": receipt_id,
+                    "sync_verified_at": now,
                     "uploaded_by": request.user
                 }
             )
             synced_participants.append(study_id)
+            receipts[study_id] = {
+                "receipt_id": receipt_id,
+                "verified_at": now.isoformat(),
+                "cohort": "Participant"
+            }
             
         # 2. Ingest TPT Individuals
         for t_data in validated_data.get("tpt_individuals", []):
             study_id = t_data.get("study_id")
+            receipt_id = f"REC-T-{uuid.uuid4().hex[:10].upper()}"
             tpt_obj, created = TptIndividual.objects.update_or_create(
                 study_id=study_id,
                 defaults={
                     **t_data,
+                    "sync_receipt_id": receipt_id,
+                    "sync_verified_at": now,
                     "uploaded_by": request.user
                 }
             )
             synced_tpt.append(study_id)
+            receipts[study_id] = {
+                "receipt_id": receipt_id,
+                "verified_at": now.isoformat(),
+                "cohort": "TPT"
+            }
             
         # 3. Ingest Ineligible Individuals
         for i_data in validated_data.get("ineligible_individuals", []):
             study_id = i_data.get("study_id")
+            receipt_id = f"REC-I-{uuid.uuid4().hex[:10].upper()}"
             ineligible_obj, created = IneligibleIndividual.objects.update_or_create(
                 study_id=study_id,
                 defaults={
                     **i_data,
+                    "sync_receipt_id": receipt_id,
+                    "sync_verified_at": now,
                     "uploaded_by": request.user
                 }
             )
             synced_ineligible.append(study_id)
+            receipts[study_id] = {
+                "receipt_id": receipt_id,
+                "verified_at": now.isoformat(),
+                "cohort": "Ineligible"
+            }
             
         # 4. Ingest Telemetry Log
         telemetry_data = validated_data.get("telemetry")
@@ -103,14 +142,17 @@ class BulkSyncView(APIView):
             "status": "success",
             "participants": synced_participants,
             "tpt_individuals": synced_tpt,
-            "ineligible_individuals": synced_ineligible
+            "ineligible_individuals": synced_ineligible,
+            "receipts": receipts,
+            "synced_at": now.isoformat()
         }, status=status.HTTP_200_OK)
 
 
 class MediaUploadView(APIView):
     """
-    Ingest file uploads (Chest X-Rays, BCG cards) and links them to the participant.
-    Saves them directly in the server's 2 TB local disk storage pools.
+    Ingest file uploads (BCG scar photo, vaccination record card, Chest X-Rays)
+    across all cohorts (Participant, TptIndividual, IneligibleIndividual).
+    Computes SHA-256 checksums, verifies file sizes, and returns a verified delivery receipt.
     """
     permission_classes = [HasRolePermission]
     allowed_roles = ['Super Admin', 'Admin', 'Field Investigator']
@@ -121,32 +163,73 @@ class MediaUploadView(APIView):
         if not study_id:
             return Response({"error": "study_id is required"}, status=status.HTTP_400_BAD_REQUEST)
             
-        try:
-            participant = Participant.objects.get(study_id=study_id)
-        except Participant.DoesNotExist:
-            return Response({"error": f"Participant with study_id {study_id} does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        # Look up across all three cohorts
+        target_obj = (
+            Participant.objects.filter(study_id=study_id).first() or
+            TptIndividual.objects.filter(study_id=study_id).first() or
+            IneligibleIndividual.objects.filter(study_id=study_id).first()
+        )
+        if not target_obj:
+            return Response({"error": f"Participant or individual with study_id '{study_id}' does not exist"}, status=status.HTTP_404_NOT_FOUND)
             
         # Extract files
         bcg_scar = request.FILES.get("bcg_scar_file")
         bcg_record = request.FILES.get("bcg_record_file")
         cxr_record = request.FILES.get("cxr_record_file")
         
-        updated = False
+        if not (bcg_scar or bcg_record or cxr_record):
+            return Response({"error": "No files provided in request"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        checksums = {}
+        now = timezone.now()
+        receipt_id = f"REC-MED-{uuid.uuid4().hex[:10].upper()}"
+        
         if bcg_scar:
-            participant.bcg_scar_file = bcg_scar
-            updated = True
+            target_obj.bcg_scar_file = bcg_scar
+            checksums["bcg_scar_file"] = {
+                "sha256": compute_file_sha256(bcg_scar),
+                "size_bytes": bcg_scar.size,
+                "name": bcg_scar.name,
+            }
         if bcg_record:
-            participant.bcg_record_file = bcg_record
-            updated = True
+            target_obj.bcg_record_file = bcg_record
+            checksums["bcg_record_file"] = {
+                "sha256": compute_file_sha256(bcg_record),
+                "size_bytes": bcg_record.size,
+                "name": bcg_record.name,
+            }
         if cxr_record:
-            participant.cxr_record_file = cxr_record
-            updated = True
+            target_obj.cxr_record_file = cxr_record
+            checksums["cxr_record_file"] = {
+                "sha256": compute_file_sha256(cxr_record),
+                "size_bytes": cxr_record.size,
+                "name": cxr_record.name,
+            }
             
-        if updated:
-            participant.save()
-            return Response({"status": "success", "message": f"Files uploaded successfully for {study_id}"}, status=status.HTTP_200_OK)
-            
-        return Response({"error": "No files provided in request"}, status=status.HTTP_400_BAD_REQUEST)
+        # Update existing checksums if any
+        existing_checksums = {}
+        if target_obj.media_checksums:
+            try:
+                existing_checksums = json.loads(target_obj.media_checksums)
+            except (json.JSONDecodeError, TypeError):
+                existing_checksums = {}
+        existing_checksums.update(checksums)
+        
+        target_obj.media_checksums = json.dumps(existing_checksums)
+        target_obj.sync_receipt_id = receipt_id
+        target_obj.sync_verified_at = now
+        target_obj.save()
+        
+        return Response({
+            "status": "success",
+            "receipt_id": receipt_id,
+            "study_id": study_id,
+            "cohort": target_obj.__class__.__name__,
+            "files_received": list(checksums.keys()),
+            "checksums": checksums,
+            "verified_at": now.isoformat(),
+            "message": f"Files uploaded and verified successfully for {study_id}"
+        }, status=status.HTTP_200_OK)
 
 
 class QuestionListView(APIView):

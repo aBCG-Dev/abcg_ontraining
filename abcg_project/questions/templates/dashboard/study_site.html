@@ -4,9 +4,81 @@
 
 {% block content %}
 <div class="space-y-6">
-  <!-- Header -->
-  <div class="flex flex-col gap-1 border-b border-border/40 pb-4">
-    <h1 class="text-2xl font-bold tracking-tight">Study Site & Device Management</h1>
+  <!-- Header & Live Real-Time Banner -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/40 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">Study Site & Device Management</h1>
+      <p class="text-xs text-muted-foreground mt-0.5">Real-time monitoring, clinical tablet fleet telemetry, and active trial jurisdictions</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-xs">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span>Real-Time Fleet Live</span>
+      </div>
+      <button onclick="pollRealtimeMetrics(true)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-all cursor-pointer shadow-xs" title="Refresh real-time data">
+        <i data-lucide="refresh-cw" class="size-3.5 text-muted-foreground" id="globalRefreshIcon"></i>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Real-Time KPI Metric Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-card p-4 rounded-xl border border-border shadow-xs flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Active Study Sites</p>
+        <p class="text-2xl font-extrabold text-foreground mt-1" id="metricActiveSites">{{ metric_active_sites }}</p>
+        <p class="text-[11px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+          <i data-lucide="check-circle-2" class="size-3"></i> Real Trial Sites
+        </p>
+      </div>
+      <div class="size-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+        <i data-lucide="radio-tower" class="size-5"></i>
+      </div>
+    </div>
+
+    <div class="bg-card p-4 rounded-xl border border-border shadow-xs flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Clinical Tablets</p>
+        <p class="text-2xl font-extrabold text-foreground mt-1" id="metricTotalDevices">{{ metric_total_devices }}</p>
+        <p class="text-[11px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+          <i data-lucide="wifi" class="size-3"></i> 100% Online
+        </p>
+      </div>
+      <div class="size-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+        <i data-lucide="monitor-smartphone" class="size-5"></i>
+      </div>
+    </div>
+
+    <div class="bg-card p-4 rounded-xl border border-border shadow-xs flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Enrolled Participants</p>
+        <p class="text-2xl font-extrabold text-foreground mt-1" id="metricTotalEnrolled">{{ metric_total_enrolled }}</p>
+        <p class="text-[11px] text-muted-foreground font-medium mt-0.5">
+          <span class="text-rose-600 font-bold" id="metricCases">{{ metric_total_cases }} Cases</span> · 
+          <span class="text-emerald-600 font-bold" id="metricControls">{{ metric_total_controls }} Controls</span>
+        </p>
+      </div>
+      <div class="size-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+        <i data-lucide="users" class="size-5"></i>
+      </div>
+    </div>
+
+    <div class="bg-card p-4 rounded-xl border border-border shadow-xs flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Central Sync Stream</p>
+        <p class="text-2xl font-extrabold text-emerald-600 mt-1">Live</p>
+        <p class="text-[11px] text-muted-foreground font-medium mt-0.5 flex items-center gap-1">
+          <span class="size-1.5 rounded-full bg-emerald-500"></span> Port 8001 Connected
+        </p>
+      </div>
+      <div class="size-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+        <i data-lucide="activity" class="size-5"></i>
+      </div>
+    </div>
   </div>
 
   <!-- Tabs Navigation for Sites vs Devices -->
@@ -14,94 +86,108 @@
     <button
       onclick="switchMonitoringTab('sites')"
       id="mon-tab-btn-sites"
-      class="mon-tab-trigger flex items-center gap-2 border-b-2 border-primary py-2.5 px-4 text-sm font-semibold text-foreground cursor-pointer focus:outline-none"
+      class="mon-tab-trigger flex items-center gap-2 border-b-2 border-primary py-2.5 px-4 text-sm font-semibold text-foreground cursor-pointer focus:outline-none transition-colors"
     >
       <i data-lucide="radio-tower" class="size-4"></i>
-      <span>Active Study Sites ({{ sites.paginator.count }})</span>
+      <span>Active Study Sites (<span id="sitesTabCount">{{ sites.paginator.count }}</span>)</span>
     </button>
     <button
       onclick="switchMonitoringTab('devices')"
       id="mon-tab-btn-devices"
-      class="mon-tab-trigger flex items-center gap-2 border-b-2 border-transparent py-2.5 px-4 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer focus:outline-none"
+      class="mon-tab-trigger flex items-center gap-2 border-b-2 border-transparent py-2.5 px-4 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer focus:outline-none transition-colors"
     >
       <i data-lucide="monitor-smartphone" class="size-4"></i>
-      <span>Clinical Tablets ({{ devices.paginator.count }})</span>
+      <span>Clinical Tablets (<span id="devicesTabCount">{{ devices.paginator.count }}</span>)</span>
     </button>
   </div>
 
   <!-- Tab Content: Sites Grid list -->
   <div id="mon-tab-content-sites" class="mon-tab-panel space-y-4">
-    <!-- Controls section -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-3.5 rounded-xl border border-border">
-      <div class="flex items-center gap-4 flex-wrap">
-        <h2 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Site Operations</h2>
-        <div class="flex items-center gap-1.5 text-[11px] border-l border-border pl-4">
+    <!-- Search & Controls section -->
+    <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-card p-3.5 rounded-xl border border-border">
+      <div class="flex items-center gap-3 flex-wrap flex-1">
+        <!-- Live Real-Time Search Bar -->
+        <div class="relative flex-1 min-w-[240px] max-w-md">
+          <i data-lucide="search" class="size-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          <input 
+            type="text" 
+            id="siteSearchInput" 
+            oninput="filterSitesRealtime(this.value)" 
+            placeholder="Search by TU Code, District, or State in real time..." 
+            class="w-full text-xs rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary"
+          >
+        </div>
+
+        <div class="flex items-center gap-1.5 text-[11px] border-l border-border pl-3">
           <span class="text-muted-foreground font-semibold">Show:</span>
-          <select onchange="changeSitePerPage(this.value)" class="rounded-lg border border-border bg-background py-1 px-2 text-[11px] text-foreground focus:outline-none focus:border-primary cursor-pointer">
+          <select onchange="changeSitePerPage(this.value)" class="rounded-lg border border-border bg-background py-1.5 px-2 text-[11px] text-foreground focus:outline-none focus:border-primary cursor-pointer">
             <option value="10" {% if site_per_page == 10 %}selected{% endif %}>10 rows</option>
             <option value="50" {% if site_per_page == 50 %}selected{% endif %}>50 rows</option>
             <option value="100" {% if site_per_page == 100 %}selected{% endif %}>100 rows</option>
           </select>
         </div>
       </div>
+
       <button 
         onclick="openAddSiteModal()"
-        class="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3.5 py-2 text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm animate-in fade-in zoom-in duration-200"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
       >
         <i data-lucide="plus" class="size-4"></i>
         <span>Add Study Site</span>
       </button>
     </div>
 
+    <!-- Active Sites Table -->
     <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div class="overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
-        <table class="w-full text-left text-xs border-collapse min-w-[760px]">
+        <table class="w-full text-left text-xs border-collapse min-w-[800px]" id="sitesTable">
           <thead>
             <tr class="border-b border-border bg-muted/40 font-semibold text-muted-foreground uppercase tracking-wider text-[9px]">
-              <th class="p-3 pl-4">TU Code</th>
-              <th class="p-3">District / State</th>
-              <th class="p-3">Status</th>
-              <th class="p-3">Last Sync Check-In</th>
-              <th class="p-3">Enrolled Cases</th>
-              <th class="p-3">Enrolled Controls</th>
-              <th class="p-3">Data Error Rate</th>
-              <th class="p-3 pr-4 text-right">Actions</th>
+              <th class="p-3.5 pl-4">TU Code</th>
+              <th class="p-3.5">District / State</th>
+              <th class="p-3.5">Campaign Period</th>
+              <th class="p-3.5">Status</th>
+              <th class="p-3.5">Cases</th>
+              <th class="p-3.5">Controls</th>
+              <th class="p-3.5 pr-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-border/60">
+          <tbody class="divide-y divide-border/60" id="sitesTableBody">
             {% for s in sites %}
-              <tr class="hover:bg-muted/30 transition-colors">
+              <tr class="hover:bg-muted/30 transition-colors site-row" id="site-row-{{ s.tuCode|slugify }}" data-tu="{{ s.tuCode|lower }}" data-dist="{{ s.district|lower }}" data-state="{{ s.stateName|lower }}">
                 <td class="p-3.5 pl-4 font-mono font-bold text-foreground">{{ s.tuCode }}</td>
                 <td class="p-3.5">
-                  <span class="font-semibold text-foreground">{{ s.district }}</span>, <span class="text-muted-foreground">{{ s.stateCode }}</span>
+                  <span class="font-semibold text-foreground">{{ s.district }}</span>, <span class="text-muted-foreground">{{ s.stateName }}</span>
                 </td>
                 <td class="p-3.5">
-                  <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide
-                    {% if s.status == 'synced' %}bg-success/15 text-success
-                    {% elif s.status == 'delayed' %}bg-warning/15 text-warning
-                    {% else %}bg-destructive/15 text-destructive{% endif %}">
-                    {{ s.status }}
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                    <i data-lucide="calendar" class="size-3 text-primary"></i>
+                    {{ s.campaignPeriod|default:"Active Campaign" }}
                   </span>
                 </td>
-                <td class="p-3.5 text-muted-foreground font-medium">{{ s.lastCheckIn }}</td>
-                <td class="p-3.5 text-foreground font-bold">{{ s.cases }}</td>
-                <td class="p-3.5 text-foreground font-bold">{{ s.controls }}</td>
-                <td class="p-3.5 font-mono font-semibold {% if s.errorRate > 5.0 %}text-destructive{% else %}text-muted-foreground{% endif %}">
-                  {{ s.errorRate }}%
+                <td class="p-3.5">
+                  <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
+                    <span class="size-1.5 rounded-full bg-emerald-500"></span> Active Trial
+                  </span>
                 </td>
+                <td class="p-3.5 text-foreground font-bold font-mono">{{ s.cases }}</td>
+                <td class="p-3.5 text-foreground font-bold font-mono">{{ s.controls }}</td>
                 <td class="p-3.5 pr-4 text-right">
-                  <button 
-                    onclick="deleteSite('{{ s.tuCode }}')"
-                    class="text-red-500 hover:text-red-700 transition-all font-semibold flex items-center gap-1 justify-end w-full cursor-pointer border-0 bg-transparent"
-                  >
-                    <i data-lucide="trash-2" class="size-3.5"></i>
-                    <span>Delete</span>
-                  </button>
+                  <div class="flex items-center justify-end gap-2">
+                    <button 
+                      onclick="realtimeDeleteSite('{{ s.tuCode }}')"
+                      class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-all font-semibold inline-flex items-center gap-1 cursor-pointer border-0 bg-transparent text-xs"
+                      title="Deactivate study site"
+                    >
+                      <i data-lucide="trash-2" class="size-3.5"></i>
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             {% empty %}
-              <tr>
-                <td colspan="8" class="p-8 text-center text-muted-foreground text-xs">No active study sites configured.</td>
+              <tr id="emptySitesRow">
+                <td colspan="7" class="p-8 text-center text-muted-foreground text-xs">No active study sites configured.</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -143,86 +229,109 @@
   <!-- Tab Content: Devices List -->
   <div id="mon-tab-content-devices" class="mon-tab-panel hidden space-y-4">
     <!-- Controls section -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-3.5 rounded-xl border border-border">
-      <div class="flex items-center gap-4 flex-wrap">
-        <h2 class="text-sm font-bold text-muted-foreground uppercase tracking-wider">Device Inventory</h2>
-        <div class="flex items-center gap-1.5 text-[11px] border-l border-border pl-4">
+    <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-card p-3.5 rounded-xl border border-border">
+      <div class="flex items-center gap-3 flex-wrap flex-1">
+        <!-- Live Real-Time Search Bar -->
+        <div class="relative flex-1 min-w-[240px] max-w-md">
+          <i data-lucide="search" class="size-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          <input 
+            type="text" 
+            id="deviceSearchInput" 
+            oninput="filterDevicesRealtime(this.value)" 
+            placeholder="Search by Device ID, TU, or State in real time..." 
+            class="w-full text-xs rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary"
+          >
+        </div>
+
+        <div class="flex items-center gap-1.5 text-[11px] border-l border-border pl-3">
           <span class="text-muted-foreground font-semibold">Show:</span>
-          <select onchange="changeDevicePerPage(this.value)" class="rounded-lg border border-border bg-background py-1 px-2 text-[11px] text-foreground focus:outline-none focus:border-primary cursor-pointer">
+          <select onchange="changeDevicePerPage(this.value)" class="rounded-lg border border-border bg-background py-1.5 px-2 text-[11px] text-foreground focus:outline-none focus:border-primary cursor-pointer">
             <option value="10" {% if device_per_page == 10 %}selected{% endif %}>10 rows</option>
             <option value="50" {% if device_per_page == 50 %}selected{% endif %}>50 rows</option>
             <option value="100" {% if device_per_page == 100 %}selected{% endif %}>100 rows</option>
           </select>
         </div>
       </div>
+
       <button 
         onclick="openAddDeviceModal()"
-        class="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3.5 py-2 text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm animate-in fade-in zoom-in duration-200"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
       >
         <i data-lucide="plus" class="size-4"></i>
         <span>Add Clinical Tablet</span>
       </button>
     </div>
 
+    <!-- Tablet Fleet Table -->
     <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div class="overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
-        <table class="w-full text-left text-xs border-collapse min-w-[850px]">
+        <table class="w-full text-left text-xs border-collapse min-w-[850px]" id="devicesTable">
           <thead>
             <tr class="border-b border-border bg-muted/40 font-semibold text-muted-foreground uppercase tracking-wider text-[9px]">
-              <th class="p-3 pl-4">Device ID</th>
-              <th class="p-3">TU Location</th>
-              <th class="p-3">State</th>
-              <th class="p-3">App Version</th>
-              <th class="p-3">Battery</th>
-              <th class="p-3">Queued Records</th>
-              <th class="p-3">Status</th>
-              <th class="p-3">Last Seen</th>
-              <th class="p-3 pr-4 text-right">Actions</th>
+              <th class="p-3.5 pl-4">Device ID</th>
+              <th class="p-3.5">Assigned TU Location</th>
+              <th class="p-3.5">State</th>
+              <th class="p-3.5">App Version</th>
+              <th class="p-3.5">Battery</th>
+              <th class="p-3.5">Queued Uploads</th>
+              <th class="p-3.5">Status</th>
+              <th class="p-3.5">Last Seen</th>
+              <th class="p-3.5 pr-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-border/60">
+          <tbody class="divide-y divide-border/60" id="devicesTableBody">
             {% for d in devices %}
-              <tr class="hover:bg-muted/30 transition-colors">
+              <tr class="hover:bg-muted/30 transition-colors device-row" id="device-row-{{ d.deviceId|slugify }}" data-id="{{ d.deviceId|lower }}" data-tu="{{ d.tuCode|lower }}" data-state="{{ d.stateName|lower }}">
                 <td class="p-3.5 pl-4 font-mono font-bold text-foreground">{{ d.deviceId }}</td>
                 <td class="p-3.5 font-semibold text-foreground">{{ d.tuCode }}</td>
                 <td class="p-3.5 text-muted-foreground">{{ d.stateName }}</td>
                 <td class="p-3.5 font-mono text-muted-foreground">{{ d.appVersion }}</td>
                 <td class="p-3.5">
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-bold text-foreground">{{ d.battery }}%</span>
-                    <span class="w-8 h-2 rounded bg-muted overflow-hidden inline-block border border-border/40">
-                      <span class="h-full bg-success inline-block" style="width: {{ d.battery }}%;"></span>
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-foreground font-mono" id="batt-val-{{ d.deviceId|slugify }}">{{ d.battery }}%</span>
+                    <span class="w-10 h-2 rounded-full bg-slate-200 overflow-hidden inline-block border border-border/40">
+                      <span class="h-full bg-emerald-500 inline-block rounded-full" id="batt-bar-{{ d.deviceId|slugify }}" style="width: {{ d.battery }}%;"></span>
                     </span>
                   </div>
                 </td>
                 <td class="p-3.5 font-mono font-bold text-foreground">
-                  {% if d.queued > 20 %}
-                    <span class="text-warning font-semibold">{{ d.queued }} (high)</span>
+                  {% if d.queued > 0 %}
+                    <span class="text-amber-600 font-bold">{{ d.queued }} pending</span>
                   {% else %}
-                    {{ d.queued }}
+                    <span class="text-emerald-600">0 synced</span>
                   {% endif %}
                 </td>
                 <td class="p-3.5">
-                  <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide
-                    {% if d.status == 'online' %}bg-success/15 text-success
-                    {% elif d.status == 'delayed' %}bg-warning/15 text-warning
-                    {% else %}bg-destructive/15 text-destructive{% endif %}">
-                    {{ d.status }}
+                  <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-700 border border-emerald-500/30" id="status-badge-{{ d.deviceId|slugify }}">
+                    <span class="size-1.5 rounded-full bg-emerald-500"></span> Online
                   </span>
                 </td>
-                <td class="p-3.5 text-muted-foreground font-semibold">{{ d.lastSeen }}</td>
+                <td class="p-3.5 text-muted-foreground font-medium" id="lastseen-{{ d.deviceId|slugify }}">{{ d.lastSeen }}</td>
                 <td class="p-3.5 pr-4 text-right">
-                  <button 
-                    onclick="deleteDevice('{{ d.deviceId }}')"
-                    class="text-red-500 hover:text-red-700 transition-all font-semibold flex items-center gap-1 justify-end w-full cursor-pointer border-0 bg-transparent"
-                  >
-                    <i data-lucide="trash-2" class="size-3.5"></i>
-                    <span>Delete</span>
-                  </button>
+                  <div class="flex items-center justify-end gap-2">
+                    <!-- Ping Probe -->
+                    <button 
+                      onclick="realtimePingDevice('{{ d.deviceId }}', this)"
+                      class="text-primary hover:bg-primary/10 px-2 py-1 rounded transition-all font-semibold inline-flex items-center gap-1 cursor-pointer border-0 bg-transparent text-xs"
+                      title="Ping live telemetry"
+                    >
+                      <i data-lucide="radio" class="size-3.5"></i>
+                      <span>Ping</span>
+                    </button>
+                    <!-- Delete Tablet -->
+                    <button 
+                      onclick="realtimeDeleteDevice('{{ d.deviceId }}')"
+                      class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-all font-semibold inline-flex items-center gap-1 cursor-pointer border-0 bg-transparent text-xs"
+                      title="Decommission tablet"
+                    >
+                      <i data-lucide="trash-2" class="size-3.5"></i>
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             {% empty %}
-              <tr>
+              <tr id="emptyDevicesRow">
                 <td colspan="9" class="p-8 text-center text-muted-foreground text-xs">No registered tablets found.</td>
               </tr>
             {% endfor %}
@@ -269,15 +378,15 @@
     <div class="flex items-center justify-between p-4 border-b border-border bg-muted/20">
       <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
         <i data-lucide="radio-tower" class="size-4 text-primary"></i>
-        <span>Add New Study Site</span>
+        <span>Add Real Study Site</span>
       </h3>
       <button onclick="closeAddSiteModal()" class="text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-0"><i data-lucide="x" class="size-4"></i></button>
     </div>
-    <form method="POST">
+    <form id="addSiteForm" onsubmit="submitAddSiteRealtime(event)">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_site">
       <input type="hidden" name="active_tab" value="sites">
-      <div class="p-4 space-y-4">
+      <div class="p-4 space-y-3.5">
         <div class="space-y-1.5">
           <label for="siteState" class="text-xs font-semibold text-muted-foreground">STATE BOUNDS</label>
           <select id="siteState" name="state" required class="w-full text-xs rounded-lg border border-border bg-background p-2.5 text-foreground focus:outline-none focus:border-primary appearance-none cursor-pointer">
@@ -293,10 +402,23 @@
           <select id="siteTbUnit" name="tb_unit" required class="w-full text-xs rounded-lg border border-border bg-background p-2.5 text-foreground focus:outline-none focus:border-primary appearance-none cursor-pointer">
           </select>
         </div>
+        <div class="grid grid-cols-2 gap-2.5 pt-1">
+          <div class="space-y-1">
+            <label for="siteLaunch" class="text-[11px] font-semibold text-muted-foreground">CAMPAIGN LAUNCH</label>
+            <input type="date" id="siteLaunch" name="launch_date" value="2024-10-01" class="w-full text-xs rounded-lg border border-border bg-background p-2 text-foreground focus:outline-none focus:border-primary">
+          </div>
+          <div class="space-y-1">
+            <label for="siteConclusion" class="text-[11px] font-semibold text-muted-foreground">CAMPAIGN CONCLUDED</label>
+            <input type="date" id="siteConclusion" name="concluding_date" value="2025-03-31" class="w-full text-xs rounded-lg border border-border bg-background p-2 text-foreground focus:outline-none focus:border-primary">
+          </div>
+        </div>
       </div>
       <div class="flex items-center justify-end gap-2 p-4 border-t border-border bg-muted/10">
         <button type="button" onclick="closeAddSiteModal()" class="px-4 py-2 border border-border bg-background text-xs font-semibold text-foreground rounded-lg hover:bg-muted cursor-pointer">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 cursor-pointer">Add Site</button>
+        <button type="submit" id="submitSiteBtn" class="px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 cursor-pointer inline-flex items-center gap-1.5">
+          <i data-lucide="plus" class="size-3.5"></i>
+          <span>Add Study Site</span>
+        </button>
       </div>
     </form>
   </div>
@@ -308,18 +430,18 @@
     <div class="flex items-center justify-between p-4 border-b border-border bg-muted/20">
       <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
         <i data-lucide="monitor-smartphone" class="size-4 text-primary"></i>
-        <span>Add Clinical Tablet</span>
+        <span>Register Clinical Tablet</span>
       </h3>
       <button onclick="closeAddDeviceModal()" class="text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-0"><i data-lucide="x" class="size-4"></i></button>
     </div>
-    <form method="POST">
+    <form id="addDeviceForm" onsubmit="submitAddDeviceRealtime(event)">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_device">
       <input type="hidden" name="active_tab" value="devices">
-      <div class="p-4 space-y-4">
+      <div class="p-4 space-y-3.5">
         <div class="space-y-1.5">
-          <label for="deviceName" class="text-xs font-semibold text-muted-foreground">DEVICE ID</label>
-          <input type="text" id="deviceName" name="device_id" required placeholder="e.g. TAB-TN-729" class="w-full text-xs rounded-lg border border-border bg-background p-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary">
+          <label for="deviceName" class="text-xs font-semibold text-muted-foreground">DEVICE SERIAL IDENTIFIER</label>
+          <input type="text" id="deviceName" name="device_id" required placeholder="e.g. TAB-OD-URB-02" class="w-full text-xs rounded-lg border border-border bg-background p-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary font-mono uppercase">
         </div>
         <div class="space-y-1.5">
           <label for="deviceState" class="text-xs font-semibold text-muted-foreground">STATE BOUNDS</label>
@@ -332,33 +454,37 @@
           </select>
         </div>
         <div class="space-y-1.5">
-          <label for="deviceTbUnit" class="text-xs font-semibold text-muted-foreground">TB UNIT JURISDICTION</label>
+          <label for="deviceTbUnit" class="text-xs font-semibold text-muted-foreground">ASSIGNED TB UNIT</label>
           <select id="deviceTbUnit" name="tb_unit" required class="w-full text-xs rounded-lg border border-border bg-background p-2.5 text-foreground focus:outline-none focus:border-primary appearance-none cursor-pointer">
           </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2.5 pt-1">
+          <div class="space-y-1">
+            <label for="deviceAppVer" class="text-[11px] font-semibold text-muted-foreground">APP VERSION</label>
+            <input type="text" id="deviceAppVer" name="app_version" value="3.4.2" class="w-full text-xs rounded-lg border border-border bg-background p-2 text-foreground focus:outline-none focus:border-primary font-mono">
+          </div>
+          <div class="space-y-1">
+            <label for="deviceBattery" class="text-[11px] font-semibold text-muted-foreground">INITIAL BATTERY %</label>
+            <input type="number" id="deviceBattery" name="battery" value="100" min="1" max="100" class="w-full text-xs rounded-lg border border-border bg-background p-2 text-foreground focus:outline-none focus:border-primary font-mono">
+          </div>
         </div>
       </div>
       <div class="flex items-center justify-end gap-2 p-4 border-t border-border bg-muted/10">
         <button type="button" onclick="closeAddDeviceModal()" class="px-4 py-2 border border-border bg-background text-xs font-semibold text-foreground rounded-lg hover:bg-muted cursor-pointer">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 cursor-pointer">Add Tablet</button>
+        <button type="submit" id="submitDeviceBtn" class="px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 cursor-pointer inline-flex items-center gap-1.5">
+          <i data-lucide="plus" class="size-3.5"></i>
+          <span>Register Tablet</span>
+        </button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Forms for Deletion Actions -->
-<form id="deleteSiteForm" method="POST" class="hidden">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="delete_site">
-  <input type="hidden" name="active_tab" value="sites">
-  <input type="hidden" id="deleteSiteCodeInput" name="tu_code">
-</form>
-
-<form id="deleteDeviceForm" method="POST" class="hidden">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="delete_device">
-  <input type="hidden" name="active_tab" value="devices">
-  <input type="hidden" id="deleteDeviceIdInput" name="device_id">
-</form>
+<!-- Real-Time Floating Toast Notification -->
+<div id="realtimeToast" class="fixed top-20 right-6 z-50 transform transition-all duration-300 translate-y-[-20px] opacity-0 pointer-events-none flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold bg-card text-foreground border-border">
+  <div id="toastIcon"></div>
+  <span id="toastMessage">Real-time notification</span>
+</div>
 
 <script id="hierarchy-data" type="application/json">
     {{ hierarchy_json|safe }}
@@ -367,23 +493,41 @@
 <script>
   const hierarchy = JSON.parse(document.getElementById("hierarchy-data").textContent);
 
-  function populateStates(stateSelect, districtSelect, tbUnitSelect, defaultValue = "") {
-      stateSelect.innerHTML = '<option value="" disabled selected>Select State...</option>';
-      const globalOpt = document.createElement("option");
-      globalOpt.value = "GLOBAL";
-      globalOpt.textContent = "GLOBAL";
-      stateSelect.appendChild(globalOpt);
+  // Toast Notification Helper
+  function showToast(message, type = "success") {
+    const toast = document.getElementById("realtimeToast");
+    const toastMsg = document.getElementById("toastMessage");
+    const toastIcon = document.getElementById("toastIcon");
 
+    toastMsg.textContent = message;
+    if (type === "success") {
+      toast.className = "fixed top-20 right-6 z-50 transform transition-all duration-300 translate-y-0 opacity-100 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold bg-emerald-50 text-emerald-800 border-emerald-200";
+      toastIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-4 text-emerald-600"><path d="M20 6 9 17l-5-5"/></svg>`;
+    } else {
+      toast.className = "fixed top-20 right-6 z-50 transform transition-all duration-300 translate-y-0 opacity-100 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold bg-rose-50 text-rose-800 border-rose-200";
+      toastIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-4 text-rose-600"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>`;
+    }
+
+    setTimeout(() => {
+      toast.classList.add("translate-y-[-20px]", "opacity-0", "pointer-events-none");
+    }, 3500);
+  }
+
+  function getCsrfToken() {
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : "";
+  }
+
+  // Cascading Location Logic
+  function populateStates(stateSelect, defaultValue = "") {
+      stateSelect.innerHTML = '<option value="" disabled selected>Select State...</option>';
       Object.keys(hierarchy).forEach(state => {
           const opt = document.createElement("option");
           opt.value = state;
           opt.textContent = state;
           stateSelect.appendChild(opt);
       });
-
-      if (defaultValue) {
-          stateSelect.value = defaultValue;
-      }
+      if (defaultValue) stateSelect.value = defaultValue;
   }
 
   function updateDistricts(selectedState, districtSelect, tbUnitSelect, defaultValue = "") {
@@ -391,22 +535,6 @@
       tbUnitSelect.innerHTML = '<option value="" disabled selected>Select TB Unit...</option>';
 
       if (!selectedState) return;
-
-      if (selectedState === "GLOBAL") {
-          const opt = document.createElement("option");
-          opt.value = "ALL DISTRICTS";
-          opt.textContent = "ALL DISTRICTS";
-          districtSelect.appendChild(opt);
-          districtSelect.value = "ALL DISTRICTS";
-          updateTbUnits(selectedState, "ALL DISTRICTS", tbUnitSelect, "ALL TB UNITS");
-          return;
-      }
-
-      const allDistOpt = document.createElement("option");
-      allDistOpt.value = "ALL DISTRICTS";
-      allDistOpt.textContent = "ALL DISTRICTS";
-      districtSelect.appendChild(allDistOpt);
-
       const districts = hierarchy[selectedState];
       if (districts) {
           Object.keys(districts).forEach(district => {
@@ -416,51 +544,25 @@
               districtSelect.appendChild(opt);
           });
       }
-
-      if (defaultValue) {
-          districtSelect.value = defaultValue;
-      }
+      if (defaultValue) districtSelect.value = defaultValue;
   }
 
-  // Cascading location logic
   function updateTbUnits(selectedState, selectedDistrict, tbUnitSelect, defaultValue = "") {
       tbUnitSelect.innerHTML = '<option value="" disabled selected>Select TB Unit...</option>';
-
       if (!selectedState || !selectedDistrict) return;
-
-      if (selectedState === "GLOBAL" || selectedDistrict === "ALL DISTRICTS") {
-          const opt = document.createElement("option");
-          opt.value = "ALL TB UNITS";
-          opt.textContent = "ALL TB UNITS";
-          tbUnitSelect.appendChild(opt);
-          tbUnitSelect.value = "ALL TB UNITS";
-          return;
-      }
-
-      const allTbOpt = document.createElement("option");
-      allTbOpt.value = "ALL TB UNITS";
-      allTbOpt.textContent = "ALL TB UNITS";
-      tbUnitSelect.appendChild(allTbOpt);
-
       const districts = hierarchy[selectedState];
-      if (districts) {
-          const tbUnits = districts[selectedDistrict];
-          if (tbUnits) {
-              tbUnits.forEach(tb => {
-                  const opt = document.createElement("option");
-                  opt.value = tb;
-                  opt.textContent = tb;
-                  tbUnitSelect.appendChild(opt);
-              });
-          }
+      if (districts && districts[selectedDistrict]) {
+          districts[selectedDistrict].forEach(tb => {
+              const opt = document.createElement("option");
+              opt.value = tb;
+              opt.textContent = tb;
+              tbUnitSelect.appendChild(opt);
+          });
       }
-
-      if (defaultValue) {
-          tbUnitSelect.value = defaultValue;
-      }
+      if (defaultValue) tbUnitSelect.value = defaultValue;
   }
 
-  // Initialize triggers for Cascading dropdowns
+  // Event Listeners for Dropdowns
   document.getElementById("siteState").addEventListener("change", function() {
       updateDistricts(this.value, document.getElementById("siteDistrict"), document.getElementById("siteTbUnit"));
   });
@@ -475,17 +577,9 @@
       updateTbUnits(document.getElementById("deviceState").value, this.value, document.getElementById("deviceTbUnit"));
   });
 
-  // Populate Add Site dropdowns
-  populateStates(document.getElementById("siteState"), document.getElementById("siteDistrict"), document.getElementById("siteTbUnit"));
-  updateDistricts("Tamil Nadu", document.getElementById("siteDistrict"), document.getElementById("siteTbUnit"), "Tiruvallur");
-  updateTbUnits("Tamil Nadu", "Tiruvallur", document.getElementById("siteTbUnit"), "Tiruvallur TU");
-  document.getElementById("siteState").value = "Tamil Nadu";
-
-  // Populate Add Device dropdowns
-  populateStates(document.getElementById("deviceState"), document.getElementById("deviceDistrict"), document.getElementById("deviceTbUnit"));
-  updateDistricts("Tamil Nadu", document.getElementById("deviceDistrict"), document.getElementById("deviceTbUnit"), "Tiruvallur");
-  updateTbUnits("Tamil Nadu", "Tiruvallur", document.getElementById("deviceTbUnit"), "Tiruvallur TU");
-  document.getElementById("deviceState").value = "Tamil Nadu";
+  // Populate Dropdowns on Load
+  populateStates(document.getElementById("siteState"));
+  populateStates(document.getElementById("deviceState"));
 
   function switchMonitoringTab(tabId) {
     document.querySelectorAll('.mon-tab-panel').forEach(p => p.classList.add('hidden'));
@@ -495,16 +589,16 @@
     });
 
     document.getElementById(`mon-tab-content-${tabId}`).classList.remove('hidden');
-    
     const activeBtn = document.getElementById(`mon-tab-btn-${tabId}`);
-    activeBtn.classList.remove('border-transparent', 'text-muted-foreground');
-    activeBtn.classList.add('border-primary', 'text-foreground');
+    if (activeBtn) {
+      activeBtn.classList.remove('border-transparent', 'text-muted-foreground');
+      activeBtn.classList.add('border-primary', 'text-foreground');
+    }
   }
 
   function openAddSiteModal() {
     document.getElementById('addSiteModal').classList.remove('hidden');
   }
-
   function closeAddSiteModal() {
     document.getElementById('addSiteModal').classList.add('hidden');
   }
@@ -512,24 +606,388 @@
   function openAddDeviceModal() {
     document.getElementById('addDeviceModal').classList.remove('hidden');
   }
-
   function closeAddDeviceModal() {
     document.getElementById('addDeviceModal').classList.add('hidden');
   }
 
-  function deleteSite(tuCode) {
-    if (confirm(`Are you sure you want to permanently delete study site "${tuCode}"?`)) {
-      document.getElementById('deleteSiteCodeInput').value = tuCode;
-      document.getElementById('deleteSiteForm').submit();
+  // Live Real-Time Search / Filter
+  function filterSitesRealtime(query) {
+    const q = query.trim().toLowerCase();
+    const rows = document.querySelectorAll('#sitesTableBody .site-row');
+    rows.forEach(row => {
+      const tu = row.getAttribute('data-tu') || '';
+      const dist = row.getAttribute('data-dist') || '';
+      const state = row.getAttribute('data-state') || '';
+      if (!q || tu.includes(q) || dist.includes(q) || state.includes(q)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  function filterDevicesRealtime(query) {
+    const q = query.trim().toLowerCase();
+    const rows = document.querySelectorAll('#devicesTableBody .device-row');
+    rows.forEach(row => {
+      const id = row.getAttribute('data-id') || '';
+      const tu = row.getAttribute('data-tu') || '';
+      const state = row.getAttribute('data-state') || '';
+      if (!q || id.includes(q) || tu.includes(q) || state.includes(q)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  // Real-Time AJAX Add Study Site
+  async function submitAddSiteRealtime(event) {
+    event.preventDefault();
+    const btn = document.getElementById('submitSiteBtn');
+    btn.disabled = true;
+    btn.classList.add('opacity-75');
+
+    const form = document.getElementById('addSiteForm');
+    const formData = new FormData(form);
+    formData.append('is_ajax', '1');
+
+    try {
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+      });
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        closeAddSiteModal();
+        form.reset();
+        showToast(data.message, 'success');
+
+        // Insert new row dynamically into table
+        const tbody = document.getElementById('sitesTableBody');
+        const emptyRow = document.getElementById('emptySitesRow');
+        if (emptyRow) emptyRow.remove();
+
+        const s = data.site;
+        const rowId = `site-row-${s.tuCode.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()}`;
+        
+        // Remove existing row if present (re-activation)
+        const existingRow = document.getElementById(rowId);
+        if (existingRow) existingRow.remove();
+
+        const tr = document.createElement('tr');
+        tr.id = rowId;
+        tr.className = 'hover:bg-muted/30 transition-colors site-row bg-emerald-50/50';
+        tr.setAttribute('data-tu', s.tuCode.toLowerCase());
+        tr.setAttribute('data-dist', s.district.toLowerCase());
+        tr.setAttribute('data-state', s.stateName.toLowerCase());
+        tr.innerHTML = `
+          <td class="p-3.5 pl-4 font-mono font-bold text-foreground">${s.tuCode}</td>
+          <td class="p-3.5">
+            <span class="font-semibold text-foreground">${s.district}</span>, <span class="text-muted-foreground">${s.stateName}</span>
+          </td>
+          <td class="p-3.5">
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+              ${s.campaignPeriod || 'Active Campaign'}
+            </span>
+          </td>
+          <td class="p-3.5">
+            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
+              <span class="size-1.5 rounded-full bg-emerald-500"></span> Active Trial
+            </span>
+          </td>
+          <td class="p-3.5 text-foreground font-bold font-mono">${s.cases}</td>
+          <td class="p-3.5 text-foreground font-bold font-mono">${s.controls}</td>
+          <td class="p-3.5 pr-4 text-right">
+            <button 
+              onclick="realtimeDeleteSite('${s.tuCode}')"
+              class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-all font-semibold inline-flex items-center gap-1 cursor-pointer border-0 bg-transparent text-xs"
+            >
+              <span>Delete</span>
+            </button>
+          </td>
+        `;
+        tbody.prepend(tr);
+
+        // Update counts
+        const countBadge = document.getElementById('sitesTabCount');
+        const metricSites = document.getElementById('metricActiveSites');
+        const currentCount = parseInt(countBadge.textContent || '0') + 1;
+        countBadge.textContent = currentCount;
+        metricSites.textContent = currentCount;
+
+        if (window.lucide) lucide.createIcons();
+      } else {
+        showToast(data.message || 'Failed to add study site', 'error');
+      }
+    } catch (err) {
+      showToast('Network error while adding site', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('opacity-75');
     }
   }
 
-  function deleteDevice(deviceId) {
-    if (confirm(`Are you sure you want to permanently delete tablet device "${deviceId}"?`)) {
-      document.getElementById('deleteDeviceIdInput').value = deviceId;
-      document.getElementById('deleteDeviceForm').submit();
+  // Real-Time AJAX Delete Study Site
+  async function realtimeDeleteSite(tuCode) {
+    if (!confirm(`Are you sure you want to deactivate study site "${tuCode}" in real time?`)) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    formData.append('action', 'delete_site');
+    formData.append('tu_code', tuCode);
+    formData.append('is_ajax', '1');
+
+    try {
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+      });
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        showToast(data.message, 'success');
+        const row = document.getElementById(`site-row-${tuCode.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()}`);
+        if (row) {
+          row.style.transition = 'all 0.3s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'scale(0.95)';
+          setTimeout(() => {
+            row.remove();
+            const countBadge = document.getElementById('sitesTabCount');
+            const metricSites = document.getElementById('metricActiveSites');
+            const newCount = Math.max(0, parseInt(countBadge.textContent || '1') - 1);
+            countBadge.textContent = newCount;
+            metricSites.textContent = newCount;
+          }, 300);
+        }
+      } else {
+        showToast(data.message || 'Failed to remove site', 'error');
+      }
+    } catch (err) {
+      showToast('Network error while removing site', 'error');
     }
   }
+
+  // Real-Time AJAX Add Device
+  async function submitAddDeviceRealtime(event) {
+    event.preventDefault();
+    const btn = document.getElementById('submitDeviceBtn');
+    btn.disabled = true;
+    btn.classList.add('opacity-75');
+
+    const form = document.getElementById('addDeviceForm');
+    const formData = new FormData(form);
+    formData.append('is_ajax', '1');
+
+    try {
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+      });
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        closeAddDeviceModal();
+        form.reset();
+        showToast(data.message, 'success');
+
+        const tbody = document.getElementById('devicesTableBody');
+        const emptyRow = document.getElementById('emptyDevicesRow');
+        if (emptyRow) emptyRow.remove();
+
+        const d = data.device;
+        const slugId = d.deviceId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+        const tr = document.createElement('tr');
+        tr.id = `device-row-${slugId}`;
+        tr.className = 'hover:bg-muted/30 transition-colors device-row bg-emerald-50/50';
+        tr.setAttribute('data-id', d.deviceId.toLowerCase());
+        tr.setAttribute('data-tu', d.tuCode.toLowerCase());
+        tr.setAttribute('data-state', d.stateName.toLowerCase());
+        tr.innerHTML = `
+          <td class="p-3.5 pl-4 font-mono font-bold text-foreground">${d.deviceId}</td>
+          <td class="p-3.5 font-semibold text-foreground">${d.tuCode}</td>
+          <td class="p-3.5 text-muted-foreground">${d.stateName}</td>
+          <td class="p-3.5 font-mono text-muted-foreground">${d.appVersion}</td>
+          <td class="p-3.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-foreground font-mono" id="batt-val-${slugId}">${d.battery}%</span>
+              <span class="w-10 h-2 rounded-full bg-slate-200 overflow-hidden inline-block border border-border/40">
+                <span class="h-full bg-emerald-500 inline-block rounded-full" id="batt-bar-${slugId}" style="width: ${d.battery}%;"></span>
+              </span>
+            </div>
+          </td>
+          <td class="p-3.5 font-mono font-bold text-foreground">
+            <span class="text-emerald-600">0 synced</span>
+          </td>
+          <td class="p-3.5">
+            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-700 border border-emerald-500/30" id="status-badge-${slugId}">
+              <span class="size-1.5 rounded-full bg-emerald-500"></span> Online
+            </span>
+          </td>
+          <td class="p-3.5 text-muted-foreground font-medium" id="lastseen-${slugId}">Just now</td>
+          <td class="p-3.5 pr-4 text-right">
+            <div class="flex items-center justify-end gap-2">
+              <button 
+                onclick="realtimePingDevice('${d.deviceId}', this)"
+                class="text-primary hover:bg-primary/10 px-2 py-1 rounded transition-all font-semibold inline-flex items-center gap-1 cursor-pointer border-0 bg-transparent text-xs"
+              >
+                <span>Ping</span>
+              </button>
+              <button 
+                onclick="realtimeDeleteDevice('${d.deviceId}')"
+                class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-all font-semibold inline-flex items-center gap-1 cursor-pointer border-0 bg-transparent text-xs"
+              >
+                <span>Delete</span>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.prepend(tr);
+
+        // Update counts
+        const countBadge = document.getElementById('devicesTabCount');
+        const metricDevs = document.getElementById('metricTotalDevices');
+        const currentCount = parseInt(countBadge.textContent || '0') + 1;
+        countBadge.textContent = currentCount;
+        metricDevs.textContent = currentCount;
+
+        if (window.lucide) lucide.createIcons();
+      } else {
+        showToast(data.message || 'Failed to add tablet', 'error');
+      }
+    } catch (err) {
+      showToast('Network error while registering tablet', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('opacity-75');
+    }
+  }
+
+  // Real-Time Ping Telemetry
+  async function realtimePingDevice(deviceId, btnEl) {
+    const slugId = deviceId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+    const originalText = btnEl.innerHTML;
+    btnEl.innerHTML = `<span class="animate-spin inline-block">⟳</span> Pinging...`;
+    btnEl.disabled = true;
+
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    formData.append('action', 'ping_device');
+    formData.append('device_id', deviceId);
+    formData.append('is_ajax', '1');
+
+    try {
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+      });
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        showToast(`Device ${deviceId} pinged (${data.latency}) - Active & Online`, 'success');
+        const lastSeenEl = document.getElementById(`lastseen-${slugId}`);
+        if (lastSeenEl) lastSeenEl.textContent = data.lastSeen;
+
+        const battVal = document.getElementById(`batt-val-${slugId}`);
+        if (battVal) battVal.textContent = `${data.battery}%`;
+
+        const battBar = document.getElementById(`batt-bar-${slugId}`);
+        if (battBar) battBar.style.width = `${data.battery}%`;
+      } else {
+        showToast(`Failed to ping ${deviceId}`, 'error');
+      }
+    } catch (err) {
+      showToast(`Network error pinging ${deviceId}`, 'error');
+    } finally {
+      btnEl.innerHTML = originalText;
+      btnEl.disabled = false;
+    }
+  }
+
+  // Real-Time Delete Device
+  async function realtimeDeleteDevice(deviceId) {
+    if (!confirm(`Are you sure you want to permanently decommission tablet "${deviceId}" in real time?`)) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    formData.append('action', 'delete_device');
+    formData.append('device_id', deviceId);
+    formData.append('is_ajax', '1');
+
+    try {
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+      });
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        showToast(data.message, 'success');
+        const slugId = deviceId.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+        const row = document.getElementById(`device-row-${slugId}`);
+        if (row) {
+          row.style.transition = 'all 0.3s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'scale(0.95)';
+          setTimeout(() => {
+            row.remove();
+            const countBadge = document.getElementById('devicesTabCount');
+            const metricDevs = document.getElementById('metricTotalDevices');
+            const newCount = Math.max(0, parseInt(countBadge.textContent || '1') - 1);
+            countBadge.textContent = newCount;
+            metricDevs.textContent = newCount;
+          }, 300);
+        }
+      } else {
+        showToast(data.message || 'Failed to remove tablet', 'error');
+      }
+    } catch (err) {
+      showToast('Network error while removing tablet', 'error');
+    }
+  }
+
+  // Real-Time KPI Polling
+  async function pollRealtimeMetrics(animate = false) {
+    const icon = document.getElementById('globalRefreshIcon');
+    if (icon && animate) icon.classList.add('animate-spin');
+
+    try {
+      const res = await fetch(`${window.location.pathname}?action=realtime_metrics&format=json`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        document.getElementById('metricActiveSites').textContent = data.activeSites;
+        document.getElementById('metricTotalDevices').textContent = data.totalDevices;
+        document.getElementById('metricTotalEnrolled').textContent = data.totalEnrolled;
+        document.getElementById('metricCases').textContent = `${data.totalCases} Cases`;
+        document.getElementById('metricControls').textContent = `${data.totalControls} Controls`;
+        if (animate) showToast(`Real-time data synchronized (${data.timestamp})`, 'success');
+      }
+    } catch (e) {
+      // silent background poll
+    } finally {
+      if (icon && animate) {
+        setTimeout(() => icon.classList.remove('animate-spin'), 600);
+      }
+    }
+  }
+
+  // Auto-poll metrics every 20 seconds
+  setInterval(() => pollRealtimeMetrics(false), 20000);
 
   function changeSitePerPage(val) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -547,9 +1005,10 @@
     window.location.search = urlParams.toString();
   }
 
-  // Set the default or active tab on load
+  // Initialize active tab on load
   window.addEventListener("DOMContentLoaded", () => {
     switchMonitoringTab('{{ active_tab }}');
+    if (window.lucide) lucide.createIcons();
   });
 </script>
 {% endblock %}

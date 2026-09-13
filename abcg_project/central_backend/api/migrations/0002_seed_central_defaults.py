@@ -15,9 +15,27 @@ def seed_defaults(apps, schema_editor):
     )
     
     # Create default administrator user for login
-    # User model must be imported using django's default User model because of auth framework
-    if not User.objects.filter(username="admin").exists():
-        User.objects.create_superuser("admin", "admin@example.com", "adminpassword")
+    # Temporarily disconnect User post_save signal to prevent premature UserProfile creation
+    # before later migrations add the 'role' column.
+    from django.db.models.signals import post_save
+    from django.contrib.auth.models import User
+    try:
+        from api.models import create_central_profile, save_central_profile
+        post_save.disconnect(create_central_profile, sender=User)
+        post_save.disconnect(save_central_profile, sender=User)
+    except Exception:
+        create_central_profile = None
+        save_central_profile = None
+
+    try:
+        if not User.objects.filter(username="admin").exists():
+            User.objects.create_superuser("admin", "admin@example.com", "adminpassword")
+    finally:
+        if create_central_profile:
+            post_save.connect(create_central_profile, sender=User)
+        if save_central_profile:
+            post_save.connect(save_central_profile, sender=User)
+
 
 class Migration(migrations.Migration):
 

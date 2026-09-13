@@ -244,6 +244,9 @@ class Participant(models.Model):
     
     # Sync metadata
     synced = models.BooleanField(default=False)
+    sync_receipt_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    sync_verified_at = models.DateTimeField(null=True, blank=True)
+    sync_error_message = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_participants")
 
@@ -475,6 +478,9 @@ class TptIndividual(models.Model):
     
     # Sync metadata
     synced = models.BooleanField(default=False)
+    sync_receipt_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    sync_verified_at = models.DateTimeField(null=True, blank=True)
+    sync_error_message = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_tpt_individuals")
 
@@ -620,6 +626,9 @@ class IneligibleIndividual(models.Model):
     
     # Sync metadata
     synced = models.BooleanField(default=False)
+    sync_receipt_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    sync_verified_at = models.DateTimeField(null=True, blank=True)
+    sync_error_message = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_ineligible_individuals")
 
@@ -768,6 +777,97 @@ def auto_sync_tpt_nikshay(sender, instance, **kwargs):
 def auto_sync_ineligible_nikshay(sender, instance, **kwargs):
     if instance.nikshay_id:
         sync_nikshay_record(instance, instance.nikshay_id, getattr(instance, "created_by", None))
+
+
+class StudySite(models.Model):
+    state = models.CharField(max_length=100)
+    district = models.CharField(max_length=100)
+    tb_unit = models.CharField(max_length=100, unique=True, db_index=True)
+    launch_date = models.DateField(default=timezone.localdate)
+    concluding_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_study_sites")
+
+    class Meta:
+        ordering = ["state", "district", "tb_unit"]
+        verbose_name = "Study Site"
+        verbose_name_plural = "Study Sites"
+
+    @property
+    def campaign_period_display(self):
+        """Formats e.g. 'Jan 2025 - Mar 2025' or 'Jun 2024 - Aug 2024'."""
+        import datetime
+        def to_date(val):
+            if isinstance(val, (datetime.date, datetime.datetime)):
+                return val
+            if isinstance(val, str) and val.strip():
+                try:
+                    return datetime.date.fromisoformat(val.strip()[:10])
+                except Exception:
+                    pass
+            return None
+
+        l_dt = to_date(self.launch_date)
+        c_dt = to_date(self.concluding_date)
+
+        if l_dt and c_dt:
+            return f"{l_dt.strftime('%b %Y')} - {c_dt.strftime('%b %Y')}"
+        elif l_dt:
+            return f"From {l_dt.strftime('%b %Y')}"
+        return "Jun 2024 - Aug 2024"
+
+    def __str__(self):
+        return f"{self.tb_unit} ({self.district}, {self.state})"
+
+
+class StudyDevice(models.Model):
+    device_id = models.CharField(max_length=100, unique=True, db_index=True)
+    tb_unit = models.CharField(max_length=100)
+    state = models.CharField(max_length=100, default="Tamil Nadu")
+    district = models.CharField(max_length=100, blank=True, default="")
+    app_version = models.CharField(max_length=50, default="3.4.1")
+    battery = models.IntegerField(default=100)
+    status = models.CharField(max_length=50, default="online")
+    last_seen = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Study Device"
+        verbose_name_plural = "Study Devices"
+
+    def __str__(self):
+        return f"{self.device_id} ({self.tb_unit})"
+
+
+def get_campaign_period_for_site(tb_unit=None, district=None, state=None):
+    """
+    Returns the dynamic campaign period string (e.g. 'Jan 2025 - Mar 2025')
+    configured in StudySite settings.
+    Falls back gracefully if not configured yet.
+    """
+    if tb_unit:
+        site = StudySite.objects.filter(tb_unit=tb_unit, is_active=True).first()
+        if site:
+            return site.campaign_period_display
+
+    if district:
+        site = StudySite.objects.filter(district=district, is_active=True).first()
+        if site:
+            return site.campaign_period_display
+
+    if state:
+        site = StudySite.objects.filter(state=state, is_active=True).first()
+        if site:
+            return site.campaign_period_display
+
+    # Default fallback matching historical clinical pilot
+    if tb_unit == "Tiruvallur TU":
+        return "Jan 2025 - Mar 2025"
+    return "Jun 2024 - Aug 2024"
+
 
 
 

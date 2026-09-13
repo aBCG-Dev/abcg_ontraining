@@ -5,956 +5,1339 @@
 
 {% block content %}
 <style>
-    /* Controlled Content Width Constraint */
+    /* Scope styling for high-contrast, medical-grade participant dossier */
     .container-detail {
         max-width: 1400px;
         margin-left: auto;
         margin-right: auto;
-        padding-top: 1rem;
-        padding-bottom: 2rem;
+        padding-top: 0.5rem;
+        padding-bottom: 2.5rem;
     }
-    
-    /* Premium visual styling */
+
+    /* Card container */
     .detail-card {
         border-radius: 12px;
-        border: 1px solid #e2e8f0 !important;
+        border: 1px solid #e2e8f0;
         background-color: #ffffff;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
-        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+        margin-bottom: 1.25rem;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .detail-card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     }
 
     .detail-card-header {
         background-color: #f8fafc;
         border-bottom: 1px solid #e2e8f0;
-        padding: 1rem 1.25rem;
+        padding: 0.85rem 1.25rem;
         border-top-left-radius: 12px;
         border-top-right-radius: 12px;
     }
-    
+
     .card-title-text {
-        font-size: 0.95rem;
+        font-size: 0.84rem;
         font-weight: 700;
-        color: #0f2942;
+        color: #0f172a;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 0;
     }
-    
-    .data-label {
+
+    .card-header-badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: #f1f5f9;
+        color: #334155 !important;
         font-size: 0.72rem;
         font-weight: 700;
-        color: #64748b; /* slate-500 */
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.2rem 0.6rem;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+    }
+
+    /* Clinical data typography */
+    .data-label {
+        font-size: 0.71rem;
+        font-weight: 700;
+        color: #475569;
         text-transform: uppercase;
         margin-bottom: 3px;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.4px;
     }
-    
+
     .data-value {
         font-size: 0.92rem;
         font-weight: 600;
-        color: #0f172a; /* slate-900 */
+        color: #0f172a;
+        word-break: break-word;
     }
 
-    .badge-premium {
+    .data-value-empty {
+        font-size: 0.86rem;
+        font-weight: 500;
+        color: #94a3b8;
+        font-style: italic;
+    }
+
+    /* Hero header components */
+    .patient-avatar {
+        width: 54px;
+        height: 54px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #0f4c81 0%, #1e293b 100%);
+        color: #ffffff;
+        font-size: 1.35rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 2px 6px rgba(15, 76, 129, 0.25);
+    }
+
+    .patient-name {
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+
+    .patient-demog-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background-color: #e0f2fe;
+        color: #0369a1 !important;
+        font-size: 0.82rem;
+        font-weight: 700;
+        padding: 0.25rem 0.65rem;
+        border-radius: 9999px;
+        border: 1px solid #bae6fd;
+    }
+
+    .patient-meta {
+        font-size: 0.84rem;
+        color: #475569;
+        font-weight: 500;
+    }
+
+    .chip-id {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background-color: #f8fafc;
+        color: #334155;
+        padding: 0.3rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+    }
+
+    .chip-id .chip-label {
+        color: #64748b;
+        font-weight: 700;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .chip-id .chip-code {
+        color: #0f172a;
+        font-weight: 700;
+        font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.84rem;
+    }
+
+    /* Verdict Badges */
+    .verdict-lead-label {
         font-size: 0.78rem;
         font-weight: 700;
-        padding: 0.35rem 0.65rem;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .verdict-badge {
+        font-size: 0.82rem;
+        font-weight: 800;
+        padding: 0.4rem 0.85rem;
+        border-radius: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .verdict-case {
+        background-color: #fee2e2;
+        color: #991b1b !important;
+        border: 1px solid #f87171;
+    }
+
+    .verdict-control {
+        background-color: #dcfce7;
+        color: #166534 !important;
+        border: 1px solid #86efac;
+    }
+
+    .verdict-pending {
+        background-color: #fef3c7;
+        color: #92400e !important;
+        border: 1px solid #fcd34d;
+    }
+
+    .verdict-tpt {
+        background-color: #f3e8ff;
+        color: #6b21a8 !important;
+        border: 1px solid #d8b4fe;
+    }
+
+    .pill-hrg {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background-color: #fff7ed;
+        color: #9a3412 !important;
+        border: 1px solid #fdba74;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 0.35rem 0.75rem;
+        border-radius: 8px;
+    }
+
+    .reason-box {
+        background-color: #f8fafc;
+        border-left: 4px solid #0f4c81;
+        padding: 0.65rem 1rem;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.84rem;
+        color: #1e293b;
+        border-top: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    /* Universal Status Pills (Guaranteed High Contrast) */
+    .pill-status-yes {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background-color: #dcfce7;
+        color: #166534 !important;
+        border: 1px solid #86efac;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.15rem 0.55rem;
         border-radius: 6px;
+    }
+
+    .pill-status-no {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background-color: #f1f5f9;
+        color: #475569 !important;
+        border: 1px solid #cbd5e1;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.15rem 0.55rem;
+        border-radius: 6px;
+    }
+
+    .pill-status-danger {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background-color: #fee2e2;
+        color: #991b1b !important;
+        border: 1px solid #fca5a5;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.15rem 0.55rem;
+        border-radius: 6px;
+    }
+
+    .pill-status-warning {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background-color: #fef3c7;
+        color: #92400e !important;
+        border: 1px solid #fcd34d;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.15rem 0.55rem;
+        border-radius: 6px;
+    }
+
+    /* Vitals Metric Cards */
+    .metric-card {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.75rem 0.85rem;
+        text-align: center;
+    }
+
+    .metric-card .metric-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+    }
+
+    .metric-card .metric-val {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+
+    .metric-card .metric-unit {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #64748b;
+    }
+
+    .bmi-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.15rem 0.5rem;
+        border-radius: 9999px;
+    }
+
+    /* Comorbidity Tile */
+    .comorb-tile {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.55rem 0.75rem;
+    }
+
+    .comorb-name {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    /* Symptom & Risk Tags (Guaranteed High Contrast) */
+    .symptom-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background-color: #f8fafc;
+        color: #0f172a !important;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.3rem 0.7rem;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+
+    .risk-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background-color: #f8fafc;
+        color: #0f172a !important;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.35rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+
+    /* Media Cards */
+    .media-card {
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background-color: #ffffff;
+        padding: 0.75rem;
+        transition: all 0.2s ease;
+    }
+
+    .media-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .media-thumb {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        object-fit: cover;
+        border: 1px solid #cbd5e1;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .media-thumb:hover {
+        transform: scale(1.05);
+    }
+
+    .media-thumb-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        background-color: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        flex-shrink: 0;
+    }
+
+    /* Action Buttons */
+    .btn-action-primary {
+        background-color: #0f4c81;
+        border-color: #0f4c81;
+        color: #ffffff !important;
+        font-weight: 600;
+        font-size: 0.84rem;
+        padding: 0.45rem 0.95rem;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        box-shadow: 0 1px 2px rgba(15, 76, 129, 0.15);
+        transition: all 0.15s ease;
+    }
+
+    .btn-action-primary:hover {
+        background-color: #0c3d68;
+        border-color: #0c3d68;
+        color: #ffffff !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-action-secondary {
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #334155 !important;
+        font-weight: 600;
+        font-size: 0.84rem;
+        padding: 0.45rem 0.95rem;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        transition: all 0.15s ease;
+    }
+
+    .btn-action-secondary:hover {
+        background-color: #f8fafc;
+        border-color: #94a3b8;
+        color: #0f172a !important;
+        transform: translateY(-1px);
     }
 
     .back-btn {
         color: #475569;
         font-weight: 700;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
+        font-size: 0.86rem;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
     }
+
     .back-btn:hover {
-        color: #0f2942;
-        transform: translateX(-2px);
+        color: #0f4c81;
+        transform: translateX(-3px);
+    }
+
+    /* Responsiveness Optimizations */
+    @media (max-width: 991.98px) {
+        .container-detail {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+        .header-action-group {
+            width: 100%;
+        }
+        .header-action-group .btn {
+            flex: 1 1 auto;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .patient-avatar {
+            width: 46px;
+            height: 46px;
+            font-size: 1.15rem;
+        }
+        .patient-name {
+            font-size: 1.25rem;
+        }
+        .metric-card {
+            padding: 0.6rem 0.4rem;
+        }
+        .metric-card .metric-val {
+            font-size: 1.05rem;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .chip-id {
+            width: 100%;
+            justify-content: space-between;
+        }
+        .verdict-badge {
+            width: 100%;
+            justify-content: center;
+        }
+        .reason-box {
+            border-left: 1px solid #e2e8f0;
+            border-top: 4px solid #0f4c81;
+            border-radius: 0 0 8px 8px;
+            width: 100%;
+        }
     }
 </style>
 
 <div class="container-detail">
-    <!-- Navigation Back Link -->
-    <div class="mb-3">
-        <a href="{% if p.classification == 'Control' %}{% url 'questions:controls' %}{% else %}{% url 'questions:cases' %}{% endif %}" class="text-decoration-none back-btn d-inline-flex align-items-center">
-            <i class="bi bi-arrow-left me-1.5" style="font-size: 1.1rem;"></i> Back to {% if p.classification == 'Control' %}Controls{% else %}Cases{% endif %}
+    <!-- Breadcrumb Navigation -->
+    <div class="mb-3 d-flex align-items-center justify-content-between">
+        <a href="{% if p.classification == 'Control' %}{% url 'questions:controls' %}{% else %}{% url 'questions:cases' %}{% endif %}" class="text-decoration-none back-btn">
+            <i class="bi bi-arrow-left fs-6"></i> Back to {% if p.classification == 'Control' %}Controls{% else %}Cases{% endif %}
         </a>
     </div>
 
-    <!-- DOSSIER HEADER CARD -->
-    <div class="card detail-card border border-slate-200">
-        <div class="card-body p-4">
+    <!-- DOSSIER HERO HEADER CARD -->
+    <div class="card detail-card mb-4" style="background: linear-gradient(to bottom, #ffffff, #fcfdfe);">
+        <div class="card-body p-3 p-md-4">
+            <!-- Top Row: Patient Info & Action Buttons -->
             <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
-                <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="patient-avatar">
+                        {{ p.full_name|slice:":2"|upper }}
+                    </div>
                     <div>
-                        <h1 class="fw-extrabold text-dark mb-1" style="font-size: 1.8rem; letter-spacing: -0.5px;">{{ p.full_name }}</h1>
-                        <p class="text-secondary fw-bold mb-2" style="font-size: 0.95rem;">
-                            {{ p.age }} years · {{ p.gender }} · Registered on {{ p.date_enroll|date:"d N Y" }}
-                        </p>
-                        
-                        <div class="d-flex gap-2.5 flex-wrap align-items-center" style="font-size: 0.82rem;">
-                            <span class="text-secondary fw-bold">Study ID: <code class="text-dark font-monospace fw-bold bg-light px-2 py-1 rounded">{% if p.eligible %}{{ p.study_id }}{% else %}<span class="text-muted small">Not Assigned</span>{% endif %}</code></span>
-                            <span class="text-muted">|</span>
-                            <span class="text-secondary fw-bold">Screening ID: <code class="text-primary font-monospace fw-bold bg-light px-2 py-1 rounded">{{ p.screening_id|default:"" }}</code></span>
-                            <span class="text-muted">|</span>
-                            <span class="text-secondary fw-bold">Nikshay ID: <code class="text-dark font-monospace fw-bold bg-light px-2 py-1 rounded">{{ p.nikshay_id|default:"" }}</code></span>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <h1 class="patient-name mb-0">{{ p.full_name }}</h1>
+                            <!-- DEMOGRAPHIC PILL (Age & Gender) -->
+                            <span class="patient-demog-pill">
+                                <i class="bi bi-person-fill"></i>
+                                {{ p.age }} yrs · {{ p.gender }}
+                            </span>
                         </div>
+                        <p class="patient-meta mb-0 mt-1">
+                            <i class="bi bi-calendar3 me-1 text-primary"></i> Registered on <strong>{{ p.date_enroll|date:"d M Y" }}</strong>
+                            <span class="mx-1.5 text-muted">·</span>
+                            <i class="bi bi-geo-alt-fill me-1 text-danger"></i> {{ p.tb_unit }}, {{ p.district }}, {{ p.state }}
+                        </p>
                     </div>
                 </div>
-                
-                <div class="d-flex gap-2 flex-wrap">
-                    <a href="{% url 'questions:reconcile' p.id %}?cohort={{ cohort }}" class="btn btn-outline-warning text-dark fw-bold px-3.5 py-2 d-inline-flex align-items-center justify-content-center" style="border-radius: 8px; font-size: 0.88rem; height: 38px;">
-                        <i class="bi bi-arrow-repeat me-1.5"></i> {% if p.synced %}Re-Reconcile{% else %}Reconcile{% endif %}
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2 flex-wrap align-items-center header-action-group">
+                    <a href="{% url 'questions:reconcile' p.id %}?cohort={{ cohort }}" class="btn btn-action-secondary">
+                        <i class="bi bi-arrow-repeat"></i> Reconcile
                     </a>
-                    <a href="{% url 'questions:registration_edit' p.id %}?cohort={{ cohort }}" class="btn btn-primary px-3.5 py-2 fw-bold d-inline-flex align-items-center justify-content-center shadow-xs" style="background-color: #0f2942; border: none; border-radius: 8px; font-size: 0.88rem; height: 38px;">
-                        <i class="bi bi-pencil-square me-1.5"></i> Update Questionnaire
+                    <a href="{% url 'questions:registration_edit' p.id %}?cohort={{ cohort }}" class="btn btn-action-primary">
+                        <i class="bi bi-pencil-square"></i> Update Questionnaire
                     </a>
                 </div>
             </div>
-            
-            <div class="border-top border-slate-100 mt-3 pt-3 d-flex flex-wrap gap-3 align-items-center" style="font-size: 0.88rem;">
-                <div>
-                    <span class="text-secondary font-bold">Cohort Verdict:</span>
+
+            <!-- Identifier Chips Row (Study ID, Screening ID, Nikshay ID) -->
+            <div class="d-flex gap-2 flex-wrap align-items-center mt-3 pt-3 border-top border-slate-100">
+                <div class="chip-id" title="Clinical Study ID">
+                    <span class="chip-label">STUDY ID:</span>
+                    <span class="chip-code">{% if p.eligible %}{{ p.study_id }}{% else %}<span class="text-muted fw-normal">Not Assigned</span>{% endif %}</span>
+                </div>
+                {% if p.screening_id %}
+                <div class="chip-id" title="Screening Identification Code">
+                    <span class="chip-label">SCREENING ID:</span>
+                    <span class="chip-code">{{ p.screening_id }}</span>
+                </div>
+                {% endif %}
+                {% if p.nikshay_id %}
+                <div class="chip-id" title="Nikshay National Portal ID">
+                    <span class="chip-label">NIKSHAY ID:</span>
+                    <span class="chip-code">{{ p.nikshay_id }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Verdict & Clinical Rationale Bar -->
+            <div class="mt-3 pt-3 border-top border-slate-100 d-flex flex-wrap align-items-center justify-content-between gap-2.5">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="verdict-lead-label">Cohort Classification:</span>
                     {% if p.classification == 'Case' %}
-                    <span class="badge bg-danger bg-opacity-10 text-danger font-bold text-uppercase ms-1 px-2.5 py-1.5"><i class="bi bi-bookmark-star-fill me-1"></i> Case</span>
+                    <span class="verdict-badge verdict-case">
+                        <i class="bi bi-bookmark-star-fill"></i> Confirmed Case
+                    </span>
                     {% elif p.classification == 'Control' %}
-                    <span class="badge bg-primary bg-opacity-10 text-primary font-bold text-uppercase ms-1 px-2.5 py-1.5"><i class="bi bi-bookmark-fill me-1"></i> Control</span>
+                    <span class="verdict-badge verdict-control">
+                        <i class="bi bi-shield-check"></i> Eligible Control
+                    </span>
                     {% elif p.classification == 'TPT+BCG' %}
-                    <span class="badge bg-purple bg-opacity-10 text-purple font-bold text-uppercase ms-1 px-2.5 py-1.5"><i class="bi bi-bookmark-star-fill me-1"></i> TPT+BCG</span>
+                    <span class="verdict-badge verdict-tpt">
+                        <i class="bi bi-plus-circle-fill"></i> TPT + BCG Cohort
+                    </span>
+                    {% elif p.classification == 'Adjudication Pending' or p.classification == 'Pending' %}
+                    <span class="verdict-badge verdict-pending">
+                        <i class="bi bi-hourglass-split"></i> {{ p.classification|default:"Adjudication Pending" }}
+                    </span>
                     {% else %}
-                    <span class="badge bg-warning bg-opacity-10 text-warning font-bold text-uppercase ms-1 px-2.5 py-1.5"><i class="bi bi-hourglass-split me-1"></i> {{ p.classification }}</span>
+                    <span class="verdict-badge verdict-pending">
+                        <i class="bi bi-info-circle-fill"></i> {{ p.classification|default:"Pending Review" }}
+                    </span>
+                    {% endif %}
+
+                    {% if p.match_hrg %}
+                    <span class="pill-hrg" title="High Risk Group Matched">
+                        <i class="bi bi-heart-pulse-fill"></i> HRG: {{ p.match_hrg }}
+                    </span>
                     {% endif %}
                 </div>
-                
-                <div>
-                    <span class="text-secondary font-bold">Sync Status:</span>
-                    {% if p.synced %}
-                    <span class="badge bg-success bg-opacity-10 text-success font-bold text-uppercase ms-1 px-2.5 py-1.5"><i class="bi bi-cloud-check-fill me-1"></i> Synced</span>
-                    {% else %}
-                    <span class="badge bg-warning bg-opacity-10 text-warning font-bold text-uppercase ms-1 px-2.5 py-1.5"><i class="bi bi-cloud-arrow-up-fill me-1"></i> Pending</span>
-                    {% endif %}
-                </div>
-                
+
                 {% if p.classification_reason %}
-                <div class="flex-grow-1 text-slate-600 bg-light p-2 rounded small border border-slate-100 mt-1 mt-md-0">
-                    <strong class="text-dark small">Reason:</strong> {{ p.classification_reason }}
+                <div class="reason-box flex-grow-1">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-info-circle-fill text-primary mt-0.5 fs-6"></i>
+                        <div>
+                            <strong class="text-dark">Clinical Note:</strong>
+                            <span class="text-slate-700">{{ p.classification_reason }}</span>
+                        </div>
+                    </div>
                 </div>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- MAIN TWO-COLUMN CONTENT GRID -->
-    <div class="row">
-        
-        <!-- LEFT COLUMN -->
+    <!-- MAIN TWO-COLUMN BALANCED CLINICAL DOSSIER -->
+    <div class="row g-3 g-md-4">
+        <!-- LEFT COLUMN: PRIMARY CLINICAL MATRIX (7 COLS ON DESKTOP) -->
         <div class="col-12 col-lg-7">
-            
-            <!-- PANEL 1: DEMOGRAPHICS & LOCATION -->
-            <div class="card detail-card border border-slate-200">
-                <div class="detail-card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-person-vcard text-primary fs-5"></i>
-                    <h5 class="card-title-text">Demographics &amp; Residential Location</h5>
+
+            <!-- PANEL 1: DEMOGRAPHICS & RESIDENTIAL LOCATION -->
+            <div class="card detail-card">
+                <div class="detail-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-vcard text-primary fs-5"></i>
+                        <h2 class="card-title-text">Demographics &amp; Residential Location</h2>
+                    </div>
+                    <span class="card-header-badge">Core Identifiers</span>
                 </div>
-                <div class="card-body p-3.5">
+                <div class="card-body p-3 p-md-3.5">
                     <div class="row g-3">
                         <div class="col-6 col-sm-4">
                             <div class="data-label">Full Name</div>
                             <div class="data-value">{{ p.full_name }}</div>
                         </div>
                         <div class="col-6 col-sm-4">
-                            <div class="data-label">Age / Gender</div>
-                            <div class="data-value">{{ p.age }} years / {{ p.gender }}</div>
+                            <div class="data-label">Age &amp; Gender</div>
+                            <div class="data-value">{{ p.age }} yrs / {{ p.gender }}</div>
                         </div>
                         <div class="col-6 col-sm-4">
                             <div class="data-label">Date of Birth</div>
-                            <div class="data-value">{{ p.dob|default:"" }}</div>
+                            <div class="data-value">{% if p.dob %}{{ p.dob }}{% else %}<span class="data-value-empty">Not Recorded</span>{% endif %}</div>
                         </div>
-                        
+
                         <div class="col-6 col-sm-4">
-                            <div class="data-label">Father/Husband Name</div>
-                            <div class="data-value">{{ p.father_husband_name|default:"" }}</div>
+                            <div class="data-label">Father / Husband Name</div>
+                            <div class="data-value">{% if p.father_husband_name %}{{ p.father_husband_name }}{% else %}<span class="data-value-empty">Not Recorded</span>{% endif %}</div>
                         </div>
                         <div class="col-6 col-sm-4">
                             <div class="data-label">Primary Mobile</div>
-                            <div class="data-value">{{ p.contact_number|default:"" }}</div>
+                            <div class="data-value font-monospace">
+                                {% if p.contact_number %}
+                                <i class="bi bi-telephone text-primary me-1"></i>{{ p.contact_number }}
+                                {% else %}
+                                <span class="data-value-empty">Not Recorded</span>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-6 col-sm-4">
                             <div class="data-label">Secondary Mobile</div>
-                            <div class="data-value">{{ p.secondary_phone|default:"" }}</div>
+                            <div class="data-value font-monospace">
+                                {% if p.secondary_phone %}
+                                <i class="bi bi-telephone text-muted me-1"></i>{{ p.secondary_phone }}
+                                {% else %}
+                                <span class="data-value-empty">None</span>
+                                {% endif %}
+                            </div>
                         </div>
-                        
+
                         {% if p.secondary_phone_1 or p.secondary_phone_2 or p.secondary_phone_3 %}
-                        <div class="col-12 border-top border-slate-100 pt-2 mt-2">
-                            <div class="data-label">Additional Phone Numbers</div>
-                            <div class="d-flex gap-3 flex-wrap">
-                                {% if p.secondary_phone_1 %}<span><i class="bi bi-phone text-muted me-1"></i>{{ p.secondary_phone_1 }}</span>{% endif %}
-                                {% if p.secondary_phone_2 %}<span><i class="bi bi-phone text-muted me-1"></i>{{ p.secondary_phone_2 }}</span>{% endif %}
-                                {% if p.secondary_phone_3 %}<span><i class="bi bi-phone text-muted me-1"></i>{{ p.secondary_phone_3 }}</span>{% endif %}
+                        <div class="col-12 pt-2 border-top border-slate-100">
+                            <div class="data-label mb-1">Additional Telephones</div>
+                            <div class="d-flex gap-3 flex-wrap small text-secondary">
+                                {% if p.secondary_phone_1 %}<span class="font-monospace"><i class="bi bi-telephone text-muted me-1"></i>{{ p.secondary_phone_1 }}</span>{% endif %}
+                                {% if p.secondary_phone_2 %}<span class="font-monospace"><i class="bi bi-telephone text-muted me-1"></i>{{ p.secondary_phone_2 }}</span>{% endif %}
+                                {% if p.secondary_phone_3 %}<span class="font-monospace"><i class="bi bi-telephone text-muted me-1"></i>{{ p.secondary_phone_3 }}</span>{% endif %}
                             </div>
                         </div>
                         {% endif %}
-                        
-                        <div class="col-12 border-top border-slate-100 pt-2 mt-2">
-                            <div class="row g-2">
+
+                        <div class="col-12 pt-2 border-top border-slate-100">
+                            <div class="row g-2.5">
                                 <div class="col-12">
                                     <div class="data-label">Street Address</div>
-                                    <div class="data-value">{{ p.address|default:"" }}</div>
+                                    <div class="data-value">
+                                        {% if p.address %}
+                                        <i class="bi bi-geo-alt text-primary me-1"></i>{{ p.address }}
+                                        {% else %}
+                                        <span class="data-value-empty">Not Recorded</span>
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 <div class="col-6 col-sm-4">
-                                    <div class="data-label">Village</div>
-                                    <div class="data-value">{{ p.village|default:"" }}</div>
+                                    <div class="data-label">Village / Ward</div>
+                                    <div class="data-value">{{ p.village|default:"-" }}</div>
                                 </div>
                                 <div class="col-6 col-sm-4">
                                     <div class="data-label">Taluka / Block</div>
-                                    <div class="data-value">{{ p.taluka_block|default:"" }}</div>
+                                    <div class="data-value">{{ p.taluka_block|default:"-" }}</div>
                                 </div>
                                 <div class="col-6 col-sm-4">
                                     <div class="data-label">Pincode</div>
-                                    <div class="data-value font-monospace">{{ p.pincode|default:"" }}</div>
+                                    <div class="data-value font-monospace">{{ p.pincode|default:"-" }}</div>
                                 </div>
                                 <div class="col-6 col-sm-4">
                                     <div class="data-label">District</div>
-                                    <div class="data-value">{{ p.district|default:"" }}</div>
+                                    <div class="data-value">{{ p.district|default:"-" }}</div>
                                 </div>
                                 <div class="col-6 col-sm-4">
                                     <div class="data-label">State</div>
-                                    <div class="data-value">{{ p.state|default:"" }}</div>
+                                    <div class="data-value">{{ p.state|default:"-" }}</div>
                                 </div>
-                                <div class="col-12 col-sm-4">
+                                <div class="col-6 col-sm-4">
                                     <div class="data-label">Landmark</div>
-                                    <div class="data-value">{{ p.landmark|default:"" }}</div>
+                                    <div class="data-value">{{ p.landmark|default:"-" }}</div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="col-12 border-top border-slate-100 pt-2 mt-2">
-                            <div class="row g-3">
-                                <div class="col-6 col-sm-4">
+
+                        <div class="col-12 pt-2 border-top border-slate-100">
+                            <div class="row g-2.5">
+                                <div class="col-6 col-sm-3">
                                     <div class="data-label">Sector</div>
-                                    <div class="data-value">{{ p.sector|default:"" }}</div>
+                                    <div class="data-value">{{ p.sector|default:"-" }}</div>
                                 </div>
-                                <div class="col-6 col-sm-4">
+                                <div class="col-6 col-sm-3">
                                     <div class="data-label">Area Type</div>
-                                    <div class="data-value">{{ p.demographic_area|default:"" }}</div>
+                                    <div class="data-value">{{ p.demographic_area|default:"-" }}</div>
                                 </div>
-                                <div class="col-6 col-sm-4">
+                                <div class="col-6 col-sm-3">
                                     <div class="data-label">Marital Status</div>
-                                    <div class="data-value">{{ p.marital_status|default:"" }}</div>
+                                    <div class="data-value">{{ p.marital_status|default:"-" }}</div>
                                 </div>
-                                <div class="col-6 col-sm-4">
+                                <div class="col-6 col-sm-3">
                                     <div class="data-label">Occupation</div>
-                                    <div class="data-value">{{ p.occupation|default:"" }}</div>
-                                </div>
-                                <div class="col-6 col-sm-4">
-                                    <div class="data-label">Socio-economic</div>
-                                    <div class="data-value">{{ p.socioeconomic_status|default:"" }}</div>
+                                    <div class="data-value">{{ p.occupation|default:"-" }}</div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- PANEL 2: CONTACT PERSON & INFORMANT DETAILS -->
-            <div class="card detail-card border border-slate-200">
-                <div class="detail-card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-people text-primary fs-5"></i>
-                    <h5 class="card-title-text">Contact Persons &amp; Informant Details</h5>
-                </div>
-                <div class="card-body p-3.5">
-                    <div class="row g-3">
-                        <div class="col-12 col-md-6 border-end border-slate-100 pr-md-3">
-                            <h6 class="fw-bold text-secondary mb-2" style="font-size: 0.8rem; text-transform: uppercase;">Primary Emergency Contact</h6>
-                            {% if p.contact_person_name or p.contact_person_phone %}
-                            <div class="mb-2">
-                                <div class="data-label">Contact Name</div>
-                                <div class="data-value text-dark">{{ p.contact_person_name|default:"" }}</div>
-                            </div>
-                            <div class="mb-2">
-                                <div class="data-label">Contact Phone</div>
-                                <div class="data-value text-dark">{{ p.contact_person_phone|default:"" }}</div>
-                            </div>
-                            <div>
-                                <div class="data-label">Address</div>
-                                <div class="data-value text-dark" style="font-size: 0.88rem;">{{ p.contact_person_address|default:"" }}</div>
-                            </div>
-                            {% else %}
-                            <p class="text-secondary small italic mb-0">No emergency contact details provided.</p>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="col-12 col-md-6 pl-md-3 mt-3 mt-md-0">
-                            <h6 class="fw-bold text-secondary mb-2" style="font-size: 0.8rem; text-transform: uppercase;">Reporting Informant</h6>
-                            {% if p.informant_name or p.informant_designation %}
-                            <div class="mb-2">
-                                <div class="data-label">Informant Name</div>
-                                <div class="data-value text-dark">{{ p.informant_name|default:"" }}</div>
-                            </div>
-                            <div>
-                                <div class="data-label">Designation / Role</div>
-                                <div class="data-value text-dark">{{ p.informant_designation|default:"" }}</div>
-                            </div>
-                            {% else %}
-                            <p class="text-secondary small italic mb-0">No informant details provided.</p>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- PANEL 3: PULMONARY TB (PTB) DIAGNOSTICS -->
-            <div class="card detail-card border border-slate-200">
-                <div class="detail-card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-file-medical text-primary fs-5"></i>
-                    <h5 class="card-title-text">Pulmonary TB (PTB) Diagnostics</h5>
+            <!-- PANEL 2: PULMONARY TB (PTB) DIAGNOSTICS -->
+            <div class="card detail-card">
+                <div class="detail-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-lungs-fill text-primary fs-5"></i>
+                        <h2 class="card-title-text">Pulmonary TB (PTB) Diagnostics</h2>
+                    </div>
+                    <span class="card-header-badge">Microbiology &amp; Imaging</span>
                 </div>
-                <div class="card-body p-3.5">
-                    <div class="row g-3 mb-3">
+                <div class="card-body p-3 p-md-3.5">
+                    <div class="row g-3">
                         <div class="col-6 col-sm-3">
                             <div class="data-label">PTB Screened</div>
-                            <div class="data-value">
+                            <div>
                                 {% if p.ptb_screened %}
-                                <span class="badge bg-success bg-opacity-10 text-success px-2 py-1" style="font-size: 0.72rem;">Yes</span>
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> Yes</span>
                                 {% else %}
-                                <span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1" style="font-size: 0.72rem;">No</span>
+                                <span class="pill-status-no"><i class="bi bi-dash-circle"></i> No</span>
                                 {% endif %}
                             </div>
                         </div>
                         <div class="col-6 col-sm-3">
                             <div class="data-label">Test Registered</div>
-                            <div class="data-value">
+                            <div>
                                 {% if p.ptb_test_registered %}
-                                <span class="badge bg-success bg-opacity-10 text-success px-2 py-1" style="font-size: 0.72rem;">Yes</span>
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> Yes</span>
                                 {% else %}
-                                <span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1" style="font-size: 0.72rem;">No</span>
+                                <span class="pill-status-no"><i class="bi bi-dash-circle"></i> No</span>
                                 {% endif %}
                             </div>
                         </div>
                         <div class="col-6 col-sm-3">
                             <div class="data-label">Test Type</div>
-                            <div class="data-value">{{ p.ptb_test_type|default:"" }}</div>
+                            <div class="data-value">{{ p.ptb_test_type|default:"NAAT / MCTB" }}</div>
                         </div>
                         <div class="col-6 col-sm-3">
                             <div class="data-label">Result</div>
-                            <div class="data-value">
+                            <div>
                                 {% if p.ptb_test_result == 'MTB Detected' %}
-                                <span class="text-danger fw-bold">{{ p.ptb_test_result }}</span>
+                                <span class="pill-status-danger"><i class="bi bi-exclamation-triangle-fill"></i> MTB Detected</span>
+                                {% elif p.ptb_test_result == 'MTB Not Detected' %}
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> MTB Not Detected</span>
                                 {% elif p.ptb_test_result %}
-                                <span class="text-success fw-bold">{{ p.ptb_test_result }}</span>
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> {{ p.ptb_test_result }}</span>
                                 {% else %}
-                                <span class="text-muted small">Not Done</span>
+                                <span class="pill-status-warning"><i class="bi bi-clock-history"></i> Pending / Not Done</span>
                                 {% endif %}
                             </div>
                         </div>
+
                         <div class="col-6 col-sm-6">
                             <div class="data-label">Testing Date</div>
-                            <div class="data-value">{{ p.ptb_test_date|default:"" }}</div>
+                            <div class="data-value font-monospace">{% if p.ptb_test_date %}{{ p.ptb_test_date }}{% else %}<span class="data-value-empty">Not Recorded</span>{% endif %}</div>
                         </div>
                         <div class="col-6 col-sm-6">
                             <div class="data-label">Testing Facility</div>
-                            <div class="data-value">{{ p.ptb_test_facility|default:"" }}</div>
+                            <div class="data-value">{% if p.ptb_test_facility %}{{ p.ptb_test_facility }}{% else %}<span class="data-value-empty">Not Recorded</span>{% endif %}</div>
                         </div>
                     </div>
-                    
-                    {% if ptb_details %}
-                    <div class="bg-light p-3 rounded border border-slate-100 mt-2">
-                        <h6 class="fw-bold text-dark mb-2.5" style="font-size: 0.82rem; text-transform: uppercase;"><i class="bi bi-clipboard-pulse me-1 text-primary"></i> Lab Sample &amp; Diagnostic Details</h6>
-                        <div class="row g-2.5 small">
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary font-bold d-block uppercase" style="font-size: 0.68rem;">Test Reason</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.test_reason|default:"" }}</span>
+
+                    <!-- Diagnostic Specimen & Lab Results -->
+                    <div class="mt-3 pt-3 border-top border-slate-100">
+                        {% if ptb_details and ptb_details.sample_details %}
+                        <div class="bg-light p-3 rounded-3 border border-slate-200">
+                            <div class="data-label mb-2 text-primary d-flex align-items-center gap-1.5">
+                                <i class="bi bi-clipboard2-pulse fs-6"></i> Lab Specimen &amp; Diagnostic Details
                             </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary font-bold d-block uppercase" style="font-size: 0.68rem;">Predominant Symptom</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.predominant_symptom|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary font-bold d-block uppercase" style="font-size: 0.68rem;">Symptom Duration</span>
-                                <span class="fw-semibold text-dark">{% if ptb_details.duration_days %}{{ ptb_details.duration_days }} days{% endif %}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary font-bold d-block uppercase" style="font-size: 0.68rem;">HCP Visits</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.hcp_visits|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary font-bold d-block uppercase" style="font-size: 0.68rem;">Case Type</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.case_type|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary font-bold d-block uppercase" style="font-size: 0.68rem;">Sample Availability</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.sample_availability|default:"" }}</span>
-                            </div>
-                        </div>
-                        
-                        {% if ptb_details.sample_details %}
-                        <hr class="my-2 bg-slate-200">
-                        <div class="row g-2 small">
-                            <div class="col-12"><strong class="text-secondary" style="font-size: 0.72rem; text-transform: uppercase;">Sample Mapping</strong></div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Sample Type</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.sample_details.sample_type|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Collection Method</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.sample_details.sputum_collection_detail|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Appearance</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.sample_details.sample_description|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Collection Date</span>
-                                <span class="fw-semibold text-dark font-monospace">{{ ptb_details.sample_details.collection_date|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Sample ID (Serial)</span>
-                                <span class="fw-semibold text-dark font-monospace">{{ ptb_details.sample_details.sample_serial_id|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Sample QR Code</span>
-                                <span class="fw-semibold text-dark font-monospace text-primary">{{ ptb_details.sample_details.sample_qr_code|default:"" }}</span>
+                            <div class="row g-2">
+                                <div class="col-6 col-sm-4">
+                                    <div class="data-label">Specimen Type</div>
+                                    <div class="data-value">{{ ptb_details.sample_details.sample_type|default:"Sputum" }}</div>
+                                </div>
+                                <div class="col-6 col-sm-4">
+                                    <div class="data-label">Sample Serial ID</div>
+                                    <div class="data-value font-monospace">{{ ptb_details.sample_details.sample_serial_id|default:"-" }}</div>
+                                </div>
+                                <div class="col-6 col-sm-4">
+                                    <div class="data-label">Collection Date</div>
+                                    <div class="data-value font-monospace">{{ ptb_details.sample_details.collection_date|default:"-" }}</div>
+                                </div>
+                                {% if ptb_details.result_details %}
+                                <div class="col-12 pt-2 border-top border-slate-200 mt-2">
+                                    <div class="data-label">Lab Interpretation</div>
+                                    <div class="data-value fw-bold text-dark">{{ ptb_details.result_details.final_interpretation|default:"-" }}</div>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
-                        {% endif %}
-                        
-                        {% if ptb_details.result_details %}
-                        <hr class="my-2 bg-slate-200">
-                        <div class="row g-2 small">
-                            <div class="col-12"><strong class="text-secondary" style="font-size: 0.72rem; text-transform: uppercase;">Laboratory Result Interpretation</strong></div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Lab Serial Number</span>
-                                <span class="fw-semibold text-dark font-monospace">{{ ptb_details.result_details.lab_serial_number|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Date Tested</span>
-                                <span class="fw-semibold text-dark font-monospace">{{ ptb_details.result_details.date_tested|default:"" }}</span>
-                            </div>
-                            <div class="col-6 col-sm-4">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Reported By</span>
-                                <span class="fw-semibold text-dark">{{ ptb_details.result_details.reported_by|default:"" }}</span>
-                            </div>
-                            <div class="col-12 col-sm-8">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Interpretation Verdict</span>
-                                <span class="fw-extrabold text-danger" style="font-size: 0.85rem;">{{ ptb_details.result_details.final_interpretation|default:"" }}</span>
-                            </div>
-                            {% if ptb_details.result_details.remarks %}
-                            <div class="col-12">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Remarks</span>
-                                <span class="text-dark italic">{{ ptb_details.result_details.remarks }}</span>
-                            </div>
-                            {% endif %}
+                        {% else %}
+                        <div class="p-2.5 rounded-3 border border-slate-200 bg-slate-50 d-flex align-items-center gap-2 text-slate-600 small">
+                            <i class="bi bi-info-circle fs-6 text-primary"></i>
+                            <span>No laboratory sputum specimen has been recorded or registered for this participant yet.</span>
                         </div>
                         {% endif %}
                     </div>
-                    {% endif %}
-                </div>
-            </div>
-            
-        </div>
-        
-        <!-- RIGHT COLUMN -->
-        <div class="col-12 col-lg-5">
-            
-            <!-- PANEL: DOCTOR CLINICAL VERIFICATION -->
-            <div class="card detail-card border-primary" style="border-width: 1.5px !important;">
-                <div class="detail-card-header d-flex align-items-center gap-2" style="background-color: rgba(15, 76, 129, 0.05);">
-                    <i class="bi bi-shield-check text-primary fs-5"></i>
-                    <h5 class="card-title-text text-primary">Doctor Verification &amp; Sign-off</h5>
-                </div>
-                <div class="card-body p-3.5">
-                    {% if request.user.profile.role == 'Doctor' or request.user.profile.role == 'Admin' or request.user.profile.role == 'Super Admin' %}
-                    <form method="POST" action="{% url 'questions:doctor_verify' p.id|default:1 %}">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary text-uppercase">Verification Decision</label>
-                            <select name="classification" class="form-select text-xs font-semibold" required>
-                                <option value="Case" {% if p.classification == 'Case' %}selected{% endif %}>Verify as Confirmed Case</option>
-                                <option value="Control" {% if p.classification == 'Control' %}selected{% endif %}>Verify as Control Study Subject</option>
-                                <option value="Needs Correction" {% if p.classification == 'Needs Correction' %}selected{% endif %}>Needs Correction / Send to Project Nurse</option>
-                                <option value="Adjudication Pending" {% if p.classification == 'Adjudication Pending' %}selected{% endif %}>Send for Adjudication (Discordant Panel)</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-secondary text-uppercase">Clinical Justification &amp; Notes</label>
-                            <textarea name="classification_reason" rows="3" class="form-control text-xs" placeholder="Provide clinical context, radiological findings, or matching confirmation notes..." required>{{ p.classification_reason|default:"" }}</textarea>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1 font-bold text-xs" style="background-color: #0f4c81; border-color: #0f4c81;">Submit Verification</button>
-                        </div>
-                    </form>
-                    {% else %}
-                    <div class="alert alert-info py-2 px-3 text-xs mb-0">
-                        Only Doctor, Admin or Super Admin roles can submit verification choices.
-                    </div>
-                    {% endif %}
                 </div>
             </div>
 
-            <!-- PANEL: AUDIT TIMELINE -->
-            <div class="card detail-card border border-slate-200">
-                <div class="detail-card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-clock-history text-primary fs-5"></i>
-                    <h5 class="card-title-text">Verification Audit Trail</h5>
+            <!-- PANEL 3: EXTRAPULMONARY TB (EPTB) MATRIX -->
+            <div class="card detail-card">
+                <div class="detail-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-activity text-primary fs-5"></i>
+                        <h2 class="card-title-text">Extrapulmonary TB (EPTB) Matrix</h2>
+                    </div>
+                    <span class="card-header-badge">Clinical Sites</span>
                 </div>
-                <div class="card-body p-3.5" style="max-height: 250px; overflow-y: auto;">
-                    <div class="position-relative ps-3 border-start border-slate-200 ms-2" style="font-size: 0.82rem;">
-                        {% for log in audit_trail %}
-                        <div class="mb-3 position-relative">
-                            <div class="position-absolute rounded-circle bg-primary" style="width: 8px; height: 8px; left: -18px; top: 6px;"></div>
-                            <div class="fw-bold text-dark">{{ log.actor.username }} <span class="badge bg-secondary text-white font-normal text-[8px]">{{ log.actor.profile.role }}</span></div>
-                            <div class="text-secondary text-xs font-semibold">{{ log.timestamp|date:"Y-m-d H:i" }}</div>
-                            <p class="text-muted mt-1 mb-0" style="font-size: 0.78rem;">{{ log.action }}</p>
-                        </div>
-                        {% empty %}
-                        <div class="text-center text-muted py-2 italic text-xs">No audit logs found for this participant.</div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-            
-            <!-- PANEL 4: CLINICAL PROFILE & MEDICAL HISTORY -->
-            <div class="card detail-card border border-slate-200">
-                <div class="detail-card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-shield-pulse text-primary fs-5"></i>
-                    <h5 class="card-title-text">Clinical Profile &amp; Risk Factors</h5>
-                </div>
-                <div class="card-body p-3.5">
-                    <!-- Physical Measurements -->
-                    <div class="row g-3 mb-3 border-bottom border-slate-100 pb-3">
-                        <div class="col-4">
-                            <div class="data-label">Weight</div>
-                            <div class="data-value">{{ p.weight_kg }} kg</div>
-                        </div>
-                        <div class="col-4">
-                            <div class="data-label">Height</div>
-                            <div class="data-value">{{ p.height_cm }} cm</div>
-                        </div>
-                        <div class="col-4">
-                            <div class="data-label">BMI Value</div>
-                            <div class="data-value">
-                                {{ p.bmi }} 
-                                {% if p.bmi < 18.5 %}
-                                <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.65rem;">Low</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Clinical History Flags -->
-                    <div class="mb-3">
-                        <div class="data-label mb-2">Comorbidities &amp; Lifestyle Flags</div>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi {% if p.past_tb %}bi-check-circle-fill text-danger{% else %}bi-dash-circle text-muted{% endif %}"></i>
-                                    <span class="small fw-semibold text-dark">Past TB History</span>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi {% if p.diabetes %}bi-check-circle-fill text-danger{% else %}bi-dash-circle text-muted{% endif %}"></i>
-                                    <span class="small fw-semibold text-dark">Diabetes Mellitus</span>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi {% if p.smoker %}bi-check-circle-fill text-danger{% else %}bi-dash-circle text-muted{% endif %}"></i>
-                                    <span class="small fw-semibold text-dark">Tobacco Smoker</span>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi {% if p.close_contact %}bi-check-circle-fill text-danger{% else %}bi-dash-circle text-muted{% endif %}"></i>
-                                    <span class="small fw-semibold text-dark">Household Contact</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row g-3 mb-3 border-top border-slate-100 pt-3">
-                        <div class="col-6">
-                            <div class="data-label">HIV Status</div>
-                            <div class="data-value">{{ p.hiv_status|default:"Unknown" }}</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="data-label">High-Risk Eligibility</div>
-                            <div class="data-value">
-                                {% if p.eligible %}
-                                <span class="text-success fw-bold"><i class="bi bi-patch-check-fill me-0.5"></i> Eligible</span>
-                                {% else %}
-                                <span class="text-danger fw-bold"><i class="bi bi-patch-exclamation-fill me-0.5"></i> Ineligible</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="col-12">
-                            <div class="data-label">MATCH_HRG Assignment</div>
-                            <div class="data-value text-dark font-monospace" style="font-size: 0.85rem;">{{ p.match_hrg|default:"" }}</div>
-                        </div>
-                        
-                        {% if p.bcg_eligibility_criteria %}
-                        <div class="col-12">
-                            <div class="data-label">Eligibility Criteria Met</div>
-                            <div class="bg-light p-2 rounded small text-slate-700 border border-slate-100" style="font-size: 0.78rem;">
-                                {{ p.bcg_eligibility_criteria }}
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Symptoms & Risk Factors Badges -->
-                    <div class="border-top border-slate-100 pt-3">
-                        <div class="mb-2">
-                            <div class="data-label">Reported Symptoms</div>
-                            <div class="d-flex flex-wrap gap-1.5 mt-1">
-                                {% for sym in symptoms_list %}
-                                    <span class="badge px-2.5 py-1 fw-bold" style="font-size: 0.72rem; color: #1e293b !important; background-color: #f1f5f9 !important; border: 1px solid #cbd5e1 !important;">{{ sym }}</span>
-                                {% empty %}
-                                    <span class="text-secondary small italic">No symptoms flagged.</span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        <div>
-                            <div class="data-label">Risk Profile Tags</div>
-                            <div class="d-flex flex-wrap gap-1.5 mt-1">
-                                {% for rf in risk_factors_list %}
-                                    <span class="badge px-2.5 py-1 fw-bold" style="font-size: 0.72rem; color: #1e293b !important; background-color: #f1f5f9 !important; border: 1px solid #cbd5e1 !important;">{{ rf }}</span>
-                                {% empty %}
-                                    <span class="text-secondary small italic">No risk factor tags flagged.</span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- PANEL 5: BCG CAMPAIGN & VACCINE VERIFICATION -->
-            <div class="card detail-card border border-slate-200">
-                <div class="detail-card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-heart-pulse text-primary fs-5"></i>
-                    <h5 class="card-title-text">BCG Campaign &amp; Vaccine Verification</h5>
-                </div>
-                <div class="card-body p-3.5">
-                    <div class="row g-3 mb-3">
-                        <div class="col-6">
-                            <div class="data-label">BCG Eligible Campaign</div>
-                            <div class="data-value">{{ p.eligible_bcg_campaign|yesno:"Yes,No,Unknown" }}</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="data-label">BCG Status</div>
-                            <div class="data-value fw-bold {% if p.bcg_status == 'Verified' or p.bcg_status == 'Yes' %}text-success{% else %}text-warning{% endif %}">
-                                {{ p.bcg_status|default:"Pending" }}
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="data-label">BCG Evidence</div>
-                            <div class="data-value">{{ p.bcg_evidence|default:"No evidence" }}</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="data-label">BCG Scar Present</div>
-                            <div class="data-value">{{ p.bcg_scar|default:"" }}</div>
-                        </div>
-                    </div>
-
-                    <!-- File Upload Documents Links -->
-                    <div class="mb-3 border-top border-slate-100 pt-3">
-                        <div class="data-label mb-2">Uploaded Verification Files</div>
-                        <div class="d-flex flex-column gap-2">
-                            <div>
-                                <span class="small text-secondary fw-semibold d-block">BCG Record File</span>
-                                {% if p.bcg_record_file %}
-                                <a href="{{ p.bcg_record_file.url }}" target="_blank" class="btn btn-xs btn-outline-primary fw-bold py-1 px-2.5 mt-1" style="font-size: 0.76rem; border-radius: 6px;">
-                                    <i class="bi bi-file-earmark-arrow-down me-1"></i> View Record Doc
-                                </a>
-                                {% else %}
-                                <span class="text-secondary small italic">No document uploaded</span>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="mt-1">
-                                <span class="small text-secondary fw-semibold d-block">BCG Scar Photo</span>
-                                {% if p.bcg_scar_file %}
-                                <a href="{{ p.bcg_scar_file.url }}" target="_blank" class="btn btn-xs btn-outline-primary fw-bold py-1 px-2.5 mt-1" style="font-size: 0.76rem; border-radius: 6px;">
-                                    <i class="bi bi-image me-1"></i> View Scar Photo
-                                </a>
-                                {% else %}
-                                <span class="text-secondary small italic">No image uploaded</span>
-                                {% endif %}
-                            </div>
-
-                            <div class="mt-1">
-                                <span class="small text-secondary fw-semibold d-block">Chest X-Ray File</span>
-                                {% if p.cxr_record_file %}
-                                <a href="{{ p.cxr_record_file.url }}" target="_blank" class="btn btn-xs btn-outline-primary fw-bold py-1 px-2.5 mt-1" style="font-size: 0.76rem; border-radius: 6px;">
-                                    <i class="bi bi-file-earmark-pdf me-1"></i> View CXR File
-                                </a>
-                                {% else %}
-                                <span class="text-secondary small italic">No CXR uploaded</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- BCG Registry Beneficiary Matching (parsed inline) -->
-                    {% if p.bcg_beneficiary_id %}
-                    <div class="bg-light p-3 rounded border border-slate-100 mt-2.5 small">
-                        <strong class="text-dark d-block mb-2 uppercase" style="font-size: 0.75rem; text-transform: uppercase;"><i class="bi bi-check-circle-fill text-success me-1"></i> BCG Beneficiary Info</strong>
-                        <div class="row g-2.5">
-                            <div class="col-6">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Beneficiary ID</span>
-                                <span class="fw-semibold text-dark font-monospace">{{ p.bcg_beneficiary_id }}</span>
-                            </div>
-                            <div class="col-6">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Registration Mode</span>
-                                <span class="fw-semibold text-dark">{{ p.bcg_registration_mode|default:"" }}</span>
-                            </div>
-                            <div class="col-6">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Vaccinated Date</span>
-                                <span class="fw-semibold text-dark font-monospace">{{ p.bcg_vaccination_date|default:"" }}</span>
-                            </div>
-                            <div class="col-6">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Vaccine / Batch</span>
-                                <span class="fw-semibold text-dark">{{ p.bcg_vaccine_name|default:"" }} / {{ p.bcg_batch_number|default:"" }}</span>
-                            </div>
-                            <div class="col-12">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Approved / Facility</span>
-                                <span class="fw-semibold text-dark">{{ p.bcg_approved_by|default:"" }} ({{ p.bcg_facility|default:"" }} [{{ p.bcg_site_id|default:"" }}])</span>
-                            </div>
-                            <div class="col-12">
-                                <span class="text-secondary d-block" style="font-size: 0.68rem;">Registry Matches Profile Name</span>
-                                <span class="fw-semibold text-dark">{{ p.bcg_first_name }} {{ p.bcg_last_name }} ({{ p.bcg_ben_gender }} / {{ p.bcg_ben_mobile_number|default:"" }})</span>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- PANEL 6: EXTRAPULMONARY TB (EPTB) DETAILS -->
-            <div class="card detail-card border border-slate-200">
-                <div class="detail-card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-activity text-primary fs-5"></i>
-                    <h5 class="card-title-text">Extrapulmonary TB (EPTB) Matrix</h5>
-                </div>
-                <div class="card-body p-3.5">
+                <div class="card-body p-3 p-md-3.5">
                     <div class="row g-3 mb-2">
                         <div class="col-6">
                             <div class="data-label">EPTB Screened</div>
-                            <div class="data-value">
+                            <div>
                                 {% if p.eptb_screened %}
-                                <span class="badge bg-success bg-opacity-10 text-success px-2.5 py-1" style="font-size: 0.72rem;">Yes</span>
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> Yes</span>
                                 {% else %}
-                                <span class="badge bg-secondary bg-opacity-10 text-secondary px-2.5 py-1" style="font-size: 0.72rem;">No</span>
+                                <span class="pill-status-no"><i class="bi bi-dash-circle"></i> No</span>
                                 {% endif %}
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="data-label">Doctor Case History</div>
-                            <div class="data-value fw-bold text-dark">{{ eptb_details.doctor_history|default:"" }}</div>
+                            <div class="data-value fw-semibold text-dark">
+                                {% if eptb_details.doctor_history %}
+                                {{ eptb_details.doctor_history }}
+                                {% else %}
+                                <span class="data-value-empty">None Reported</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
-                    {% if eptb_details %}
                     <div class="border-top border-slate-100 pt-2.5 mt-2">
-                        <strong class="text-secondary d-block mb-2.5" style="font-size: 0.72rem; text-transform: uppercase;">Flagged Extrapulmonary Sites</strong>
-                        
+                        <div class="data-label mb-2">Flagged Organ Sites</div>
                         <div class="row g-2">
                             {% if eptb_details.lymph_node_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Lymph Node TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.lymph_node_tb_details|default:"No description provided" }}</div>
+                            <div class="col-12 col-sm-6">
+                                <div class="p-2 border border-danger border-opacity-25 rounded bg-danger bg-opacity-5">
+                                    <span class="fw-bold text-danger small d-block">Lymph Node TB</span>
+                                    <span class="text-secondary small">{{ eptb_details.lymph_node_tb_details|default:"Flagged by clinician" }}</span>
                                 </div>
                             </div>
                             {% endif %}
-                            
                             {% if eptb_details.pleural_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Pleural TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.pleural_tb_details|default:"No description provided" }}</div>
+                            <div class="col-12 col-sm-6">
+                                <div class="p-2 border border-danger border-opacity-25 rounded bg-danger bg-opacity-5">
+                                    <span class="fw-bold text-danger small d-block">Pleural TB</span>
+                                    <span class="text-secondary small">{{ eptb_details.pleural_tb_details|default:"Flagged by clinician" }}</span>
                                 </div>
                             </div>
                             {% endif %}
-
-                            {% if eptb_details.pericardial_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Pericardial TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.pericardial_tb_details|default:"No description provided" }}</div>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            {% if eptb_details.abdominal_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Abdominal TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.abdominal_tb_details|default:"No description provided" }}</div>
-                                </div>
-                            </div>
-                            {% endif %}
-
                             {% if eptb_details.spine_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Spine TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.spine_tb_details|default:"No description provided" }}</div>
+                            <div class="col-12 col-sm-6">
+                                <div class="p-2 border border-danger border-opacity-25 rounded bg-danger bg-opacity-5">
+                                    <span class="fw-bold text-danger small d-block">Spine TB</span>
+                                    <span class="text-secondary small">{{ eptb_details.spine_tb_details|default:"Flagged by clinician" }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if eptb_details.abdominal_tb == "Yes" %}
+                            <div class="col-12 col-sm-6">
+                                <div class="p-2 border border-danger border-opacity-25 rounded bg-danger bg-opacity-5">
+                                    <span class="fw-bold text-danger small d-block">Abdominal TB</span>
+                                    <span class="text-secondary small">{{ eptb_details.abdominal_tb_details|default:"Flagged by clinician" }}</span>
                                 </div>
                             </div>
                             {% endif %}
 
-                            {% if eptb_details.bone_joint_tb == "Yes" %}
+                            {% if not eptb_details.lymph_node_tb == "Yes" and not eptb_details.pleural_tb == "Yes" and not eptb_details.spine_tb == "Yes" and not eptb_details.abdominal_tb == "Yes" %}
                             <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Bone / Joint TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.bone_joint_tb_details|default:"No description provided" }}</div>
+                                <div class="p-2.5 rounded-3 border border-success border-opacity-25 bg-success bg-opacity-10 d-flex align-items-center gap-2 text-success small">
+                                    <i class="bi bi-shield-check fs-6"></i>
+                                    <span>No active extrapulmonary TB sites or doctor case histories were flagged.</span>
                                 </div>
-                            </div>
-                            {% endif %}
-
-                            {% if eptb_details.cns_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Central Nervous System (CNS) TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.cns_tb_details|default:"No description provided" }}</div>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            {% if eptb_details.genitourinary_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Genitourinary TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.genitourinary_tb_details|default:"No description provided" }}</div>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            {% if eptb_details.female_genital_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Female Genital TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.female_genital_tb_details|default:"No description provided" }}</div>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            {% if eptb_details.cutaneous_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Cutaneous TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.cutaneous_tb_details|default:"No description provided" }}</div>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            {% if eptb_details.ocular_tb == "Yes" %}
-                            <div class="col-12">
-                                <div class="p-2 border border-danger border-opacity-20 rounded bg-danger bg-opacity-5">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold text-danger small">Ocular TB</span>
-                                        <span class="badge bg-danger">Flagged</span>
-                                    </div>
-                                    <div class="text-secondary small mt-1" style="font-size: 0.75rem;">{{ eptb_details.ocular_tb_details|default:"No description provided" }}</div>
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            {% if eptb_details.doctor_history != "Yes" and eptb_details.lymph_node_tb != "Yes" and eptb_details.pleural_tb != "Yes" and eptb_details.pericardial_tb != "Yes" and eptb_details.abdominal_tb != "Yes" and eptb_details.spine_tb != "Yes" and eptb_details.bone_joint_tb != "Yes" and eptb_details.cns_tb != "Yes" and eptb_details.genitourinary_tb != "Yes" and eptb_details.female_genital_tb != "Yes" and eptb_details.cutaneous_tb != "Yes" and eptb_details.ocular_tb != "Yes" %}
-                            <div class="col-12">
-                                <span class="text-secondary small italic">No EPTB organs or case histories were flagged.</span>
                             </div>
                             {% endif %}
                         </div>
                     </div>
-                    {% endif %}
                 </div>
             </div>
-            
-            <!-- PANEL 7: TPT HISTORY -->
-            <div class="card detail-card border border-slate-200">
-                <div class="detail-card-header d-flex align-items-center gap-2">
-                    <i class="bi bi-shield-plus text-primary fs-5"></i>
-                    <h5 class="card-title-text">TPT Treatment History Details</h5>
+
+            <!-- PANEL 4: TPT PREVENTIVE THERAPY HISTORY -->
+            <div class="card detail-card">
+                <div class="detail-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-capsule-pill text-primary fs-5"></i>
+                        <h2 class="card-title-text">TPT Preventive Therapy History</h2>
+                    </div>
+                    <span class="card-header-badge">Preventive Regimen</span>
                 </div>
-                <div class="card-body p-3.5">
+                <div class="card-body p-3 p-md-3.5">
                     <div class="row g-3">
                         <div class="col-6 col-sm-4">
                             <div class="data-label">Undergone TPT</div>
-                            <div class="data-value">{{ p.tpt_undergone|default:"No" }}</div>
+                            <div>
+                                {% if p.tpt_undergone == "Yes" %}
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> Yes</span>
+                                {% else %}
+                                <span class="pill-status-no"><i class="bi bi-dash-circle"></i> No</span>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-6 col-sm-4">
                             <div class="data-label">TPT Status</div>
-                            <div class="data-value">{{ p.tpt_status|default:"" }}</div>
+                            <div class="data-value">{{ p.tpt_status|default:"-" }}</div>
                         </div>
                         <div class="col-6 col-sm-4">
                             <div class="data-label">Contact Known</div>
-                            <div class="data-value">{{ p.tpt_contact_known|default:"" }}</div>
+                            <div class="data-value">{{ p.tpt_contact_known|default:"-" }}</div>
                         </div>
-                        <div class="col-12 border-top border-slate-100 pt-2.5 mt-1.5">
-                            <div class="data-label">TPT History &amp; Risk Factor</div>
-                            <div class="data-value text-slate-800" style="font-size: 0.88rem;">{{ p.tpt_history|default:"" }} ({{ p.tpt_risk_factor|default:"" }})</div>
+
+                        {% if p.tpt_history or p.tpt_regimen %}
+                        <div class="col-12 pt-2 border-top border-slate-100">
+                            <div class="data-label">History &amp; Risk Indication</div>
+                            <div class="data-value text-slate-800">{{ p.tpt_history|default:"-" }} {% if p.tpt_risk_factor %}({{ p.tpt_risk_factor }}){% endif %}</div>
                         </div>
-                        <div class="col-6 mt-1.5">
+                        <div class="col-6 col-sm-4">
                             <div class="data-label">Start Date</div>
-                            <div class="data-value font-monospace">{{ p.tpt_start_date|default:"" }}</div>
+                            <div class="data-value font-monospace">{{ p.tpt_start_date|default:"-" }}</div>
                         </div>
-                        <div class="col-6 mt-1.5">
+                        <div class="col-6 col-sm-4">
                             <div class="data-label">End Date</div>
-                            <div class="data-value font-monospace">{{ p.tpt_end_date|default:"" }}</div>
+                            <div class="data-value font-monospace">{{ p.tpt_end_date|default:"-" }}</div>
                         </div>
-                        <div class="col-6 mt-1.5">
+                        <div class="col-6 col-sm-4">
                             <div class="data-label">Duration (Months)</div>
-                            <div class="data-value">{{ p.tpt_duration_months|default:"" }}</div>
+                            <div class="data-value">{{ p.tpt_duration_months|default:"-" }}</div>
                         </div>
-                        <div class="col-12 mt-1.5 border-top border-slate-100 pt-2.5">
-                            <div class="data-label">TPT Regimen</div>
-                            <div class="data-value text-slate-800" style="font-size: 0.88rem;">{{ p.tpt_regimen|default:"" }}</div>
+                        <div class="col-12">
+                            <div class="data-label">Regimen Prescribed</div>
+                            <div class="data-value">{{ p.tpt_regimen|default:"-" }}</div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
         </div>
-        
+
+        <!-- RIGHT COLUMN: CLINICAL RISK FACTORS, BCG & MEDIA (5 COLS ON DESKTOP) -->
+        <div class="col-12 col-lg-5">
+
+            <!-- PANEL 5: CLINICAL PROFILE & RISK FACTORS -->
+            <div class="card detail-card">
+                <div class="detail-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-heart-pulse-fill text-primary fs-5"></i>
+                        <h2 class="card-title-text">Clinical Profile &amp; Risk Factors</h2>
+                    </div>
+                    <span class="card-header-badge">Vitals</span>
+                </div>
+                <div class="card-body p-3 p-md-3.5">
+                    <!-- Anthropometric Measurements (3 Tiles) -->
+                    <div class="row g-2 pb-3 border-bottom border-slate-100">
+                        <div class="col-4">
+                            <div class="metric-card">
+                                <div class="metric-label">WEIGHT</div>
+                                <div class="metric-val">{{ p.weight_kg|default:"-" }} <span class="metric-unit">kg</span></div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="metric-card">
+                                <div class="metric-label">HEIGHT</div>
+                                <div class="metric-val">{{ p.height_cm|default:"-" }} <span class="metric-unit">cm</span></div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="metric-card">
+                                <div class="metric-label">BMI VALUE</div>
+                                <div class="metric-val">{{ p.bmi|default:"-" }}</div>
+                                {% if p.bmi %}
+                                    {% if p.bmi < 18.5 %}
+                                    <span class="bmi-pill bg-danger bg-opacity-10 text-danger mt-1">Low</span>
+                                    {% elif p.bmi >= 25.0 %}
+                                    <span class="bmi-pill bg-warning bg-opacity-10 text-warning mt-1">High</span>
+                                    {% else %}
+                                    <span class="bmi-pill bg-success bg-opacity-10 text-success mt-1">Normal</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comorbidities & Lifestyle Factors (2x2 Grid) -->
+                    <div class="pt-3 pb-3 border-bottom border-slate-100">
+                        <div class="data-label mb-2">Comorbidities &amp; Lifestyle Factors</div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="comorb-tile">
+                                    <span class="comorb-name">Past TB History</span>
+                                    {% if p.past_tb %}
+                                    <span class="pill-status-danger">Yes</span>
+                                    {% else %}
+                                    <span class="pill-status-no">No</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="comorb-tile">
+                                    <span class="comorb-name">Diabetes</span>
+                                    {% if p.diabetes %}
+                                    <span class="pill-status-warning">Yes</span>
+                                    {% else %}
+                                    <span class="pill-status-no">No</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="comorb-tile">
+                                    <span class="comorb-name">Tobacco Smoker</span>
+                                    {% if p.smoker %}
+                                    <span class="pill-status-warning">Yes</span>
+                                    {% else %}
+                                    <span class="pill-status-no">No</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="comorb-tile">
+                                    <span class="comorb-name">Household Contact</span>
+                                    {% if p.close_contact %}
+                                    <span class="pill-status-warning">Yes</span>
+                                    {% else %}
+                                    <span class="pill-status-no">No</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reported Symptoms & Risk Profile Tags (100% VISIBLE WITH EXPLICIT STYLES) -->
+                    <div class="pt-3">
+                        <div class="mb-3">
+                            <div class="data-label mb-1.5">Reported Symptoms</div>
+                            <div class="d-flex flex-wrap gap-1.5">
+                                {% for sym in symptoms_list %}
+                                    <span class="symptom-tag">
+                                        <i class="bi bi-activity text-primary"></i>
+                                        {{ sym }}
+                                    </span>
+                                {% empty %}
+                                    <span class="data-value-empty">No active symptoms flagged.</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="data-label mb-1.5">Risk Profile Tags</div>
+                            <div class="d-flex flex-wrap gap-1.5">
+                                {% for rf in risk_factors_list %}
+                                    <span class="risk-tag">
+                                        <i class="bi bi-tag-fill text-primary"></i>
+                                        {{ rf }}
+                                    </span>
+                                {% empty %}
+                                    <span class="data-value-empty">No risk profile tags recorded.</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL 6: BCG CAMPAIGN, VACCINE & CLINICAL MEDIA -->
+            <div class="card detail-card">
+                <div class="detail-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-fill-check text-primary fs-5"></i>
+                        <h2 class="card-title-text">BCG Campaign &amp; Clinical Media</h2>
+                    </div>
+                    <span class="card-header-badge">Evidence</span>
+                </div>
+                <div class="card-body p-3 p-md-3.5">
+                    <div class="row g-2.5 mb-3">
+                        <div class="col-6">
+                            <div class="data-label">Eligible Campaign</div>
+                            <div>
+                                {% if p.eligible_bcg_campaign %}
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> Yes</span>
+                                {% else %}
+                                <span class="pill-status-no"><i class="bi bi-dash-circle"></i> No</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="data-label">BCG Status</div>
+                            <div>
+                                {% if p.bcg_status == 'Verified' or p.bcg_status == 'Yes' %}
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> {{ p.bcg_status }}</span>
+                                {% elif p.bcg_status %}
+                                <span class="pill-status-warning"><i class="bi bi-clock-history"></i> {{ p.bcg_status }}</span>
+                                {% else %}
+                                <span class="pill-status-no">Pending</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="data-label">BCG Evidence</div>
+                            <div class="data-value">{{ p.bcg_evidence|default:"None" }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="data-label">BCG Scar Present</div>
+                            <div>
+                                {% if p.bcg_scar == 'Yes' %}
+                                <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> Yes</span>
+                                {% else %}
+                                <span class="pill-status-no"><i class="bi bi-dash-circle"></i> {{ p.bcg_scar|default:"No" }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Uploaded Clinical Photographs -->
+                    <div class="border-top border-slate-100 pt-3">
+                        <div class="data-label mb-2 text-primary d-flex align-items-center gap-1.5">
+                            <i class="bi bi-images fs-6"></i> Uploaded Verification Photos &amp; Files
+                        </div>
+                        <div class="row g-2">
+                            <!-- BCG Scar Photo -->
+                            <div class="col-12 col-sm-6">
+                                <div class="media-card h-100 d-flex align-items-center gap-2.5">
+                                    {% if p.bcg_scar_file %}
+                                    <img src="{{ p.bcg_scar_file.url }}" alt="BCG Scar" class="media-thumb" onclick="openLightbox('{{ p.bcg_scar_file.url }}', 'BCG Scar Photo - {{ p.study_id }}')">
+                                    <div class="overflow-hidden">
+                                        <span class="small fw-bold text-dark d-block text-truncate">BCG Scar Photo</span>
+                                        <button type="button" onclick="openLightbox('{{ p.bcg_scar_file.url }}', 'BCG Scar Photo - {{ p.study_id }}')" class="btn btn-sm btn-outline-primary py-0.5 px-2 mt-1 fw-semibold" style="font-size: 0.75rem; border-radius: 6px;">Inspect</button>
+                                    </div>
+                                    {% else %}
+                                    <div class="media-thumb-placeholder">
+                                        <i class="bi bi-camera fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <span class="small fw-semibold text-dark d-block">BCG Scar Photo</span>
+                                        <span class="text-muted small fst-italic">Not uploaded</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Vaccination Card -->
+                            <div class="col-12 col-sm-6">
+                                <div class="media-card h-100 d-flex align-items-center gap-2.5">
+                                    {% if p.bcg_record_file %}
+                                    <img src="{{ p.bcg_record_file.url }}" alt="BCG Card" class="media-thumb" onclick="openLightbox('{{ p.bcg_record_file.url }}', 'BCG Card Record - {{ p.study_id }}')" onerror="this.src='/static/img/doc-placeholder.png';">
+                                    <div class="overflow-hidden">
+                                        <span class="small fw-bold text-dark d-block text-truncate">Vaccination Card</span>
+                                        <button type="button" onclick="openLightbox('{{ p.bcg_record_file.url }}', 'BCG Card Record - {{ p.study_id }}')" class="btn btn-sm btn-outline-primary py-0.5 px-2 mt-1 fw-semibold" style="font-size: 0.75rem; border-radius: 6px;">Inspect</button>
+                                    </div>
+                                    {% else %}
+                                    <div class="media-thumb-placeholder">
+                                        <i class="bi bi-card-heading fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <span class="small fw-semibold text-dark d-block">Vaccination Card</span>
+                                        <span class="text-muted small fst-italic">Not uploaded</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- CXR Record -->
+                            <div class="col-12">
+                                <div class="media-card d-flex align-items-center gap-2.5">
+                                    {% if p.cxr_record_file %}
+                                    <img src="{{ p.cxr_record_file.url }}" alt="CXR" class="media-thumb" onclick="openLightbox('{{ p.cxr_record_file.url }}', 'Chest X-Ray Record - {{ p.study_id }}')" onerror="this.src='/static/img/cxr-placeholder.png';">
+                                    <div class="overflow-hidden flex-grow-1">
+                                        <span class="small fw-bold text-dark d-block">Chest X-Ray (CXR) Record</span>
+                                        <span class="text-success small fw-medium"><i class="bi bi-check-circle-fill me-1"></i> File archived safely</span>
+                                    </div>
+                                    <button type="button" onclick="openLightbox('{{ p.cxr_record_file.url }}', 'Chest X-Ray Record - {{ p.study_id }}')" class="btn btn-sm btn-outline-primary py-0.5 px-2.5 fw-semibold" style="font-size: 0.75rem; border-radius: 6px;">Inspect CXR</button>
+                                    {% else %}
+                                    <div class="media-thumb-placeholder">
+                                        <i class="bi bi-film fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <span class="small fw-semibold text-dark d-block">Chest X-Ray (CXR)</span>
+                                        <span class="text-muted small fst-italic">No CXR file attached</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BCG Beneficiary Registry Info -->
+                    {% if p.bcg_beneficiary_id %}
+                    <div class="bg-light p-3 rounded-3 border border-slate-200 mt-3 small">
+                        <div class="data-label mb-2 text-primary d-flex align-items-center gap-1.5">
+                            <i class="bi bi-patch-check-fill text-success fs-6"></i> TB WIN Match
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <span class="data-label d-block">Beneficiary ID</span>
+                                <span class="fw-bold text-dark font-monospace">{{ p.bcg_beneficiary_id }}</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="data-label d-block">Vaccination Date</span>
+                                <span class="fw-semibold text-dark font-monospace">{{ p.bcg_vaccination_date|default:"-" }}</span>
+                            </div>
+                            <div class="col-12 pt-1 border-top border-slate-200">
+                                <span class="data-label d-block">Facility &amp; Batch</span>
+                                <span class="fw-semibold text-dark">{{ p.bcg_facility|default:"-" }} {% if p.bcg_batch_number %}(Batch: {{ p.bcg_batch_number }}){% endif %}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- PANEL 7: EMERGENCY CONTACTS & INFORMANT DETAILS -->
+            <div class="card detail-card">
+                <div class="detail-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-telephone-inbound-fill text-primary fs-5"></i>
+                        <h2 class="card-title-text">Emergency Contacts &amp; Informant</h2>
+                    </div>
+                    <span class="card-header-badge">Contacts</span>
+                </div>
+                <div class="card-body p-3 p-md-3.5">
+                    <div class="mb-3 pb-3 border-bottom border-slate-100">
+                        <div class="data-label mb-1">Primary Emergency Contact</div>
+                        {% if p.contact_person_name or p.contact_person_phone %}
+                        <div class="data-value">{{ p.contact_person_name|default:"Not Named" }}</div>
+                        <div class="text-secondary small font-monospace mt-0.5"><i class="bi bi-telephone-fill text-primary me-1"></i>{{ p.contact_person_phone|default:"-" }}</div>
+                        {% if p.contact_person_address %}
+                        <div class="text-muted small mt-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ p.contact_person_address }}</div>
+                        {% endif %}
+                        {% else %}
+                        <span class="data-value-empty">No emergency contact recorded.</span>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <div class="data-label mb-1">Reporting Informant / Staff</div>
+                        {% if p.informant_name or p.informant_designation %}
+                        <div class="data-value">{{ p.informant_name|default:"Not Named" }}</div>
+                        <div class="text-secondary small mt-0.5">{{ p.informant_designation|default:"Health Worker" }}</div>
+                        {% else %}
+                        <span class="data-value-empty">No secondary informant details provided.</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <!-- AUDIT METADATA FOOTER -->
-    <div class="text-center text-secondary small mt-2 opacity-75">
-        Record created on {{ p.created_at|date:"d N Y, h:i A" }} {% if p.created_by %}by Project Nurse: <strong>{{ p.created_by.username }}</strong>{% endif %}
+    <div class="text-center text-muted small mt-3 pb-2 opacity-75">
+        Record created on {{ p.created_at|date:"d M Y, h:i A" }} {% if p.created_by %}by Project Nurse: <strong>{{ p.created_by.username }}</strong>{% endif %}
     </div>
 </div>
+
+<!-- MEDIA LIGHTBOX MODAL -->
+<div class="modal fade" id="mediaLightboxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header py-2.5 px-3 bg-dark text-white border-0">
+                <h6 class="modal-title fs-6 fw-semibold" id="lightboxTitle">Clinical Media Inspection</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 bg-black text-center">
+                <img id="lightboxImage" src="" alt="Clinical Evidence" style="max-height: 75vh; width: auto; max-width: 100%; object-fit: contain;">
+            </div>
+            <div class="modal-footer py-2 px-3 bg-light border-0 d-flex justify-content-between">
+                <a id="lightboxDownloadBtn" href="" target="_blank" download class="btn btn-sm btn-outline-secondary fw-semibold">
+                    <i class="bi bi-download me-1"></i> Open Full Original
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary fw-semibold" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openLightbox(imgUrl, title) {
+    const modalEl = document.getElementById('mediaLightboxModal');
+    if (!modalEl) return;
+    document.getElementById('lightboxImage').src = imgUrl;
+    document.getElementById('lightboxTitle').textContent = title || 'Clinical Media Inspection';
+    document.getElementById('lightboxDownloadBtn').href = imgUrl;
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+</script>
 {% endblock %}

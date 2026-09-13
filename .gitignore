@@ -24,3 +24,10 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 .DS_Store
+
+# Media files
+media/
+*/media/
+# Static files
+staticfiles/
+*/staticfiles/

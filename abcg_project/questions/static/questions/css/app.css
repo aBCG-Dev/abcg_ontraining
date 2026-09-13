@@ -312,3 +312,27 @@ body {
     display: inline-block;
     animation: bouncePin 2s infinite ease-in-out;
 }
+
+/* Tailwind Slate & Utility Classes for Bootstrap Interoperability */
+.bg-slate-50  { background-color: #f8fafc !important; }
+.bg-slate-100 { background-color: #f1f5f9 !important; }
+.bg-slate-200 { background-color: #e2e8f0 !important; }
+.bg-slate-300 { background-color: #cbd5e1 !important; }
+.bg-slate-700 { background-color: #334155 !important; }
+.bg-slate-800 { background-color: #1e293b !important; }
+.bg-slate-900 { background-color: #0f172a !important; }
+
+.text-slate-400 { color: #94a3b8 !important; }
+.text-slate-500 { color: #64748b !important; }
+.text-slate-600 { color: #475569 !important; }
+.text-slate-700 { color: #334155 !important; }
+.text-slate-800 { color: #1e293b !important; }
+.text-slate-900 { color: #0f172a !important; }
+
+.border-slate-100 { border-color: #f1f5f9 !important; }
+.border-slate-200 { border-color: #e2e8f0 !important; }
+.border-slate-300 { border-color: #cbd5e1 !important; }
+
+.text-xs { font-size: 0.75rem !important; }
+.text-2xs { font-size: 0.68rem !important; }
+.shadow-xs { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important; }

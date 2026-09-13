@@ -11,7 +11,12 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://singer-evacuee-sediment.ngrok-free.dev',
+    'https://*.vercel.app',
+    'https://*.netlify.app',
+    'https://*.ngrok-free.dev',
+    'https://*.ngrok.io',
+    'https://*.render.com',
+    'https://*.onrender.com',
 ]
 
 # 3. Installed Apps Registry
@@ -22,6 +27,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     "questions",  # This links our custom workspace folder!
     "eptb"
@@ -30,6 +36,7 @@ INSTALLED_APPS = [
 # 4. Middleware Security & Sessions Layer
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -62,13 +69,38 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # 7. Database Configuration
-# We are starting with standard SQLite3 locally for fast agile progress
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Supports DATABASE_URL (e.g. Neon, Supabase PostgreSQL), Vercel /tmp writable fallback, and local SQLite
+if os.environ.get("DATABASE_URL"):
+    import dj_database_url
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.environ.get("DATABASE_URL"),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+elif os.environ.get("VERCEL"):
+    import shutil
+    tmp_db = Path("/tmp/db.sqlite3")
+    bundled_db = BASE_DIR / "db.sqlite3"
+    if not tmp_db.exists() and bundled_db.exists():
+        try:
+            shutil.copy2(bundled_db, tmp_db)
+        except Exception:
+            pass
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(tmp_db) if tmp_db.exists() else bundled_db,
+        }
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # 8. Localization Setup
 LANGUAGE_CODE = "en-us"
@@ -76,8 +108,14 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
-# 9. Static Assets (CSS / JS) Routing
-STATIC_URL = "static/"
+# 9. Static & Media Assets Routing
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB limit per photo
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # 10. Central Sync Backend Integration

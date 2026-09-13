@@ -7,14 +7,32 @@ from questions.models import Participant, TptIndividual, IneligibleIndividual
 
 from questions.locations_data import JURISDICTION_DATA, get_base_hierarchy
 
+def get_site_campaign_periods_dict():
+    """
+    Returns a dictionary mapping tb_unit -> campaign_period_display string
+    from active StudySite records and historical defaults.
+    """
+    periods = {
+        "Tiruvallur TU": "Jan 2025 - Mar 2025"
+    }
+    try:
+        from questions.models import StudySite
+        for s in StudySite.objects.filter(is_active=True):
+            periods[s.tb_unit] = s.campaign_period_display
+    except Exception:
+        pass
+    return periods
+
+
 def get_location_hierarchy():
     # Start with the master predefined locations from clinical study configuration
     hierarchy = get_base_hierarchy()
 
-    # Query Participant, TptIndividual, IneligibleIndividual, UserProfile to load any other dynamic values
+    # Query StudySite, Participant, TptIndividual, IneligibleIndividual, UserProfile to load dynamic values
     try:
-        from questions.models import UserProfile
+        from questions.models import UserProfile, StudySite
         sources = [
+            StudySite.objects.filter(is_active=True).values_list('state', 'district', 'tb_unit').distinct(),
             Participant.objects.values_list('state', 'district', 'tb_unit').distinct(),
             TptIndividual.objects.values_list('state', 'district', 'tb_unit').distinct(),
             IneligibleIndividual.objects.values_list('state', 'district', 'tb_unit').distinct(),
@@ -202,4 +220,6 @@ def navbar_choices(request):
         'total_unsynced': total_unsynced,
         'location_hierarchy_json': json.dumps(get_location_hierarchy()),
         'jurisdiction_data_json': json.dumps(JURISDICTION_DATA),
+        'site_campaign_periods_json': json.dumps(get_site_campaign_periods_dict()),
     }
+

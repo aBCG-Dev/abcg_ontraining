@@ -12,11 +12,12 @@
     <div class="shrink-0">
       <button
         type="button"
-        onclick="triggerSaveAlert()"
+        id="btn-save-settings"
+        onclick="saveAllSettings()"
         class="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-4 h-9 text-xs font-bold hover:bg-primary/95 transition-all cursor-pointer active:scale-95 shadow-sm"
       >
         <i data-lucide="save" class="size-4"></i>
-        <span>Save Settings</span>
+        <span id="save-btn-text">Save Settings</span>
       </button>
     </div>
   </div>
@@ -25,6 +26,12 @@
   <div id="save-success-alert" class="hidden flex items-start gap-2.5 rounded-xl bg-success/10 border border-success/20 p-3.5 text-xs text-success animate-fade-in mb-4">
     <i data-lucide="check-circle" class="size-4 shrink-0 mt-0.5"></i>
     <span class="font-semibold leading-relaxed">Campaign settings and site parameters updated successfully.</span>
+  </div>
+
+  <!-- Error Notification Box -->
+  <div id="save-error-alert" class="hidden flex items-start gap-2.5 rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 text-xs text-destructive animate-fade-in mb-4">
+    <i data-lucide="alert-circle" class="size-4 shrink-0 mt-0.5"></i>
+    <span id="save-error-text" class="font-semibold leading-relaxed">Failed to update settings.</span>
   </div>
 
   <!-- Dynamic Location Cascading Selector & Filters -->
@@ -153,7 +160,8 @@
                 <input
                   type="date"
                   value="{{ s.launch }}"
-                  class="h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                  data-field="launch"
+                  class="launch-date-input h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                 >
               </td>
               
@@ -162,7 +170,8 @@
                 <input
                   type="date"
                   value="{{ s.conclusion }}"
-                  class="h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                  data-field="conclusion"
+                  class="conclusion-date-input h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                 >
               </td>
               
@@ -170,10 +179,11 @@
               <td class="p-3.5 pr-4 text-right">
                 <div class="inline-block relative">
                   <select
-                    class="h-8 rounded-lg border border-border bg-background pl-2.5 pr-7 text-xs font-semibold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                    data-field="active"
+                    class="site-status-select h-8 rounded-lg border border-border bg-background pl-2.5 pr-7 text-xs font-semibold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                   >
-                    <option value="active" {% if s.active %}selected{% endif %}>Active</option>
-                    <option value="concluded" {% if not s.active %}selected{% endif %}>Concluded</option>
+                    <option value="true" {% if s.active %}selected{% endif %}>Active</option>
+                    <option value="false" {% if not s.active %}selected{% endif %}>Concluded</option>
                   </select>
                   <i data-lucide="chevron-down" class="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"></i>
                 </div>
@@ -381,14 +391,99 @@
     applyAllFilters();
   }
 
-  function triggerSaveAlert() {
-    const alertBox = document.getElementById('save-success-alert');
-    if (alertBox) {
-      alertBox.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => {
-        alertBox.classList.add('hidden');
-      }, 4000);
+  function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue || '{{ csrf_token }}';
+  }
+
+  async function saveAllSettings() {
+    const saveBtn = document.getElementById('btn-save-settings');
+    const saveBtnText = document.getElementById('save-btn-text');
+    const successAlert = document.getElementById('save-success-alert');
+    const errorAlert = document.getElementById('save-error-alert');
+
+    if (successAlert) successAlert.classList.add('hidden');
+    if (errorAlert) errorAlert.classList.add('hidden');
+
+    const rows = document.querySelectorAll('.site-row');
+    const sites = [];
+
+    rows.forEach(row => {
+      const siteCode = row.dataset.tbu;
+      const stateName = row.dataset.state;
+      const districtName = row.dataset.district;
+      const launchInput = row.querySelector('input[data-field="launch"]');
+      const conclusionInput = row.querySelector('input[data-field="conclusion"]');
+      const activeSelect = row.querySelector('select[data-field="active"]');
+
+      if (siteCode) {
+        sites.push({
+          siteCode: siteCode,
+          stateName: stateName,
+          districtName: districtName,
+          launch: launchInput ? launchInput.value : '',
+          conclusion: conclusionInput ? conclusionInput.value : '',
+          active: activeSelect ? (activeSelect.value === 'true') : true
+        });
+      }
+    });
+
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.classList.add('opacity-75', 'cursor-not-allowed');
+    }
+    if (saveBtnText) saveBtnText.textContent = 'Saving...';
+
+    try {
+      const response = await fetch('{% url "questions:settings" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ sites: sites })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.status === 'success') {
+        if (successAlert) {
+          successAlert.classList.remove('hidden');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setTimeout(() => {
+            successAlert.classList.add('hidden');
+          }, 5000);
+        }
+      } else {
+        throw new Error(data.message || 'Server error occurred while saving.');
+      }
+    } catch (err) {
+      if (errorAlert) {
+        const errText = document.getElementById('save-error-text');
+        if (errText) errText.textContent = err.message || 'Failed to save settings.';
+        errorAlert.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+      }
+      if (saveBtnText) saveBtnText.textContent = 'Save Settings';
+      if (window.lucide) {
+        lucide.createIcons();
+      }
     }
   }
 
