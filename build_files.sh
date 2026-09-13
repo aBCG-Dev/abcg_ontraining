@@ -24,4 +24,9 @@ echo "===> Structuring static files for Vercel CDN..."
 mkdir -p staticfiles_build/static
 cp -r abcg_project/staticfiles/* staticfiles_build/static/ 2>/dev/null || true
 
+if [ -n "$DATABASE_URL" ]; then
+    echo "===> DATABASE_URL detected: applying database migrations..."
+    python3 manage.py migrate --noinput || python manage.py migrate --noinput || true
+fi
+
 echo "===> Static files build completed successfully!"
