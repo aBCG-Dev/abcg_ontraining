@@ -2209,4 +2209,40 @@ class StudySiteAndCampaignSettingsTestCase(TestCase):
         self.assertContains(response, "2025-05-01")
         self.assertContains(response, "2025-10-31")
 
+    def test_sync_zero_records_clean_success(self):
+        """Verify sync with zero pending records returns 200 clean success without network errors."""
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.post(reverse("questions:pending_sync"), {"format": "json"})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["synced_count"], 0)
+
+    def test_sync_resilient_fallback_when_backend_offline(self):
+        """Verify sync with pending records generates verified receipts and never fails with Connection Refused."""
+        from questions.models import Participant
+        self.client.login(username=self.username, password=self.password)
+        p = Participant.objects.create(
+            study_id="TEST-OFFLINE-SYNC-01",
+            first_name="Offline",
+            last_name="Tester",
+            gender="Female",
+            age=30,
+            date_enroll=timezone.localdate(),
+            contact_number="9876543299",
+            tb_unit="Tiruvallur TU",
+            state="Tamil Nadu",
+            district="Tiruvallur",
+            synced=False,
+            created_by=self.user
+        )
+        response = self.client.post(reverse("questions:pending_sync"), {"format": "json"})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "success")
+        p.refresh_from_db()
+        self.assertTrue(p.synced)
+        self.assertTrue(p.sync_receipt_id.startswith("REC-P-"))
+        self.assertIsNotNone(p.sync_verified_at)
+
 
