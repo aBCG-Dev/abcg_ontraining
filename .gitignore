@@ -18,6 +18,11 @@ scratch/
 .git_backup
 */.git_backup
 *.log
+*.backup*
+*backup*/
+media_backup*/
+*/media_backup*/
+
 
 # OS generated files
 Thumbs.db

@@ -24,9 +24,14 @@ echo "===> Structuring static files for Vercel CDN..."
 mkdir -p staticfiles_build/static
 cp -r abcg_project/staticfiles/* staticfiles_build/static/ 2>/dev/null || true
 
-if [ -n "$DATABASE_URL" ]; then
-    echo "===> DATABASE_URL detected: applying database migrations..."
+DB_CONN="${DATABASE_URL:-$POSTGRES_URL}"
+if [ -n "$DB_CONN" ]; then
+    echo "===> Remote database detected: applying database migrations..."
     python3 manage.py migrate --noinput || python manage.py migrate --noinput || true
+    echo "===> Initializing groups, permissions, and accounts..."
+    python3 manage.py setup_rbac_groups || python manage.py setup_rbac_groups || true
+    python3 manage.py load_rbac_permissions || python manage.py load_rbac_permissions || true
+    python3 manage.py setup_default_accounts || python manage.py setup_default_accounts || true
 fi
 
 echo "===> Static files build completed successfully!"

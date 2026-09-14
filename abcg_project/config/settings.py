@@ -70,11 +70,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # 7. Database Configuration
 # Supports DATABASE_URL (e.g. Neon, Supabase PostgreSQL), Vercel /tmp writable fallback, and local SQLite
-if os.environ.get("DATABASE_URL"):
+database_connection_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+if database_connection_url:
     import dj_database_url
     DATABASES = {
         "default": dj_database_url.config(
-            default=os.environ.get("DATABASE_URL"),
+            default=database_connection_url,
             conn_max_age=600,
             conn_health_checks=True,
         )
