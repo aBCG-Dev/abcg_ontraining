@@ -2246,3 +2246,181 @@ class StudySiteAndCampaignSettingsTestCase(TestCase):
         self.assertIsNotNone(p.sync_verified_at)
 
 
+class NewVerificationFieldsTestCase(TestCase):
+    def setUp(self):
+        from questions.models import UserProfile, Participant, RolePermission, RiskFactor
+        self.username = "nurse_test_fields"
+        self.password = "NursePass123!"
+        self.user = User.objects.create_user(
+            username=self.username,
+            password=self.password,
+            first_name="Nurse",
+            last_name="Fields"
+        )
+        self.profile = self.user.profile
+        self.profile.role = "Super Admin"
+        self.profile.state = "Tamil Nadu"
+        self.profile.district = "Tiruvallur"
+        self.profile.tb_unit = "Tiruvallur TU"
+        self.profile.save()
+        self.user.is_superuser = True
+        self.user.is_staff = True
+        self.user.save()
+
+    def test_registration_with_new_fields(self):
+        self.client.login(username=self.username, password=self.password)
+        payload = {
+            "first_name": "Karthik",
+            "last_name": "Raja",
+            "father_husband_name": "Raja M",
+            "age": 42,
+            "dob": "1984-06-15",
+            "gender": "Male",
+            "primary_phone": "9876501234",
+            "address": "45 Gandhi Road",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "taluka_block": "Avadi Taluka",
+            "landmark": "Near Bus Stand",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Married",
+            "occupation": "Shop Owner",
+            "socioeconomic_status": "APL",
+            "contact_person_name": "Sita",
+            "contact_person_phone": "9876501235",
+            "contact_person_address": "45 Gandhi Road",
+            "informant_name": "Nurse Anitha",
+            "informant_designation": "Project Nurse",
+            "symptoms": ["Fever"],
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Self-reported diabetes during the BCG campaign period"],
+            "height_cm": "168",
+            "weight_kg": "65",
+            "bmi": "23.0",
+            # New fields under test
+            "has_government_id": "Yes",
+            "government_id_name": "Aadhaar Card",
+            "recently_changed_phone": "Yes",
+            "previous_phone_number": "9123456780",
+            "recently_changed_address": "Yes",
+            "previous_address": "Old House No 12, Main Street, Chennai"
+        }
+        response = self.client.post(reverse("questions:registration"), payload)
+        self.assertEqual(response.status_code, 302)
+        
+        from questions.models import Participant
+        participant = Participant.objects.filter(first_name="Karthik", last_name="Raja").first()
+        self.assertIsNotNone(participant)
+        self.assertEqual(participant.has_government_id, "Yes")
+        self.assertEqual(participant.government_id_name, "Aadhaar Card")
+        self.assertEqual(participant.recently_changed_phone, "Yes")
+        self.assertEqual(participant.previous_phone_number, "9123456780")
+        self.assertEqual(participant.recently_changed_address, "Yes")
+        self.assertEqual(participant.previous_address, "Old House No 12, Main Street, Chennai")
+
+        # Verify participant detail view displays the new data
+        detail_response = self.client.get(reverse("questions:participant_detail", args=[participant.study_id]))
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, "Aadhaar Card")
+        self.assertContains(detail_response, "9123456780")
+        self.assertContains(detail_response, "Old House No 12, Main Street, Chennai")
+
+    def test_registration_with_no_fields(self):
+        self.client.login(username=self.username, password=self.password)
+        payload = {
+            "first_name": "Meena",
+            "last_name": "Kumari",
+            "age": 35,
+            "dob": "1991-03-10",
+            "gender": "Female",
+            "primary_phone": "9876509999",
+            "address": "10 North Car Street",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "symptoms": ["Fever"],
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Self-reported diabetes during the BCG campaign period"],
+            "height_cm": "155",
+            "weight_kg": "52",
+            "bmi": "21.6",
+            # Tested with No
+            "has_government_id": "No",
+            "government_id_name": "",
+            "recently_changed_phone": "No",
+            "previous_phone_number": "",
+            "recently_changed_address": "No",
+            "previous_address": ""
+        }
+        response = self.client.post(reverse("questions:registration"), payload)
+        self.assertEqual(response.status_code, 302)
+
+        from questions.models import Participant
+        participant = Participant.objects.filter(first_name="Meena", last_name="Kumari").first()
+        self.assertIsNotNone(participant)
+        self.assertEqual(participant.has_government_id, "No")
+        self.assertEqual(participant.government_id_name, "")
+        self.assertEqual(participant.recently_changed_phone, "No")
+        self.assertEqual(participant.previous_phone_number, "")
+        self.assertEqual(participant.recently_changed_address, "No")
+        self.assertEqual(participant.previous_address, "")
+
+    def test_export_csv_and_excel_include_new_questions(self):
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        Participant.objects.create(
+            first_name="ExportTest",
+            last_name="User",
+            study_id="EXP-123456",
+            has_government_id="Yes",
+            government_id_name="Voter ID",
+            recently_changed_phone="Yes",
+            previous_phone_number="9876543210",
+            recently_changed_address="Yes",
+            previous_address="Old Address 123",
+            bcg_facility="Primary Health Centre",
+            bcg_address="Health Centre Road, Ward 4",
+            bcg_pincode="600001",
+            eligible=True,
+            age=30,
+            gender="Female",
+            date_enroll=timezone.localdate()
+        )
+
+        # Test CSV export
+        csv_response = self.client.get(reverse("questions:data_export") + "?format=csv")
+        self.assertEqual(csv_response.status_code, 200)
+        csv_content = csv_response.content.decode("utf-8")
+        headers = csv_content.split("\n")[0]
+        self.assertIn("Does the participant have any government-issued identification?", headers)
+        self.assertIn("Which government-issued ID does the participant have?", headers)
+        self.assertIn("Has the participant recently changed their phone number?", headers)
+        self.assertIn("Previous Phone Number", headers)
+        self.assertIn("Has the participant recently changed their residential address?", headers)
+        self.assertIn("Previous Address", headers)
+        self.assertIn("Where did you receive the vaccination?", headers)
+        self.assertIn("What is the address of the vaccination facility?", headers)
+        self.assertIn("pincode", headers)
+
+        # Test Excel export
+        excel_response = self.client.get(reverse("questions:data_export") + "?format=excel")
+        self.assertEqual(excel_response.status_code, 200)
+        self.assertTrue(len(excel_response.content) > 1000)
+
+
+

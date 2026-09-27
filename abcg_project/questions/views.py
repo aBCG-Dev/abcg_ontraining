@@ -353,6 +353,14 @@ def registration(request, pk=None):
         secondary_phone_2 = request.POST.get("secondary_phone_2", "").strip()
         secondary_phone_3 = request.POST.get("secondary_phone_3", "").strip()
         
+        # Additional Verification & Tracking Parameters
+        has_government_id = request.POST.get("has_government_id", "No").strip()
+        government_id_name = request.POST.get("government_id_name", "").strip() if has_government_id == "Yes" else ""
+        recently_changed_phone = request.POST.get("recently_changed_phone", "No").strip()
+        previous_phone_number = request.POST.get("previous_phone_number", "").strip() if recently_changed_phone == "Yes" else ""
+        recently_changed_address = request.POST.get("recently_changed_address", "No").strip()
+        previous_address = request.POST.get("previous_address", "").strip() if recently_changed_address == "Yes" else ""
+
         # Residence & Location Parameters
         address = request.POST.get("address", "").strip()
         state = request.POST.get("state", "").strip()
@@ -1124,6 +1132,12 @@ def registration(request, pk=None):
             obj.secondary_phone_3 = secondary_phone_3
             obj.taluka_block = taluka_block
             obj.landmark = landmark
+            obj.has_government_id = has_government_id
+            obj.government_id_name = government_id_name
+            obj.recently_changed_phone = recently_changed_phone
+            obj.previous_phone_number = previous_phone_number
+            obj.recently_changed_address = recently_changed_address
+            obj.previous_address = previous_address
             obj.contact_person_name = contact_person_name
             obj.contact_person_phone = contact_person_phone
             obj.contact_person_address = contact_person_address
@@ -1271,6 +1285,12 @@ def registration(request, pk=None):
             "secondary_phone_1": participant.secondary_phone_1,
             "secondary_phone_2": participant.secondary_phone_2,
             "secondary_phone_3": participant.secondary_phone_3,
+            "has_government_id": getattr(participant, "has_government_id", "No") or "No",
+            "government_id_name": getattr(participant, "government_id_name", "") or "",
+            "recently_changed_phone": getattr(participant, "recently_changed_phone", "No") or "No",
+            "previous_phone_number": getattr(participant, "previous_phone_number", "") or "",
+            "recently_changed_address": getattr(participant, "recently_changed_address", "No") or "No",
+            "previous_address": getattr(participant, "previous_address", "") or "",
             "address": participant.address,
             "state": participant.state,
             "district": participant.district,
@@ -2149,6 +2169,12 @@ def serialize_participant_record(p):
         "secondary_phone_1": p.secondary_phone_1,
         "secondary_phone_2": p.secondary_phone_2,
         "secondary_phone_3": p.secondary_phone_3,
+        "has_government_id": getattr(p, "has_government_id", "No") or "No",
+        "government_id_name": getattr(p, "government_id_name", "") or "",
+        "recently_changed_phone": getattr(p, "recently_changed_phone", "No") or "No",
+        "previous_phone_number": getattr(p, "previous_phone_number", "") or "",
+        "recently_changed_address": getattr(p, "recently_changed_address", "No") or "No",
+        "previous_address": getattr(p, "previous_address", "") or "",
         "taluka_block": p.taluka_block,
         "landmark": p.landmark,
         "contact_person_name": p.contact_person_name,
@@ -2251,6 +2277,12 @@ def serialize_tpt_record(t):
         "secondary_phone_1": t.secondary_phone_1,
         "secondary_phone_2": t.secondary_phone_2,
         "secondary_phone_3": t.secondary_phone_3,
+        "has_government_id": getattr(t, "has_government_id", "No") or "No",
+        "government_id_name": getattr(t, "government_id_name", "") or "",
+        "recently_changed_phone": getattr(t, "recently_changed_phone", "No") or "No",
+        "previous_phone_number": getattr(t, "previous_phone_number", "") or "",
+        "recently_changed_address": getattr(t, "recently_changed_address", "No") or "No",
+        "previous_address": getattr(t, "previous_address", "") or "",
         "taluka_block": t.taluka_block,
         "landmark": t.landmark,
         "tpt_undergone": t.tpt_undergone,
@@ -2296,6 +2328,12 @@ def serialize_ineligible_record(i):
         "secondary_phone_1": i.secondary_phone_1,
         "secondary_phone_2": i.secondary_phone_2,
         "secondary_phone_3": i.secondary_phone_3,
+        "has_government_id": getattr(i, "has_government_id", "No") or "No",
+        "government_id_name": getattr(i, "government_id_name", "") or "",
+        "recently_changed_phone": getattr(i, "recently_changed_phone", "No") or "No",
+        "previous_phone_number": getattr(i, "previous_phone_number", "") or "",
+        "recently_changed_address": getattr(i, "recently_changed_address", "No") or "No",
+        "previous_address": getattr(i, "previous_address", "") or "",
         "taluka_block": i.taluka_block,
         "landmark": i.landmark,
         "classification": i.classification,
@@ -4830,6 +4868,12 @@ def data_export_view(request):
             ("Secondary Phone 1", lambda p: p.secondary_phone_1),
             ("Secondary Phone 2", lambda p: p.secondary_phone_2),
             ("Secondary Phone 3", lambda p: p.secondary_phone_3),
+            ("Does the participant have any government-issued identification?", lambda p: getattr(p, "has_government_id", "No")),
+            ("Which government-issued ID does the participant have?", lambda p: getattr(p, "government_id_name", "")),
+            ("Has the participant recently changed their phone number?", lambda p: getattr(p, "recently_changed_phone", "No")),
+            ("Previous Phone Number", lambda p: getattr(p, "previous_phone_number", "")),
+            ("Has the participant recently changed their residential address?", lambda p: getattr(p, "recently_changed_address", "No")),
+            ("Previous Address", lambda p: getattr(p, "previous_address", "")),
             ("Taluka/Block", lambda p: p.taluka_block),
             ("Landmark", lambda p: p.landmark),
             ("Contact Person Name", lambda p: p.contact_person_name),
@@ -4871,25 +4915,19 @@ def data_export_view(request):
             ("BCG Beneficiary ID", lambda p: p.bcg_beneficiary_id),
             ("BCG Mobile Number", lambda p: p.bcg_ben_mobile_number),
             ("BCG Gender", lambda p: p.bcg_ben_gender),
-            ("BCG Date", lambda p: p.bcg_date),
-            ("BCG Registration Mode", lambda p: p.bcg_registration_mode),
-            ("BCG DOB", lambda p: p.bcg_dob),
-            ("BCG Age", lambda p: p.bcg_age),
-            ("BCG Vaccination Status", lambda p: p.bcg_vaccination_status),
-            ("BCG First Name", lambda p: p.bcg_first_name),
-            ("BCG Last Name", lambda p: p.bcg_last_name),
-            ("BCG Site ID", lambda p: p.bcg_site_id),
-            ("BCG Approved By", lambda p: p.bcg_approved_by),
-            ("BCG Beneficiary Type Name", lambda p: p.bcg_beneficiary_type_name),
-            ("BCG Pincode", lambda p: p.bcg_pincode),
-            ("BCG Address", lambda p: p.bcg_address),
-            ("BCG Facility ID", lambda p: p.bcg_facility_id),
-            ("BCG Scar", lambda p: p.bcg_scar),
-            ("BCG Has Record", lambda p: p.bcg_has_record),
-            ("BCG Vaccination Date", lambda p: p.bcg_vaccination_date),
-            ("BCG Vaccine Name", lambda p: p.bcg_vaccine_name),
-            ("BCG Batch Number", lambda p: p.bcg_batch_number),
-            ("BCG Facility", lambda p: p.bcg_facility),
+            ("BCG DOB", lambda p: getattr(p, "bcg_dob", "")),
+            ("BCG Age", lambda p: getattr(p, "bcg_age", "")),
+            ("BCG Vaccination Status", lambda p: getattr(p, "bcg_vaccination_status", "")),
+            ("BCG First Name", lambda p: getattr(p, "bcg_first_name", "")),
+            ("BCG Last Name", lambda p: getattr(p, "bcg_last_name", "")),
+            ("Where did you receive the vaccination?", lambda p: getattr(p, "bcg_facility", "")),
+            ("What is the address of the vaccination facility?", lambda p: getattr(p, "bcg_address", "")),
+            ("pincode", lambda p: getattr(p, "bcg_pincode", "")),
+            ("BCG Scar", lambda p: getattr(p, "bcg_scar", "")),
+            ("BCG Has Record", lambda p: getattr(p, "bcg_has_record", "")),
+            ("BCG Vaccination Date", lambda p: getattr(p, "bcg_vaccination_date", "")),
+            ("BCG Vaccine Name", lambda p: getattr(p, "bcg_vaccine_name", "")),
+            ("BCG Batch Number", lambda p: getattr(p, "bcg_batch_number", "")),
             ("Classification", lambda p: p.classification),
             ("Classification Reason", lambda p: p.classification_reason),
         ]
@@ -5222,6 +5260,12 @@ class MockParticipantAdapter:
         self.secondary_phone_1 = ""
         self.secondary_phone_2 = ""
         self.secondary_phone_3 = ""
+        self.has_government_id = "No"
+        self.government_id_name = ""
+        self.recently_changed_phone = "No"
+        self.previous_phone_number = ""
+        self.recently_changed_address = "No"
+        self.previous_address = ""
         village = data.get("village") or "Central Ward"
         self.address = village
         self.village = village

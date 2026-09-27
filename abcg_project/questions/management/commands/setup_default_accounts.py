@@ -12,8 +12,34 @@ DEFAULT_USERS = [
         "is_superuser": True,
         "is_staff": True,
     },
+    {
+        "username": "staff",
+        "email": "staff@abcg.org",
+        "password": "staff123",
+        "full_name": "Field Project Nurse",
+        "role": "Project Nurse",
+        "is_superuser": False,
+        "is_staff": False,
+    },
+    {
+        "username": "nodal",
+        "email": "nodal@abcg.org",
+        "password": "staff123",
+        "full_name": "District Nodal Officer",
+        "role": "Nodal Officer",
+        "is_superuser": False,
+        "is_staff": False,
+    },
+    {
+        "username": "doctor_user",
+        "email": "doctor@abcg.org",
+        "password": "staff123",
+        "full_name": "Study Medical Officer",
+        "role": "Doctor",
+        "is_superuser": False,
+        "is_staff": False,
+    },
 ]
-
 
 
 class Command(BaseCommand):
@@ -33,15 +59,21 @@ class Command(BaseCommand):
                     is_staff=udata.get("is_staff", False),
                 )
                 self.stdout.write(self.style.SUCCESS(f"Created user: {username}"))
+            else:
+                user.set_password(udata["password"])
+                user.is_superuser = udata.get("is_superuser", False)
+                user.is_staff = udata.get("is_staff", False)
+                user.is_active = True
+                user.save()
+                self.stdout.write(self.style.SUCCESS(f"Updated password & status for: {username}"))
             
             # Ensure profile exists and has role
             profile, _ = UserProfile.objects.get_or_create(
                 user=user,
                 defaults={"full_name": udata["full_name"], "role": udata["role"]}
             )
-            if profile.role != udata["role"] or profile.full_name != udata["full_name"]:
-                profile.role = udata["role"]
-                profile.full_name = udata["full_name"]
-                profile.save()
+            profile.role = udata["role"]
+            profile.full_name = udata["full_name"]
+            profile.save()
 
         self.stdout.write(self.style.SUCCESS("All default accounts verified successfully."))

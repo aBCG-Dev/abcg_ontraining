@@ -116,6 +116,14 @@ class Participant(models.Model):
     taluka_block = models.CharField(max_length=150, blank=True, null=True)
     landmark = models.CharField(max_length=250, blank=True, null=True)
 
+    # Additional Verification & Tracking fields
+    has_government_id = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    government_id_name = models.CharField(max_length=150, blank=True, null=True)
+    recently_changed_phone = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    previous_phone_number = models.CharField(max_length=15, blank=True, null=True)
+    recently_changed_address = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    previous_address = models.TextField(blank=True, null=True)
+
     # Contact Person & Informant Details
     contact_person_name = models.CharField(max_length=150, blank=True, null=True)
     contact_person_phone = models.CharField(max_length=15, blank=True, null=True)
@@ -256,6 +264,14 @@ class TptIndividual(models.Model):
     secondary_phone_3 = models.CharField(max_length=15, blank=True, null=True)
     taluka_block = models.CharField(max_length=150, blank=True, null=True)
     landmark = models.CharField(max_length=250, blank=True, null=True)
+
+    # Additional Verification & Tracking fields
+    has_government_id = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    government_id_name = models.CharField(max_length=150, blank=True, null=True)
+    recently_changed_phone = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    previous_phone_number = models.CharField(max_length=15, blank=True, null=True)
+    recently_changed_address = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    previous_address = models.TextField(blank=True, null=True)
     
     # TPT questions
     tpt_undergone = models.CharField(max_length=20, default="Yes")
@@ -322,6 +338,14 @@ class IneligibleIndividual(models.Model):
     secondary_phone_3 = models.CharField(max_length=15, blank=True, null=True)
     taluka_block = models.CharField(max_length=150, blank=True, null=True)
     landmark = models.CharField(max_length=250, blank=True, null=True)
+
+    # Additional Verification & Tracking fields
+    has_government_id = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    government_id_name = models.CharField(max_length=150, blank=True, null=True)
+    recently_changed_phone = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    previous_phone_number = models.CharField(max_length=15, blank=True, null=True)
+    recently_changed_address = models.CharField(max_length=10, choices=[("Yes", "Yes"), ("No", "No")], default="No", blank=True, null=True)
+    previous_address = models.TextField(blank=True, null=True)
     
     # Media & Verification Attachments
     bcg_scar = models.CharField(max_length=20, blank=True, null=True)

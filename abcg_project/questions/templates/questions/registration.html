@@ -684,6 +684,23 @@
                                 style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
 
+                        <!-- Government ID Section -->
+                        <div class="col-md-6">
+                            <label for="hasGovernmentId" class="form-label fw-semibold text-muted small">Does the participant have any government-issued identification?</label>
+                            <select class="form-select" id="hasGovernmentId" name="has_government_id"
+                                style="border-radius: var(--radius); border-color: var(--line);">
+                                <option value="No" selected>No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-none" id="governmentIdNameContainer">
+                            <label for="governmentIdName" class="form-label fw-semibold text-muted small">Which government-issued ID does the participant have? *</label>
+                            <input type="text" class="form-control" id="governmentIdName" name="government_id_name"
+                                placeholder="e.g. Aadhaar Card, Voter ID, Ration Card, PAN Card"
+                                style="border-radius: var(--radius); border-color: var(--line);">
+                            <div class="invalid-feedback">Please enter the name of the ID card.</div>
+                        </div>
+
                         <div class="col-md-4">
                             <label for="age" class="form-label fw-semibold text-muted small">AGE (YEARS) *</label>
                             <input type="number" class="form-control" id="age" name="age" min="1" max="99"
@@ -739,6 +756,27 @@
                                     placeholder="10-digit number" required pattern="[1-9][0-9]{9}"
                                     style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
                                 <div class="invalid-feedback">Must be 10 digits without a leading zero.</div>
+                            </div>
+                        </div>
+
+                        <!-- Phone Change Section -->
+                        <div class="col-md-6">
+                            <label for="recentlyChangedPhone" class="form-label fw-semibold text-muted small">Has the participant recently changed their phone number?</label>
+                            <select class="form-select" id="recentlyChangedPhone" name="recently_changed_phone"
+                                style="border-radius: var(--radius); border-color: var(--line);">
+                                <option value="No" selected>No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-none" id="previousPhoneContainer">
+                            <label for="previousPhoneNumber" class="form-label fw-semibold text-muted small">PREVIOUS PHONE NUMBER *</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted fw-bold"
+                                    style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);">+91</span>
+                                <input type="tel" class="form-control" id="previousPhoneNumber" name="previous_phone_number"
+                                    placeholder="10-digit previous phone number" pattern="[1-9][0-9]{9}"
+                                    style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
+                                <div class="invalid-feedback">Must be a valid 10-digit number without leading zero.</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -819,6 +857,23 @@
                                 placeholder="6-digit postal code" required pattern="[0-9]{6}"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">6 digits.</div>
+                        </div>
+
+                        <!-- Address Change Section -->
+                        <div class="col-md-6">
+                            <label for="recentlyChangedAddress" class="form-label fw-semibold text-muted small">Has the participant recently changed their residential address?</label>
+                            <select class="form-select" id="recentlyChangedAddress" name="recently_changed_address"
+                                style="border-radius: var(--radius); border-color: var(--line);">
+                                <option value="No" selected>No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 d-none" id="previousAddressContainer">
+                            <label for="previousAddress" class="form-label fw-semibold text-muted small">PREVIOUS ADDRESS *</label>
+                            <textarea class="form-control" id="previousAddress" name="previous_address" rows="2"
+                                placeholder="Please collect and enter previous address"
+                                style="border-radius: var(--radius); border-color: var(--line);"></textarea>
+                            <div class="invalid-feedback">Please enter previous address.</div>
                         </div>
                     </div>
 
@@ -2037,58 +2092,41 @@
                                     </div>
 
                                     <!-- Row 3 -->
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="bcgAgeField" class="form-label fw-semibold text-muted small">AGE</label>
                                         <input type="number" class="form-control bcg-input" id="bcgAgeField" name="bcg_age" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <label for="bcgVaccinationStatusField" class="form-label fw-semibold text-muted small">VACCINATION STATUS</label>
                                         <input type="text" class="form-control bcg-input" id="bcgVaccinationStatusField" name="bcg_vaccination_status" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
-                                    <div class="col-md-4">
-                                        <label for="bcgDateField" class="form-label fw-semibold text-muted small">DATE (DAY/DOSE NO)</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgDateField" name="bcg_date" style="border-radius: var(--radius); border-color: var(--line);">
+
+                                    <!-- Facility & Pincode -->
+                                    <div class="col-md-6">
+                                        <label for="bcgFacilityField" class="form-label fw-semibold text-muted small">Where did you receive the vaccination?</label>
+                                        <input type="text" class="form-control bcg-input" id="bcgFacilityField" name="bcg_facility" placeholder="e.g. Primary Health Centre, Hospital Name" style="border-radius: var(--radius); border-color: var(--line);">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="bcgPincodeField" class="form-label fw-semibold text-muted small">pincode</label>
+                                        <input type="text" class="form-control bcg-input" id="bcgPincodeField" name="bcg_pincode" placeholder="Pincode" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
 
-                                    <!-- Row 4 -->
-                                    <div class="col-md-4">
-                                        <label for="bcgRegistrationModeField" class="form-label fw-semibold text-muted small">REGISTRATION MODE</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgRegistrationModeField" name="bcg_registration_mode" style="border-radius: var(--radius); border-color: var(--line);">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="bcgBeneficiaryTypeNameField" class="form-label fw-semibold text-muted small">BENEFICIARY TYPE NAME</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgBeneficiaryTypeNameField" name="bcg_beneficiary_type_name" style="border-radius: var(--radius); border-color: var(--line);">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="bcgApprovedByField" class="form-label fw-semibold text-muted small">APPROVED BY</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgApprovedByField" name="bcg_approved_by" style="border-radius: var(--radius); border-color: var(--line);">
-                                    </div>
-
-                                    <!-- Row 5 -->
-                                    <div class="col-md-4">
-                                        <label for="bcgSiteIdField" class="form-label fw-semibold text-muted small">SITE ID</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgSiteIdField" name="bcg_site_id" style="border-radius: var(--radius); border-color: var(--line);">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="bcgFacilityIdField" class="form-label fw-semibold text-muted small">FACILITY ID</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgFacilityIdField" name="bcg_facility_id" style="border-radius: var(--radius); border-color: var(--line);">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="bcgPincodeField" class="form-label fw-semibold text-muted small">PINCODE</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgPincodeField" name="bcg_pincode" style="border-radius: var(--radius); border-color: var(--line);">
-                                    </div>
-
-                                    <!-- Row 6 -->
+                                    <!-- Facility Address -->
                                     <div class="col-md-12">
-                                        <label for="bcgAddressField" class="form-label fw-semibold text-muted small">ADDRESS</label>
-                                        <textarea class="form-control bcg-input" id="bcgAddressField" name="bcg_address" rows="2" style="border-radius: var(--radius); border-color: var(--line);"></textarea>
+                                        <label for="bcgAddressField" class="form-label fw-semibold text-muted small">What is the address of the vaccination facility?</label>
+                                        <textarea class="form-control bcg-input" id="bcgAddressField" name="bcg_address" rows="2" placeholder="Facility address, street, locality" style="border-radius: var(--radius); border-color: var(--line);"></textarea>
                                     </div>
 
-                                    <!-- Hidden Legacy Fields for Test/Backend Compatibility -->
+                                    <!-- Hidden Legacy / Registry Fields for Compatibility -->
+                                    <input type="hidden" id="bcgDateField" name="bcg_date">
+                                    <input type="hidden" id="bcgRegistrationModeField" name="bcg_registration_mode">
+                                    <input type="hidden" id="bcgBeneficiaryTypeNameField" name="bcg_beneficiary_type_name">
+                                    <input type="hidden" id="bcgApprovedByField" name="bcg_approved_by">
+                                    <input type="hidden" id="bcgSiteIdField" name="bcg_site_id">
+                                    <input type="hidden" id="bcgFacilityIdField" name="bcg_facility_id">
                                     <input type="hidden" id="bcgVaccineNameField" name="bcg_vaccine_name" value="BCG">
                                     <input type="hidden" id="bcgVaccinationDateField" name="bcg_vaccination_date">
                                     <input type="hidden" id="bcgBatchNumberField" name="bcg_batch_number">
-                                    <input type="hidden" id="bcgFacilityField" name="bcg_facility">
 
                                     <!-- Read-only verified info box -->
                                     <div class="col-md-12 d-none" id="bcgInfoCard">
@@ -2891,6 +2929,69 @@
 
         if (tptUndergoneSelect) {
             tptUndergoneSelect.addEventListener("change", updateTptVisibility);
+        }
+
+        // Government ID toggle
+        const hasGovernmentIdSelect = document.getElementById("hasGovernmentId");
+        const governmentIdNameContainer = document.getElementById("governmentIdNameContainer");
+        const governmentIdNameInput = document.getElementById("governmentIdName");
+
+        function updateGovernmentIdVisibility() {
+            if (hasGovernmentIdSelect && hasGovernmentIdSelect.value === "Yes") {
+                if (governmentIdNameContainer) governmentIdNameContainer.classList.remove("d-none");
+                if (governmentIdNameInput) governmentIdNameInput.setAttribute("required", "required");
+            } else {
+                if (governmentIdNameContainer) governmentIdNameContainer.classList.add("d-none");
+                if (governmentIdNameInput) {
+                    governmentIdNameInput.removeAttribute("required");
+                    governmentIdNameInput.value = "";
+                }
+            }
+        }
+        if (hasGovernmentIdSelect) {
+            hasGovernmentIdSelect.addEventListener("change", updateGovernmentIdVisibility);
+        }
+
+        // Phone change toggle
+        const recentlyChangedPhoneSelect = document.getElementById("recentlyChangedPhone");
+        const previousPhoneContainer = document.getElementById("previousPhoneContainer");
+        const previousPhoneNumberInput = document.getElementById("previousPhoneNumber");
+
+        function updateRecentlyChangedPhoneVisibility() {
+            if (recentlyChangedPhoneSelect && recentlyChangedPhoneSelect.value === "Yes") {
+                if (previousPhoneContainer) previousPhoneContainer.classList.remove("d-none");
+                if (previousPhoneNumberInput) previousPhoneNumberInput.setAttribute("required", "required");
+            } else {
+                if (previousPhoneContainer) previousPhoneContainer.classList.add("d-none");
+                if (previousPhoneNumberInput) {
+                    previousPhoneNumberInput.removeAttribute("required");
+                    previousPhoneNumberInput.value = "";
+                }
+            }
+        }
+        if (recentlyChangedPhoneSelect) {
+            recentlyChangedPhoneSelect.addEventListener("change", updateRecentlyChangedPhoneVisibility);
+        }
+
+        // Address change toggle
+        const recentlyChangedAddressSelect = document.getElementById("recentlyChangedAddress");
+        const previousAddressContainer = document.getElementById("previousAddressContainer");
+        const previousAddressInput = document.getElementById("previousAddress");
+
+        function updateRecentlyChangedAddressVisibility() {
+            if (recentlyChangedAddressSelect && recentlyChangedAddressSelect.value === "Yes") {
+                if (previousAddressContainer) previousAddressContainer.classList.remove("d-none");
+                if (previousAddressInput) previousAddressInput.setAttribute("required", "required");
+            } else {
+                if (previousAddressContainer) previousAddressContainer.classList.add("d-none");
+                if (previousAddressInput) {
+                    previousAddressInput.removeAttribute("required");
+                    previousAddressInput.value = "";
+                }
+            }
+        }
+        if (recentlyChangedAddressSelect) {
+            recentlyChangedAddressSelect.addEventListener("change", updateRecentlyChangedAddressVisibility);
         }
         const undergoneTestingSelect = document.getElementById("undergoneTesting");
         const addPtbTestBar = document.getElementById("addPtbTestBar");
@@ -4251,6 +4352,12 @@
                 secondary_phone_1: 'secondaryPhone_1',
                 secondary_phone_2: 'secondaryPhone_2',
                 secondary_phone_3: 'secondaryPhone_3',
+                has_government_id: 'hasGovernmentId',
+                government_id_name: 'governmentIdName',
+                recently_changed_phone: 'recentlyChangedPhone',
+                previous_phone_number: 'previousPhoneNumber',
+                recently_changed_address: 'recentlyChangedAddress',
+                previous_address: 'previousAddress',
                 address: 'address',
                 state: 'state',
                 district: 'district',
@@ -4633,6 +4740,10 @@
             }
             updateTptVisibility();
             calculateTptDuration();
+            
+            if (typeof updateGovernmentIdVisibility === 'function') updateGovernmentIdVisibility();
+            if (typeof updateRecentlyChangedPhoneVisibility === 'function') updateRecentlyChangedPhoneVisibility();
+            if (typeof updateRecentlyChangedAddressVisibility === 'function') updateRecentlyChangedAddressVisibility();
             
             // Set BCG Vaccination Step 7 details from draftData
             if (draftData.bcg_status) {
