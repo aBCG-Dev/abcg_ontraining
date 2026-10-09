@@ -2416,6 +2416,8 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertIn("Where did you receive the vaccination?", headers)
         self.assertIn("What is the address of the vaccination facility?", headers)
         self.assertIn("pincode", headers)
+        self.assertIn("Under which eligibility criteria was the BCG vaccine administered to the participant?", headers)
+        self.assertIn("CXR Suggestive of TB", headers)
 
         # Test Excel export
         excel_response = self.client.get(reverse("questions:data_export") + "?format=excel")

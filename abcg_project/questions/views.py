@@ -4837,99 +4837,177 @@ def data_export_view(request):
         # Sort combined list by date_enroll descending
         all_records.sort(key=lambda x: x.date_enroll if x.date_enroll else timezone.localdate(), reverse=True)
         
+        import json
+
+        def _parse_ptb_details(p):
+            raw = getattr(p, "ptb_test_details", "") or "{}"
+            if isinstance(raw, dict):
+                return raw
+            if isinstance(raw, str) and raw.strip():
+                try:
+                    return json.loads(raw)
+                except Exception:
+                    return {}
+            return {}
+
+        def _get_cxr_done(p):
+            details = _parse_ptb_details(p)
+            cxr_det = details.get("cxr_details") or {}
+            done = cxr_det.get("cxr_done") or ("Yes" if details.get("cxr_status") not in ["", "Not Done", None] else "")
+            if done in ["Yes", "No"]:
+                return done
+            return "Yes" if getattr(p, "cxr_record_file", None) else "No"
+
+        def _get_cxr_result(p):
+            details = _parse_ptb_details(p)
+            cxr_det = details.get("cxr_details") or {}
+            res = cxr_det.get("cxr_result") or details.get("cxr_status") or ""
+            if res in ["Not Done", "None", None]:
+                return ""
+            return res
+
+        def _get_cxr_suggestive(p):
+            details = _parse_ptb_details(p)
+            cxr_det = details.get("cxr_details") or {}
+            res = str(cxr_det.get("cxr_result") or details.get("cxr_status") or getattr(p, "cxr_result", "") or "").lower()
+            reason = str(getattr(p, "classification_reason", "") or "").lower()
+            if "suggestive of tb" in res or "cxr suggestive" in reason or "chest x-ray suggestive" in reason:
+                return "Yes"
+            if res in ["normal", "abnormal (non-tb)"]:
+                return "No"
+            return "No"
+
+        def _get_cxr_facility(p):
+            details = _parse_ptb_details(p)
+            cxr_det = details.get("cxr_details") or {}
+            return cxr_det.get("cxr_facility", "")
+
+        def _get_cxr_date(p):
+            details = _parse_ptb_details(p)
+            cxr_det = details.get("cxr_details") or {}
+            return cxr_det.get("cxr_date", "")
+
         # Fields mapping definition (Header name, lambda to extract raw value)
+        # Sequenced chronologically matching the 8-Step Application Intake Wizard
         fields_map = [
+            # 0. Core Identifiers
             ("Study ID", lambda p: p.study_id),
             ("Screening ID", lambda p: p.screening_id),
             ("Nikshay ID", lambda p: p.nikshay_id),
-            ("Reconciliation Status", lambda p: p.reconciliation_status),
-            ("First Name", lambda p: p.first_name),
-            ("Last Name", lambda p: p.last_name),
-            ("Full Name", lambda p: p.full_name),
-            ("Date of Birth", lambda p: p.dob),
-            ("Age", lambda p: p.age),
-            ("Gender", lambda p: p.gender),
-            ("Contact Number", lambda p: p.contact_number),
-            ("Secondary Phone", lambda p: p.secondary_phone),
-            ("Father/Husband Name", lambda p: p.father_husband_name),
             ("Date of Enrollment", lambda p: p.date_enroll),
+
+            # 1. Step 1: Site Location & Sector
             ("State", lambda p: p.state),
             ("District", lambda p: p.district),
             ("TB Unit", lambda p: p.tb_unit),
             ("Facility", lambda p: p.facility),
-            ("Village", lambda p: p.village),
-            ("Pincode", lambda p: p.pincode),
-            ("Demographic Area", lambda p: p.demographic_area),
-            ("Campaign Completion Date", lambda p: p.campaign_completion_date),
             ("Sector", lambda p: p.sector),
             ("Case Finding Type", lambda p: p.case_finding_type),
-            ("Private Facility", lambda p: p.private_facility),
             ("Public PHI", lambda p: p.public_phi),
+            ("Private Facility", lambda p: p.private_facility),
+            ("Informant Name", lambda p: p.informant_name),
+            ("Informant Designation", lambda p: p.informant_designation),
+
+            # 2. Step 2: Personal Details & Demographics
+            ("First Name", lambda p: p.first_name),
+            ("Last Name", lambda p: p.last_name),
+            ("Full Name", lambda p: p.full_name),
+            ("Father/Husband Name", lambda p: p.father_husband_name),
+            ("Does the participant have any government-issued identification?", lambda p: getattr(p, "has_government_id", "No")),
+            ("Which government-issued ID does the participant have?", lambda p: getattr(p, "government_id_name", "")),
+            ("Age", lambda p: p.age),
+            ("Date of Birth", lambda p: p.dob),
+            ("Gender", lambda p: p.gender),
+            ("Height (cm)", lambda p: p.height_cm),
+            ("Weight (kg)", lambda p: p.weight_kg),
+            ("BMI", lambda p: p.bmi),
+            ("Contact Number", lambda p: p.contact_number),
+            ("Has the participant recently changed their phone number?", lambda p: getattr(p, "recently_changed_phone", "No")),
+            ("Previous Phone Number", lambda p: getattr(p, "previous_phone_number", "")),
+            ("Secondary Phone", lambda p: p.secondary_phone),
             ("Secondary Phone 1", lambda p: p.secondary_phone_1),
             ("Secondary Phone 2", lambda p: p.secondary_phone_2),
             ("Secondary Phone 3", lambda p: p.secondary_phone_3),
-            ("Does the participant have any government-issued identification?", lambda p: getattr(p, "has_government_id", "No")),
-            ("Which government-issued ID does the participant have?", lambda p: getattr(p, "government_id_name", "")),
-            ("Has the participant recently changed their phone number?", lambda p: getattr(p, "recently_changed_phone", "No")),
-            ("Previous Phone Number", lambda p: getattr(p, "previous_phone_number", "")),
-            ("Has the participant recently changed their residential address?", lambda p: getattr(p, "recently_changed_address", "No")),
-            ("Previous Address", lambda p: getattr(p, "previous_address", "")),
+
+            # 3. Step 3: Socio-demographics & Address
+            ("Street Address / House Detail", lambda p: p.address),
             ("Taluka/Block", lambda p: p.taluka_block),
             ("Landmark", lambda p: p.landmark),
+            ("Village", lambda p: p.village),
+            ("Pincode", lambda p: p.pincode),
+            ("Has the participant recently changed their residential address?", lambda p: getattr(p, "recently_changed_address", "No")),
+            ("Previous Address", lambda p: getattr(p, "previous_address", "")),
+            ("Marital Status", lambda p: p.marital_status),
+            ("Socioeconomic Status", lambda p: p.socioeconomic_status),
+            ("Demographic Area", lambda p: p.demographic_area),
+            ("Occupation", lambda p: p.occupation),
             ("Contact Person Name", lambda p: p.contact_person_name),
             ("Contact Person Phone", lambda p: p.contact_person_phone),
             ("Contact Person Address", lambda p: p.contact_person_address),
-            ("Informant Name", lambda p: p.informant_name),
-            ("Informant Designation", lambda p: p.informant_designation),
+
+            # 4. Step 4: High Risk Group (HRG) & TPT Eligibility
+            ("Key Population & Risk Factors", lambda p: p.risk_factors),
+            ("Past History of TB", lambda p: getattr(p, "past_tb", False)),
+            ("Diabetes", lambda p: getattr(p, "diabetes", False)),
+            ("Smoker", lambda p: getattr(p, "smoker", False)),
+            ("Close Contact", lambda p: getattr(p, "close_contact", False)),
+            ("Eligible for BCG Vaccine during Campaign Period", lambda p: getattr(p, "eligible_bcg_campaign", False)),
+            ("Campaign Completion Date", lambda p: p.campaign_completion_date),
+            ("Under which eligibility criteria was the BCG vaccine administered to the participant?", lambda p: getattr(p, "bcg_eligibility_criteria", "")),
+            ("TPT Undergone", lambda p: getattr(p, "tpt_undergone", "")),
+            ("TPT History", lambda p: getattr(p, "tpt_history", "")),
+            ("TPT Risk Factor", lambda p: getattr(p, "tpt_risk_factor", "")),
+            ("TPT Start Date", lambda p: getattr(p, "tpt_start_date", None)),
+            ("TPT End Date", lambda p: getattr(p, "tpt_end_date", None)),
+            ("TPT Duration Months", lambda p: getattr(p, "tpt_duration_months", None)),
+            ("TPT Regimen", lambda p: getattr(p, "tpt_regimen", "")),
+            ("TPT Status", lambda p: getattr(p, "tpt_status", "")),
+            ("TPT Contact Known", lambda p: getattr(p, "tpt_contact_known", "")),
+
+            # 5. Step 5: PTB Screening
             ("PTB Screened", lambda p: getattr(p, "ptb_screened", False)),
+            ("Symptoms", lambda p: p.symptoms),
+            ("HIV Status", lambda p: p.hiv_status),
+
+            # 6. Step 6: EPTB Screening
+            ("EPTB Screened", lambda p: getattr(p, "eptb_screened", False)),
+
+            # 7. Step 7: Diagnosis (CXR & PTB/EPTB Tests)
+            ("Chest X-Ray (CXR) Done?", lambda p: _get_cxr_done(p)),
+            ("CXR Result", lambda p: _get_cxr_result(p)),
+            ("CXR Suggestive of TB", lambda p: _get_cxr_suggestive(p)),
+            ("CXR Site / Facility", lambda p: _get_cxr_facility(p)),
+            ("CXR Date", lambda p: _get_cxr_date(p)),
             ("PTB Test Registered", lambda p: getattr(p, "ptb_test_registered", False)),
             ("PTB Test Type", lambda p: p.ptb_test_type),
             ("PTB Test Result", lambda p: p.ptb_test_result),
             ("PTB Test Date", lambda p: p.ptb_test_date),
             ("PTB Test Facility", lambda p: p.ptb_test_facility),
-            ("EPTB Screened", lambda p: getattr(p, "eptb_screened", False)),
-            ("Marital Status", lambda p: p.marital_status),
-            ("Occupation", lambda p: p.occupation),
-            ("Socioeconomic Status", lambda p: p.socioeconomic_status),
-            ("Symptoms", lambda p: p.symptoms),
-            ("Risk Factors", lambda p: p.risk_factors),
-            ("HIV Status", lambda p: p.hiv_status),
-            ("Weight (kg)", lambda p: p.weight_kg),
-            ("Height (cm)", lambda p: p.height_cm),
-            ("BMI", lambda p: p.bmi),
-            ("Past History of TB", lambda p: getattr(p, "past_tb", False)),
-            ("Diabetes", lambda p: getattr(p, "diabetes", False)),
-            ("Smoker", lambda p: getattr(p, "smoker", False)),
-            ("Close Contact", lambda p: getattr(p, "close_contact", False)),
-            ("TPT Undergone", lambda p: getattr(p, "tpt_undergone", "")),
-            ("TPT Status", lambda p: getattr(p, "tpt_status", "")),
-            ("TPT Contact Known", lambda p: getattr(p, "tpt_contact_known", "")),
-            ("TPT History", lambda p: getattr(p, "tpt_history", "")),
-            ("TPT Start Date", lambda p: getattr(p, "tpt_start_date", None)),
-            ("TPT End Date", lambda p: getattr(p, "tpt_end_date", None)),
-            ("TPT Duration Months", lambda p: getattr(p, "tpt_duration_months", None)),
-            ("TPT Regimen", lambda p: getattr(p, "tpt_regimen", "")),
-            ("TPT Risk Factor", lambda p: getattr(p, "tpt_risk_factor", "")),
-            ("BCG Evidence", lambda p: p.bcg_evidence),
+
+            # 8. Step 8: BCG Vaccine Verification
             ("BCG Status", lambda p: p.bcg_status),
             ("BCG Beneficiary ID", lambda p: p.bcg_beneficiary_id),
+            ("BCG First Name", lambda p: getattr(p, "bcg_first_name", "")),
+            ("BCG Last Name", lambda p: getattr(p, "bcg_last_name", "")),
             ("BCG Mobile Number", lambda p: p.bcg_ben_mobile_number),
             ("BCG Gender", lambda p: p.bcg_ben_gender),
             ("BCG DOB", lambda p: getattr(p, "bcg_dob", "")),
             ("BCG Age", lambda p: getattr(p, "bcg_age", "")),
             ("BCG Vaccination Status", lambda p: getattr(p, "bcg_vaccination_status", "")),
-            ("BCG First Name", lambda p: getattr(p, "bcg_first_name", "")),
-            ("BCG Last Name", lambda p: getattr(p, "bcg_last_name", "")),
             ("Where did you receive the vaccination?", lambda p: getattr(p, "bcg_facility", "")),
             ("What is the address of the vaccination facility?", lambda p: getattr(p, "bcg_address", "")),
             ("pincode", lambda p: getattr(p, "bcg_pincode", "")),
             ("BCG Scar", lambda p: getattr(p, "bcg_scar", "")),
             ("BCG Has Record", lambda p: getattr(p, "bcg_has_record", "")),
-            ("BCG Vaccination Date", lambda p: getattr(p, "bcg_vaccination_date", "")),
             ("BCG Vaccine Name", lambda p: getattr(p, "bcg_vaccine_name", "")),
             ("BCG Batch Number", lambda p: getattr(p, "bcg_batch_number", "")),
+            ("BCG Vaccination Date", lambda p: getattr(p, "bcg_vaccination_date", "")),
+            ("BCG Evidence", lambda p: p.bcg_evidence),
+
+            # 9. Final Study Outcome & Classification
             ("Classification", lambda p: p.classification),
             ("Classification Reason", lambda p: p.classification_reason),
+            ("Reconciliation Status", lambda p: p.reconciliation_status),
         ]
         
         headers = [item[0] for item in fields_map]
