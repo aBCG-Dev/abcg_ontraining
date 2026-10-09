@@ -1,0 +1,453 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Participants Line List - aBCG Monitoring Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Page Header & Quick Export Actions -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-4">
+    <div>
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-bold tracking-tight text-foreground">Participants Line List</h1>
+        <span class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+          Master Registry
+        </span>
+      </div>
+      <p class="text-xs text-muted-foreground mt-1">
+        Comprehensive clinical roster of all individuals screened across all study cohorts (Eligible, Ineligible, Cases, Controls, TPT, and Pending).
+      </p>
+    </div>
+
+    <!-- Export Action Buttons -->
+    <div class="flex items-center gap-2">
+      <a
+        href="{% url 'questions:data_export' %}?format=excel"
+        class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 transition-all text-decoration-none active:scale-95"
+        title="Download sanitized study registry in Excel (.xlsx) format"
+      >
+        <i data-lucide="file-spreadsheet" class="size-4"></i>
+        <span>Export Excel</span>
+      </a>
+      <a
+        href="{% url 'questions:data_export' %}?format=csv"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-muted transition-all text-decoration-none active:scale-95"
+        title="Download master dataset in CSV format"
+      >
+        <i data-lucide="download" class="size-4"></i>
+        <span>Export CSV</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Metric Overview Cards -->
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+    <!-- Total Screened -->
+    <div class="rounded-xl border border-border bg-card p-3.5 shadow-sm flex items-center justify-between border-l-4 border-l-primary">
+      <div>
+        <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Screened</span>
+        <div class="text-2xl font-bold text-foreground mt-0.5">{{ metrics.total_participants }}</div>
+        <p class="text-[10px] text-muted-foreground">All cohorts combined</p>
+      </div>
+      <div class="bg-primary/10 text-primary p-2.5 rounded-lg shrink-0">
+        <i data-lucide="users" class="size-5"></i>
+      </div>
+    </div>
+
+    <!-- Eligible -->
+    <div class="rounded-xl border border-border bg-card p-3.5 shadow-sm flex items-center justify-between border-l-4 border-l-emerald-500">
+      <div>
+        <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Eligible</span>
+        <div class="text-2xl font-bold text-emerald-600 mt-0.5">{{ metrics.eligible_count }}</div>
+        <p class="text-[10px] text-muted-foreground">Active study cohort</p>
+      </div>
+      <div class="bg-emerald-500/10 text-emerald-600 p-2.5 rounded-lg shrink-0">
+        <i data-lucide="user-check" class="size-5"></i>
+      </div>
+    </div>
+
+    <!-- Confirmed Cases -->
+    <div class="rounded-xl border border-border bg-card p-3.5 shadow-sm flex items-center justify-between border-l-4 border-l-red-500">
+      <div>
+        <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">TB Cases</span>
+        <div class="text-2xl font-bold text-red-600 mt-0.5">{{ metrics.cases_count }}</div>
+        <p class="text-[10px] text-muted-foreground">Diagnosed PTB/EPTB</p>
+      </div>
+      <div class="bg-red-500/10 text-red-600 p-2.5 rounded-lg shrink-0">
+        <i data-lucide="stethoscope" class="size-5"></i>
+      </div>
+    </div>
+
+    <!-- Healthy Controls -->
+    <div class="rounded-xl border border-border bg-card p-3.5 shadow-sm flex items-center justify-between border-l-4 border-l-teal-500">
+      <div>
+        <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Controls</span>
+        <div class="text-2xl font-bold text-teal-600 mt-0.5">{{ metrics.controls_count }}</div>
+        <p class="text-[10px] text-muted-foreground">Matched controls</p>
+      </div>
+      <div class="bg-teal-500/10 text-teal-600 p-2.5 rounded-lg shrink-0">
+        <i data-lucide="shield-check" class="size-5"></i>
+      </div>
+    </div>
+
+    <!-- TPT + BCG -->
+    <div class="rounded-xl border border-border bg-card p-3.5 shadow-sm flex items-center justify-between border-l-4 border-l-purple-500">
+      <div>
+        <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">TPT + BCG</span>
+        <div class="text-2xl font-bold text-purple-600 mt-0.5">{{ metrics.tpt_count }}</div>
+        <p class="text-[10px] text-muted-foreground">Preventive cohort</p>
+      </div>
+      <div class="bg-purple-500/10 text-purple-600 p-2.5 rounded-lg shrink-0">
+        <i data-lucide="git-merge" class="size-5"></i>
+      </div>
+    </div>
+
+    <!-- Ineligible / Excluded -->
+    <div class="rounded-xl border border-border bg-card p-3.5 shadow-sm flex items-center justify-between border-l-4 border-l-rose-500">
+      <div>
+        <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ineligible</span>
+        <div class="text-2xl font-bold text-rose-600 mt-0.5">{{ metrics.ineligible_count }}</div>
+        <p class="text-[10px] text-muted-foreground">Excluded / wash-out</p>
+      </div>
+      <div class="bg-rose-500/10 text-rose-600 p-2.5 rounded-lg shrink-0">
+        <i data-lucide="user-x" class="size-5"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multi-Facet Search & Filter Form -->
+  <div class="rounded-xl border border-border bg-card p-4 shadow-sm">
+    <form method="GET" class="space-y-4">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+
+        <!-- Search Bar -->
+        <div class="sm:col-span-2">
+          <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            Search Participant
+          </label>
+          <div class="relative">
+            <i data-lucide="search" class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"></i>
+            <input
+              type="text"
+              name="q"
+              value="{{ filters.q }}"
+              placeholder="Search by Study ID, Name, Mobile, or Nikshay ID..."
+              class="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-4 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+          </div>
+        </div>
+
+        <!-- Classification Filter -->
+        <div>
+          <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            Classification
+          </label>
+          <select
+            name="classification"
+            class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="" {% if not filters.classification %}selected{% endif %}>All Classifications</option>
+            <option value="Case" {% if filters.classification == 'Case' %}selected{% endif %}>TB Case</option>
+            <option value="Control" {% if filters.classification == 'Control' %}selected{% endif %}>Control</option>
+            <option value="TPT+BCG" {% if filters.classification == 'TPT+BCG' %}selected{% endif %}>TPT + BCG</option>
+            <option value="Pending" {% if filters.classification == 'Pending' %}selected{% endif %}>Pending Adjudication</option>
+            <option value="Not Eligible" {% if filters.classification == 'Not Eligible' %}selected{% endif %}>Not Eligible</option>
+            <option value="Excluded" {% if filters.classification == 'Excluded' %}selected{% endif %}>Excluded</option>
+          </select>
+        </div>
+
+        <!-- Eligibility Gate Filter -->
+        <div>
+          <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            Study Eligibility
+          </label>
+          <select
+            name="eligibility"
+            class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="" {% if not filters.eligibility %}selected{% endif %}>All Records</option>
+            <option value="Eligible" {% if filters.eligibility == 'Eligible' %}selected{% endif %}>Eligible Only</option>
+            <option value="Ineligible" {% if filters.eligibility == 'Ineligible' %}selected{% endif %}>Ineligible / Excluded Only</option>
+          </select>
+        </div>
+
+        <!-- State Filter -->
+        <div>
+          <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            State
+          </label>
+          <select
+            name="state"
+            class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="" {% if not filters.state %}selected{% endif %}>All States</option>
+            {% for st in available_states %}
+              <option value="{{ st }}" {% if filters.state == st %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- District Filter -->
+        <div>
+          <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            District
+          </label>
+          <select
+            name="district"
+            class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="" {% if not filters.district %}selected{% endif %}>All Districts</option>
+            {% for dist in available_districts %}
+              <option value="{{ dist }}" {% if filters.district == dist %}selected{% endif %}>{{ dist }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- TB Unit Filter -->
+        <div>
+          <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            TB Unit
+          </label>
+          <select
+            name="tb_unit"
+            class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="" {% if not filters.tb_unit %}selected{% endif %}>All TB Units</option>
+            {% for tu in available_tb_units %}
+              <option value="{{ tu }}" {% if filters.tb_unit == tu %}selected{% endif %}>{{ tu }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Enrollment Date Range -->
+        <div>
+          <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            Enrollment From
+          </label>
+          <input
+            type="date"
+            name="date_from"
+            value="{{ filters.date_from }}"
+            class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+        </div>
+
+      </div>
+
+      <!-- Action Buttons Row -->
+      <div class="flex items-center justify-between border-t border-border/40 pt-3">
+        <div class="text-xs text-muted-foreground">
+          Showing <span class="font-bold text-foreground">{{ participants.start_index|default:0 }}-{{ participants.end_index|default:0 }}</span> of <span class="font-bold text-foreground">{{ total_count }}</span> matched participants
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="submit"
+            class="h-9 rounded-lg bg-primary px-4 text-xs font-semibold text-white hover:bg-primary/90 transition-all shadow-sm active:scale-95 inline-flex items-center gap-1.5"
+          >
+            <i data-lucide="filter" class="size-3.5"></i>
+            <span>Apply Filters</span>
+          </button>
+          <a
+            href="{% url 'questions:participants_list' %}"
+            class="h-9 rounded-lg border border-border bg-background px-4 text-xs font-semibold text-foreground hover:bg-muted transition-all flex items-center justify-center shadow-sm text-decoration-none"
+          >
+            Reset
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Master Line List Data Table -->
+  <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b border-border bg-muted/50 font-bold text-muted-foreground uppercase tracking-wider text-[9px]">
+            <th class="p-3 pl-4">Study ID</th>
+            <th class="p-3">Participant Name</th>
+            <th class="p-3">Contact</th>
+            <th class="p-3">Location & TU</th>
+            <th class="p-3">Classification</th>
+            <th class="p-3">Eligibility Gate</th>
+            <th class="p-3">BCG Verification</th>
+            <th class="p-3">Enrollment Date</th>
+            <th class="p-3 pr-4 text-right">Dossier</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/60">
+          {% for p in participants %}
+            <tr class="hover:bg-muted/30 transition-colors">
+
+              <!-- Study ID -->
+              <td class="p-3.5 pl-4">
+                <a
+                  href="{% url 'questions:participant_detail' p.study_id %}"
+                  class="font-mono font-bold text-primary hover:underline text-xs"
+                >
+                  {{ p.study_id }}
+                </a>
+                <div class="flex items-center gap-2 text-[10px] text-muted-foreground font-mono mt-0.5">
+                  {% if p.nikshay_id != '—' %}
+                    <span>Nikshay: {{ p.nikshay_id }}</span>
+                  {% elif p.screening_id != '—' %}
+                    <span>Scr: {{ p.screening_id }}</span>
+                  {% else %}
+                    <span>ID: {{ p.study_id }}</span>
+                  {% endif %}
+                </div>
+              </td>
+
+              <!-- Participant Name & Demographics -->
+              <td class="p-3.5">
+                <div class="font-semibold text-foreground text-xs">{{ p.full_name }}</div>
+                <div class="text-[10px] text-muted-foreground mt-0.5">
+                  {{ p.age }} yrs • {{ p.gender }}
+                </div>
+              </td>
+
+              <!-- Contact -->
+              <td class="p-3.5 font-mono text-muted-foreground">
+                {{ p.contact_number }}
+              </td>
+
+              <!-- Location & TU -->
+              <td class="p-3.5">
+                <div class="font-medium text-foreground">{{ p.district }}, {{ p.state }}</div>
+                <div class="text-[10px] text-muted-foreground font-mono mt-0.5">
+                  {{ p.tb_unit }}{% if p.facility != '—' %} • {{ p.facility }}{% endif %}
+                </div>
+              </td>
+
+              <!-- Classification Badge -->
+              <td class="p-3.5">
+                <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider
+                  {% if p.classification == 'Case' %}
+                    bg-red-100 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800
+                  {% elif p.classification == 'Control' %}
+                    bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800
+                  {% elif p.classification == 'TPT+BCG' %}
+                    bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800
+                  {% elif p.classification == 'Pending' %}
+                    bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800
+                  {% elif p.classification == 'Not Eligible' or p.classification == 'Excluded' %}
+                    bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700
+                  {% else %}
+                    bg-muted text-muted-foreground border border-border
+                  {% endif %}">
+                  {{ p.classification }}
+                </span>
+                <div class="text-[9px] text-muted-foreground mt-0.5 max-w-[140px] truncate" title="{{ p.classification_reason }}">
+                  {{ p.classification_reason }}
+                </div>
+              </td>
+
+              <!-- Study Eligibility Gate -->
+              <td class="p-3.5">
+                {% if p.is_eligible %}
+                  <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                    <span class="size-1.5 rounded-full bg-emerald-500"></span>
+                    Eligible
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800">
+                    <span class="size-1.5 rounded-full bg-rose-500"></span>
+                    Ineligible
+                  </span>
+                {% endif %}
+              </td>
+
+              <!-- BCG Status -->
+              <td class="p-3.5">
+                {% if p.bcg_status == '—' %}
+                  <span class="text-muted-foreground font-mono text-xs">—</span>
+                {% elif p.bcg_status == 'No' %}
+                  <span class="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300">
+                    Unvaccinated
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800" title="{{ p.bcg_status }}">
+                    <i data-lucide="shield-check" class="size-3 text-blue-600"></i>
+                    Verified
+                  </span>
+                {% endif %}
+              </td>
+
+              <!-- Enrollment Date -->
+              <td class="p-3.5 text-muted-foreground font-medium text-xs">
+                {{ p.date_enroll_str }}
+              </td>
+
+              <!-- Actions -->
+              <td class="p-3.5 pr-4 text-right">
+                <a
+                  href="{% url 'questions:participant_detail' p.study_id %}"
+                  class="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-primary hover:text-white transition-all text-decoration-none shadow-sm active:scale-95"
+                >
+                  <span>View</span>
+                  <i data-lucide="chevron-right" class="size-3"></i>
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="9" class="p-8 text-center text-muted-foreground">
+                <div class="flex flex-col items-center justify-center gap-2">
+                  <div class="rounded-full bg-muted p-3 text-muted-foreground">
+                    <i data-lucide="users" class="size-6"></i>
+                  </div>
+                  <div class="font-bold text-sm text-foreground">No participants found</div>
+                  <p class="text-xs max-w-sm">
+                    No participants matched your filter criteria. Try adjusting the search terms or clearing active filters.
+                  </p>
+                  <a href="{% url 'questions:participants_list' %}" class="mt-2 text-xs text-primary font-semibold hover:underline">
+                    Clear all filters
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    {% if participants.has_other_pages %}
+      <div class="flex items-center justify-between border-t border-border px-4 py-3 bg-muted/20 text-xs">
+        <div class="text-muted-foreground">
+          Page <span class="font-bold text-foreground">{{ participants.number }}</span> of <span class="font-bold text-foreground">{{ participants.paginator.num_pages }}</span>
+        </div>
+
+        <div class="flex items-center gap-1">
+          {% if participants.has_previous %}
+            <a
+              href="?page={{ participants.previous_page_number }}&q={{ filters.q }}&classification={{ filters.classification }}&eligibility={{ filters.eligibility }}&state={{ filters.state }}&district={{ filters.district }}&tb_unit={{ filters.tb_unit }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}"
+              class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-all text-decoration-none"
+            >
+              <i data-lucide="chevron-left" class="size-3.5"></i>
+              <span>Previous</span>
+            </a>
+          {% endif %}
+
+          <span class="px-2 font-mono font-bold text-foreground">
+            {{ participants.number }} / {{ participants.paginator.num_pages }}
+          </span>
+
+          {% if participants.has_next %}
+            <a
+              href="?page={{ participants.next_page_number }}&q={{ filters.q }}&classification={{ filters.classification }}&eligibility={{ filters.eligibility }}&state={{ filters.state }}&district={{ filters.district }}&tb_unit={{ filters.tb_unit }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}"
+              class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-all text-decoration-none"
+            >
+              <span>Next</span>
+              <i data-lucide="chevron-right" class="size-3.5"></i>
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

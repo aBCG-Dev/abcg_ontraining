@@ -3899,6 +3899,223 @@ def _map_participant_to_dict(p):
 
 
 @group_required("Super Admin", "Admin", "Nodal Officer", "Doctor")
+def participants_line_list_view(request):
+    import datetime
+    from django.db.models import Q
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from questions.models import Participant, TptIndividual, IneligibleIndividual
+
+    # 1. Base jurisdiction querysets
+    p_qs = filter_by_jurisdiction(Participant.objects.all(), request)
+    tpt_qs = filter_by_jurisdiction(TptIndividual.objects.all(), request)
+    inel_qs = filter_by_jurisdiction(IneligibleIndividual.objects.all(), request)
+
+    # 2. Baseline KPI metrics across the full visible registry
+    total_participants = p_qs.count() + tpt_qs.count() + inel_qs.count()
+    cases_count = p_qs.filter(classification="Case").count()
+    controls_count = p_qs.filter(classification="Control").count()
+    tpt_count = tpt_qs.count() + p_qs.filter(classification="TPT+BCG").count()
+    pending_count = p_qs.filter(classification="Pending").count()
+    ineligible_count = inel_qs.count() + p_qs.filter(classification__in=["Not Eligible", "Excluded"]).count()
+    eligible_count = max(0, total_participants - ineligible_count)
+
+    # 3. Dynamic options for filter dropdowns
+    state_set = set(filter(None, list(p_qs.values_list('state', flat=True)) + list(tpt_qs.values_list('state', flat=True)) + list(inel_qs.values_list('state', flat=True))))
+    district_set = set(filter(None, list(p_qs.values_list('district', flat=True)) + list(tpt_qs.values_list('district', flat=True)) + list(inel_qs.values_list('district', flat=True))))
+    tu_set = set(filter(None, list(p_qs.values_list('tb_unit', flat=True)) + list(tpt_qs.values_list('tb_unit', flat=True)) + list(inel_qs.values_list('tb_unit', flat=True))))
+    available_states = sorted(list(state_set))
+    available_districts = sorted(list(district_set))
+    available_tb_units = sorted(list(tu_set))
+
+    # 4. Extract filter and search parameters
+    q = request.GET.get('q', '').strip()
+    cls_filter = request.GET.get('classification', '').strip()
+    eligibility_filter = request.GET.get('eligibility', '').strip()
+    bcg_filter = request.GET.get('bcg_status', '').strip()
+    state_filter = request.GET.get('state', '').strip()
+    district_filter = request.GET.get('district', '').strip()
+    tb_unit_filter = request.GET.get('tb_unit', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    # 5. Apply filters to querysets
+    if q:
+        q_obj = (
+            Q(study_id__icontains=q) |
+            Q(full_name__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(contact_number__icontains=q) |
+            Q(nikshay_id__icontains=q) |
+            Q(screening_id__icontains=q)
+        )
+        p_qs = p_qs.filter(q_obj)
+        tpt_qs = tpt_qs.filter(q_obj)
+        inel_qs = inel_qs.filter(q_obj)
+
+    if state_filter:
+        p_qs = p_qs.filter(state__icontains=state_filter)
+        tpt_qs = tpt_qs.filter(state__icontains=state_filter)
+        inel_qs = inel_qs.filter(state__icontains=state_filter)
+
+    if district_filter:
+        p_qs = p_qs.filter(district__icontains=district_filter)
+        tpt_qs = tpt_qs.filter(district__icontains=district_filter)
+        inel_qs = inel_qs.filter(district__icontains=district_filter)
+
+    if tb_unit_filter:
+        p_qs = p_qs.filter(tb_unit__icontains=tb_unit_filter)
+        tpt_qs = tpt_qs.filter(tb_unit__icontains=tb_unit_filter)
+        inel_qs = inel_qs.filter(tb_unit__icontains=tb_unit_filter)
+
+    if date_from:
+        p_qs = p_qs.filter(date_enroll__gte=date_from)
+        tpt_qs = tpt_qs.filter(date_enroll__gte=date_from)
+        inel_qs = inel_qs.filter(date_enroll__gte=date_from)
+
+    if date_to:
+        p_qs = p_qs.filter(date_enroll__lte=date_to)
+        tpt_qs = tpt_qs.filter(date_enroll__lte=date_to)
+        inel_qs = inel_qs.filter(date_enroll__lte=date_to)
+
+    if cls_filter:
+        if cls_filter == "TPT+BCG":
+            p_qs = p_qs.filter(classification="TPT+BCG")
+            inel_qs = inel_qs.none()
+        elif cls_filter in ["Not Eligible", "Excluded"]:
+            tpt_qs = tpt_qs.none()
+            p_qs = p_qs.filter(classification=cls_filter)
+            if cls_filter != "Not Eligible":
+                inel_qs = inel_qs.filter(classification=cls_filter)
+        else:
+            tpt_qs = tpt_qs.none()
+            inel_qs = inel_qs.none()
+            p_qs = p_qs.filter(classification=cls_filter)
+
+    if eligibility_filter == "Eligible":
+        inel_qs = inel_qs.none()
+        p_qs = p_qs.exclude(classification__in=["Not Eligible", "Excluded"]).filter(eligible=True)
+    elif eligibility_filter == "Ineligible":
+        tpt_qs = tpt_qs.none()
+        p_qs = p_qs.filter(Q(classification__in=["Not Eligible", "Excluded"]) | Q(eligible=False))
+
+    if bcg_filter == "Yes":
+        inel_qs = inel_qs.none()
+        p_qs = p_qs.filter(bcg_status__startswith="Yes")
+        tpt_qs = tpt_qs.filter(bcg_status__startswith="Yes")
+    elif bcg_filter == "No":
+        p_qs = p_qs.filter(bcg_status="No")
+        tpt_qs = tpt_qs.filter(bcg_status="No")
+
+    # 6. Normalize records into standardized dictionaries
+    def _format_record(p, model_type):
+        fname = getattr(p, "full_name", "") or f"{getattr(p, 'first_name', '')} {getattr(p, 'last_name', '')}".strip() or "Unnamed"
+        
+        if model_type == "IneligibleIndividual":
+            is_el = False
+            cls = getattr(p, "classification", "Not Eligible") or "Not Eligible"
+            cohort_badge = "Ineligible Individual"
+        elif model_type == "TptIndividual":
+            is_el = True
+            cls = getattr(p, "classification", "TPT+BCG") or "TPT+BCG"
+            cohort_badge = "TPT Cohort"
+        else:
+            raw_cls = getattr(p, "classification", "Pending") or "Pending"
+            is_el = not (raw_cls in ["Not Eligible", "Excluded"] or getattr(p, "eligible", None) is False)
+            cls = raw_cls
+            cohort_badge = "Study Participant"
+
+        if not is_el:
+            bcg_display = "—"
+            bcg_camp = "No"
+        else:
+            bcg_camp = "Yes" if getattr(p, "eligible_bcg_campaign", False) in [True, "Yes", "true", 1] else "No"
+            b_val = getattr(p, "bcg_status", "")
+            bcg_display = b_val if b_val else "No"
+
+        d_enroll = getattr(p, "date_enroll", None)
+        d_str = d_enroll.strftime("%Y-%m-%d") if d_enroll else "—"
+
+        return {
+            "pk": p.pk,
+            "study_id": p.study_id,
+            "screening_id": getattr(p, "screening_id", "") or "—",
+            "nikshay_id": getattr(p, "nikshay_id", "") or "—",
+            "full_name": fname,
+            "age": getattr(p, "age", "—"),
+            "gender": getattr(p, "gender", "Unknown"),
+            "contact_number": getattr(p, "contact_number", "") or "—",
+            "state": getattr(p, "state", "—") or "—",
+            "district": getattr(p, "district", "—") or "—",
+            "tb_unit": getattr(p, "tb_unit", "—") or "—",
+            "facility": getattr(p, "facility", "—") or "—",
+            "date_enroll": d_enroll,
+            "date_enroll_str": d_str,
+            "classification": cls,
+            "classification_reason": getattr(p, "classification_reason", "") or "—",
+            "is_eligible": is_el,
+            "eligible_bcg_campaign": bcg_camp,
+            "bcg_status": bcg_display,
+            "cohort_badge": cohort_badge,
+            "model_type": model_type,
+        }
+
+    all_records = []
+    for p in p_qs:
+        all_records.append(_format_record(p, "Participant"))
+    for t in tpt_qs:
+        all_records.append(_format_record(t, "TptIndividual"))
+    for i in inel_qs:
+        all_records.append(_format_record(i, "IneligibleIndividual"))
+
+    # Sort descending by date_enroll
+    all_records.sort(key=lambda r: r["date_enroll"] if r["date_enroll"] else datetime.date(1970, 1, 1), reverse=True)
+
+    # 7. Pagination (25 items per page)
+    paginator = Paginator(all_records, 25)
+    page_number = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    # Context
+    context = {
+        "page": "participants",
+        "participants": page_obj,
+        "paginator": paginator,
+        "page_obj": page_obj,
+        "total_count": len(all_records),
+        "metrics": {
+            "total_participants": total_participants,
+            "eligible_count": eligible_count,
+            "ineligible_count": ineligible_count,
+            "cases_count": cases_count,
+            "controls_count": controls_count,
+            "tpt_count": tpt_count,
+            "pending_count": pending_count,
+        },
+        "filters": {
+            "q": q,
+            "classification": cls_filter,
+            "eligibility": eligibility_filter,
+            "bcg_status": bcg_filter,
+            "state": state_filter,
+            "district": district_filter,
+            "tb_unit": tb_unit_filter,
+            "date_from": date_from,
+            "date_to": date_to,
+        },
+        "available_states": available_states,
+        "available_districts": available_districts,
+        "available_tb_units": available_tb_units,
+    }
+    return render(request, "dashboard/participants_list.html", context)
+
+
+@group_required("Super Admin", "Admin", "Nodal Officer", "Doctor")
 def cases_view(request):
     import random
     from . import mock_data

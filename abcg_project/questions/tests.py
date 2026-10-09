@@ -2444,5 +2444,20 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertTrue(len(inel_rows) > 0)
         self.assertNotIn("Some Criteria", inel_rows[0])
 
+    def test_participants_line_list_view_renders_for_authorized_users(self):
+        profile = self.user.profile
+        profile.role = "Doctor"
+        profile.save()
+        from django.contrib.auth.models import Group
+        g, _ = Group.objects.get_or_create(name="Doctor")
+        self.user.groups.add(g)
+
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.get(reverse("questions:participants_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "dashboard/participants_list.html")
+        self.assertIn("participants", response.context)
+        self.assertIn("metrics", response.context)
+
 
 

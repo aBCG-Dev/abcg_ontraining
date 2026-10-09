@@ -19,6 +19,14 @@
   </div>
 
   <a
+    href="{% url 'questions:participants_list' %}"
+    class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'participants' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
+  >
+    <i data-lucide="users" class="size-4.5 shrink-0"></i>
+    <span class="flex-1 truncate">Participants</span>
+  </a>
+
+  <a
     href="{% url 'questions:classification' %}"
     class="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all {% if page == 'classification' %}bg-primary text-white shadow-sm{% else %}text-slate-300 hover:bg-sidebar-accent hover:text-white{% endif %}"
   >

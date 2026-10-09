@@ -6,24 +6,24 @@ Defines sidebar visibility, module descriptions, and module-to-URL mappings.
 
 SIDEBAR_CONFIG = {
     "Super Admin": [
-        "dashboard", "classification", "cases", "controls", "matching",
+        "dashboard", "participants", "classification", "cases", "controls", "matching",
         "adjudication", "analytics", "data_quality", "study_site",
         "sync_telemetry", "data_export", "settings", "audit_logs",
         "user_management", "rbac_matrix"
     ],
     "Admin": [
-        "dashboard", "registration", "classification", "cases", "controls",
+        "dashboard", "participants", "registration", "classification", "cases", "controls",
         "matching", "analytics", "data_quality", "study_site",
         "sync_telemetry", "data_export", "settings", "audit_logs",
         "user_management"
     ],
     "Nodal Officer": [
-        "dashboard", "classification", "cases", "controls",
+        "dashboard", "participants", "classification", "cases", "controls",
         "matching", "analytics", "data_quality", "study_site",
         "sync_telemetry", "audit_logs"
     ],
     "Doctor": [
-        "dashboard", "classification", "cases", "controls",
+        "dashboard", "participants", "classification", "cases", "controls",
         "matching", "adjudication", "doctor_queue"
     ],
     "Project Nurse": [
@@ -37,6 +37,12 @@ MODULE_DESCRIPTIONS = {
         "label": "Dashboard",
         "description": "Operations dashboard and study statistics",
         "url_name": "questions:dashboard_home"
+    },
+    "participants": {
+        "icon": "users",
+        "label": "Participants",
+        "description": "Complete line list of all screened, eligible, and ineligible participants",
+        "url_name": "questions:participants_list"
     },
     "registration": {
         "icon": "user-plus",

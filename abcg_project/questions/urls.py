@@ -26,6 +26,7 @@ urlpatterns = [
     
     # Dashboard Routes
     path("dashboard/", views.dashboard_home, name="dashboard_home"),
+    path("dashboard/participants/", views.participants_line_list_view, name="participants_list"),
     path("dashboard/nodal/", views.nodal_dashboard, name="nodal_dashboard"),
     path("dashboard/doctor/", views.doctor_queue, name="doctor_queue"),
     path("dashboard/doctor/verify/<int:pk>/", views.doctor_verify, name="doctor_verify"),

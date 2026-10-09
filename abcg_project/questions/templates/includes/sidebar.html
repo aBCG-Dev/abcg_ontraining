@@ -87,9 +87,9 @@
           <span>Dashboard</span>
         </a>
 
-        <a class="nav-link {% if page == 'search' and not request.GET.cohort %}active{% endif %}" href="{% url 'questions:search' %}">
+        <a class="nav-link {% if page == 'participants' %}active{% endif %}" href="{% url 'questions:participants_list' %}">
           <i data-lucide="users"></i>
-          <span>All Participants</span>
+          <span>Participants</span>
         </a>
         <a class="nav-link {% if request.GET.cohort == 'eligible' %}active{% endif %}" href="{% url 'questions:search' %}?cohort=eligible">
           <i data-lucide="user-check"></i>
