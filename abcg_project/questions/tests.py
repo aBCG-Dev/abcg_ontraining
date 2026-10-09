@@ -2424,5 +2424,25 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertEqual(excel_response.status_code, 200)
         self.assertTrue(len(excel_response.content) > 1000)
 
+        # Test ineligible individual sanitization
+        from questions.models import IneligibleIndividual
+        IneligibleIndividual.objects.create(
+            first_name="Ineligible",
+            last_name="Person",
+            study_id="INEL-999999",
+            age=45,
+            gender="Male",
+            date_enroll=timezone.localdate(),
+            eligible_bcg_campaign=True,
+            bcg_eligibility_criteria="Some Criteria",
+            bcg_status="Yes (Verified via Registry)",
+            classification="Not Eligible"
+        )
+        csv_response2 = self.client.get(reverse("questions:data_export") + "?format=csv")
+        csv_lines = csv_response2.content.decode("utf-8").strip().split("\n")
+        inel_rows = [line for line in csv_lines if "INEL-999999" in line]
+        self.assertTrue(len(inel_rows) > 0)
+        self.assertNotIn("Some Criteria", inel_rows[0])
+
 
 

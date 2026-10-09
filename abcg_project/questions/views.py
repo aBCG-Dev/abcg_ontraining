@@ -4887,6 +4887,42 @@ def data_export_view(request):
             cxr_det = details.get("cxr_details") or {}
             return cxr_det.get("cxr_date", "")
 
+        def _is_ineligible(p):
+            cls = str(getattr(p, "classification", "") or "").strip().lower()
+            if cls in ["not eligible", "excluded", "ineligible"]:
+                return True
+            if p.__class__.__name__ == "IneligibleIndividual":
+                return True
+            if getattr(p, "eligible", None) is False:
+                return True
+            return False
+
+        def _is_bcg_campaign_eligible(p):
+            if _is_ineligible(p):
+                return False
+            val = getattr(p, "eligible_bcg_campaign", False)
+            return val in [True, "Yes", "true", "True", 1]
+
+        def _get_eligible_bcg_campaign(p):
+            if _is_ineligible(p):
+                return "No"
+            return "Yes" if _is_bcg_campaign_eligible(p) else "No"
+
+        def _get_bcg_eligibility_criteria(p):
+            if _is_ineligible(p) or not _is_bcg_campaign_eligible(p):
+                return ""
+            return getattr(p, "bcg_eligibility_criteria", "") or ""
+
+        def _get_bcg_status(p):
+            if _is_ineligible(p):
+                return ""
+            return getattr(p, "bcg_status", "") or "No"
+
+        def _get_ineligible_blank(p, val):
+            if _is_ineligible(p):
+                return ""
+            return val
+
         # Fields mapping definition (Header name, lambda to extract raw value)
         # Sequenced chronologically matching the 8-Step Application Intake Wizard
         fields_map = [
@@ -4951,9 +4987,9 @@ def data_export_view(request):
             ("Diabetes", lambda p: getattr(p, "diabetes", False)),
             ("Smoker", lambda p: getattr(p, "smoker", False)),
             ("Close Contact", lambda p: getattr(p, "close_contact", False)),
-            ("Eligible for BCG Vaccine during Campaign Period", lambda p: getattr(p, "eligible_bcg_campaign", False)),
-            ("Campaign Completion Date", lambda p: p.campaign_completion_date),
-            ("Under which eligibility criteria was the BCG vaccine administered to the participant?", lambda p: getattr(p, "bcg_eligibility_criteria", "")),
+            ("Eligible for BCG Vaccine during Campaign Period", lambda p: _get_eligible_bcg_campaign(p)),
+            ("Campaign Completion Date", lambda p: _get_ineligible_blank(p, p.campaign_completion_date)),
+            ("Under which eligibility criteria was the BCG vaccine administered to the participant?", lambda p: _get_bcg_eligibility_criteria(p)),
             ("TPT Undergone", lambda p: getattr(p, "tpt_undergone", "")),
             ("TPT History", lambda p: getattr(p, "tpt_history", "")),
             ("TPT Risk Factor", lambda p: getattr(p, "tpt_risk_factor", "")),
@@ -4985,24 +5021,24 @@ def data_export_view(request):
             ("PTB Test Facility", lambda p: p.ptb_test_facility),
 
             # 8. Step 8: BCG Vaccine Verification
-            ("BCG Status", lambda p: p.bcg_status),
-            ("BCG Beneficiary ID", lambda p: p.bcg_beneficiary_id),
-            ("BCG First Name", lambda p: getattr(p, "bcg_first_name", "")),
-            ("BCG Last Name", lambda p: getattr(p, "bcg_last_name", "")),
-            ("BCG Mobile Number", lambda p: p.bcg_ben_mobile_number),
-            ("BCG Gender", lambda p: p.bcg_ben_gender),
-            ("BCG DOB", lambda p: getattr(p, "bcg_dob", "")),
-            ("BCG Age", lambda p: getattr(p, "bcg_age", "")),
-            ("BCG Vaccination Status", lambda p: getattr(p, "bcg_vaccination_status", "")),
-            ("Where did you receive the vaccination?", lambda p: getattr(p, "bcg_facility", "")),
-            ("What is the address of the vaccination facility?", lambda p: getattr(p, "bcg_address", "")),
-            ("pincode", lambda p: getattr(p, "bcg_pincode", "")),
-            ("BCG Scar", lambda p: getattr(p, "bcg_scar", "")),
-            ("BCG Has Record", lambda p: getattr(p, "bcg_has_record", "")),
-            ("BCG Vaccine Name", lambda p: getattr(p, "bcg_vaccine_name", "")),
-            ("BCG Batch Number", lambda p: getattr(p, "bcg_batch_number", "")),
-            ("BCG Vaccination Date", lambda p: getattr(p, "bcg_vaccination_date", "")),
-            ("BCG Evidence", lambda p: p.bcg_evidence),
+            ("BCG Status", lambda p: _get_bcg_status(p)),
+            ("BCG Beneficiary ID", lambda p: _get_ineligible_blank(p, p.bcg_beneficiary_id)),
+            ("BCG First Name", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_first_name", ""))),
+            ("BCG Last Name", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_last_name", ""))),
+            ("BCG Mobile Number", lambda p: _get_ineligible_blank(p, p.bcg_ben_mobile_number)),
+            ("BCG Gender", lambda p: _get_ineligible_blank(p, p.bcg_ben_gender)),
+            ("BCG DOB", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_dob", ""))),
+            ("BCG Age", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_age", ""))),
+            ("BCG Vaccination Status", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_vaccination_status", ""))),
+            ("Where did you receive the vaccination?", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_facility", ""))),
+            ("What is the address of the vaccination facility?", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_address", ""))),
+            ("pincode", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_pincode", ""))),
+            ("BCG Scar", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_scar", ""))),
+            ("BCG Has Record", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_has_record", ""))),
+            ("BCG Vaccine Name", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_vaccine_name", ""))),
+            ("BCG Batch Number", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_batch_number", ""))),
+            ("BCG Vaccination Date", lambda p: _get_ineligible_blank(p, getattr(p, "bcg_vaccination_date", ""))),
+            ("BCG Evidence", lambda p: _get_ineligible_blank(p, p.bcg_evidence)),
 
             # 9. Final Study Outcome & Classification
             ("Classification", lambda p: p.classification),
