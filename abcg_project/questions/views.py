@@ -3445,6 +3445,7 @@ def dashboard_home(request):
         "active_tb_units_count": active_tb_units_count,
         "total_cases": confirmed_cases,
         "total_controls": study_controls,
+        "total_pending": verification_pending,
         "total_matches": study_controls // 4,
     }
     
@@ -3465,6 +3466,7 @@ def dashboard_home(request):
         eligible_count = p_state.count() + t_state.count()
         cases_count = p_state.filter(classification="Case").count()
         controls_count = p_state.filter(classification="Control").count()
+        pending_count = p_state.filter(classification="Pending").count()
         enrolled_count = cases_count + controls_count
         
         status = "Active" if screened_count > 0 or state_name == "Tamil Nadu" else "Pending"
@@ -3477,6 +3479,8 @@ def dashboard_home(request):
             "eligible_count": eligible_count if eligible_count > 0 else "—",
             "enrolled_count": enrolled_count if enrolled_count > 0 else "—",
             "cases_count": cases_count if cases_count > 0 else "—",
+            "controls_count": controls_count if controls_count > 0 else "—",
+            "pending_count": pending_count if pending_count > 0 else "—",
             "status": status
         })
 

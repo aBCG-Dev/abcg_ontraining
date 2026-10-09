@@ -2459,5 +2459,20 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertIn("participants", response.context)
         self.assertIn("metrics", response.context)
 
+    def test_dashboard_home_includes_total_pending_metric(self):
+        profile = self.user.profile
+        profile.role = "Doctor"
+        profile.save()
+        from django.contrib.auth.models import Group
+        g, _ = Group.objects.get_or_create(name="Doctor")
+        self.user.groups.add(g)
+
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.get(reverse("questions:dashboard_home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("total_pending", response.context["metrics"])
+        self.assertIn("total_cases", response.context["metrics"])
+        self.assertIn("total_controls", response.context["metrics"])
+
 
 
