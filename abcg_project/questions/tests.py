@@ -2507,5 +2507,129 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertIn("total_cases", response.context["metrics"])
         self.assertIn("total_controls", response.context["metrics"])
 
+    def test_registration_occupation_others_with_specification(self):
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        initial_count = Participant.objects.count()
+
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "Other",
+            "last_name": "Worker",
+            "age": 35,
+            "dob": "1991-01-01",
+            "gender": "Female",
+            "primary_phone": "9876543218",
+            "address": "45 Market Road",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Others",
+            "occupation_other": "Freelance Designer",
+            "socioeconomic_status": "APL",
+            "symptoms": ["Fever"],
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Self-reported diabetes during the BCG campaign period"]
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Participant.objects.count(), initial_count + 1)
+        p = Participant.objects.latest("created_at")
+        self.assertEqual(p.occupation, "Others (Freelance Designer)")
+
+    def test_registration_tpt_regimen_dont_know(self):
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        initial_count = Participant.objects.count()
+
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "Tpt",
+            "last_name": "Candidate",
+            "age": 40,
+            "dob": "1986-01-01",
+            "gender": "Male",
+            "primary_phone": "9876543219",
+            "address": "78 Health Way",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Teaching professional",
+            "socioeconomic_status": "APL",
+            "symptoms": ["Fever"],
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Self-reported diabetes during the BCG campaign period"],
+            "tpt_undergone": "Yes",
+            "tpt_regimen": "Don't know"
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Participant.objects.count(), initial_count + 1)
+        p = Participant.objects.latest("created_at")
+        self.assertEqual(p.tpt_regimen, "Don't know")
+
+    def test_registration_tpt_regimen_dont_know_with_backtick(self):
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        initial_count = Participant.objects.count()
+
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "Tpt",
+            "last_name": "Backtick",
+            "age": 42,
+            "dob": "1984-01-01",
+            "gender": "Male",
+            "primary_phone": "9876543220",
+            "address": "79 Health Way",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Teaching professional",
+            "socioeconomic_status": "APL",
+            "symptoms": ["Fever"],
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Self-reported diabetes during the BCG campaign period"],
+            "tpt_undergone": "Yes",
+            "tpt_regimen": "Don`t know"
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Participant.objects.count(), initial_count + 1)
+        p = Participant.objects.latest("created_at")
+        self.assertEqual(p.tpt_regimen, "Don't know")
+
+    def test_registration_form_occupation_others_and_tpt_dont_know_rendered(self):
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.get(reverse("questions:registration"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn('<option value="Others">Others</option>', content)
+        self.assertIn('id="occupationOtherContainer"', content)
+        self.assertIn('Please specify *', content)
+        self.assertIn('<option value="Don\'t know">Don\'t know</option>', content)
+
+
 
 

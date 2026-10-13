@@ -379,7 +379,12 @@ def registration(request, pk=None):
         pincode = request.POST.get("pincode", "").strip()
         demographic_area = request.POST.get("demographic_area", "Unknown")
         marital_status = request.POST.get("marital_status", "Unknown")
-        occupation = request.POST.get("occupation", "Unknown")
+        occupation = request.POST.get("occupation", "Unknown").strip()
+        occupation_other = request.POST.get("occupation_other", "").strip()
+        if occupation.lower() in ["others", "other"] and occupation_other:
+            occupation = f"Others ({occupation_other})"
+        elif occupation.lower() in ["others", "other"]:
+            occupation = "Others"
         socioeconomic_status = request.POST.get("socioeconomic_status", "Unknown")
         hiv_status = request.POST.get("hiv_status", "Unknown")
         eligible_bcg_campaign_raw = request.POST.get("eligible_bcg_campaign", "Yes")
@@ -458,6 +463,8 @@ def registration(request, pk=None):
         tpt_duration_months_str = request.POST.get("tpt_duration_months", "").strip()
         tpt_duration_months = int(tpt_duration_months_str) if tpt_duration_months_str else None
         tpt_regimen = request.POST.get("tpt_regimen", "").strip() or None
+        if tpt_regimen:
+            tpt_regimen = tpt_regimen.replace("`", "'")
 
         # Legacy fields
         bcg_vaccination_date_str = request.POST.get("bcg_vaccination_date", "").strip()
@@ -834,7 +841,10 @@ def registration(request, pk=None):
             elif q.code == "marital_status":
                 marital_status = val or marital_status
             elif q.code == "occupation":
-                occupation = val or occupation
+                if val.lower() in ["others", "other"] and occupation_other:
+                    occupation = f"Others ({occupation_other})"
+                elif val:
+                    occupation = val
             elif q.code == "socioeconomic_status":
                 socioeconomic_status = val or socioeconomic_status
             elif q.code == "hiv_status":
@@ -1301,6 +1311,7 @@ def registration(request, pk=None):
             "demographic_area": participant.demographic_area,
             "marital_status": participant.marital_status,
             "occupation": participant.occupation,
+            "occupation_other": participant.occupation.split("(", 1)[1].rstrip(")") if ("(" in getattr(participant, "occupation", "") and ")" in getattr(participant, "occupation", "")) else "",
             "socioeconomic_status": participant.socioeconomic_status,
             "sector": participant.sector,
             "case_finding_type": participant.case_finding_type,

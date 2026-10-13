@@ -923,9 +923,19 @@
                                 style="border-radius: var(--radius); border-color: var(--line);">
                                 <option value="Unknown" selected>Unknown</option>
                                 {% for opt in questions.occupation.options %}
+                                {% if opt.name != "Others" and opt.name != "Other" %}
                                 <option value="{{ opt.name }}">{{ opt.name }}</option>
+                                {% endif %}
                                 {% endfor %}
+                                <option value="Others">Others</option>
                             </select>
+                            <div id="occupationOtherContainer" class="d-none mt-2 specify-container">
+                                <label for="occupationOther" class="form-label fw-semibold text-muted small">Please specify *</label>
+                                <input type="text" class="form-control specify-text-input" id="occupationOther" name="occupation_other"
+                                    placeholder="Please specify"
+                                    style="border-radius: var(--radius); border-color: var(--line);">
+                                <div class="invalid-feedback">Please specify.</div>
+                            </div>
                         </div>
                     </div>
                     
@@ -1180,6 +1190,7 @@
                                         <option value="4R – 4 months daily Rifampicin">4R – 4 months daily Rifampicin</option>
                                         <option value="6H – 6 months daily Isoniazid">6H – 6 months daily Isoniazid</option>
                                         <option value="6Lfx – 6 months daily Levofloxacin (DR-TB contacts)">6Lfx – 6 months daily Levofloxacin (DR-TB contacts)</option>
+                                        <option value="Don't know">Don't know</option>
                                     </select>
                                 </div>
                             </div>
@@ -2192,12 +2203,17 @@
         function updateSpecifyField(selectEl, isInitial = false) {
             const otherValues = ["Other", "Others", "Other vulnerable group", "Other Testing Lab", "Other Collection Site"];
             const val = selectEl.value;
-            const isOther = otherValues.includes(val);
+            const isOther = otherValues.some(ov => ov.toLowerCase() === (val || "").toLowerCase()) ||
+                            (typeof val === 'string' && val.toLowerCase().startsWith("other"));
             
-            // Try to find an existing specify text input next to this select
+            // Try to find an existing specify container or text input next to this select
+            let specifyContainer = selectEl.parentNode.querySelector(".specify-container");
             let specifyInput = selectEl.parentNode.querySelector(".specify-text-input");
             
             if (isOther) {
+                if (specifyContainer) {
+                    specifyContainer.classList.remove("d-none");
+                }
                 if (!specifyInput) {
                     specifyInput = document.createElement("input");
                     specifyInput.type = "text";
@@ -2240,8 +2256,13 @@
                     specifyInput.required = true;
                 }
             } else {
+                if (specifyContainer) {
+                    specifyContainer.classList.add("d-none");
+                }
                 if (specifyInput) {
-                    specifyInput.classList.add("d-none");
+                    if (!specifyContainer) {
+                        specifyInput.classList.add("d-none");
+                    }
                     specifyInput.required = false;
                     specifyInput.value = "";
                 }
@@ -2257,6 +2278,8 @@
                 const optLower = optVal.toLowerCase().trim();
                 const textLower = optText.toLowerCase().trim();
                 if (optLower === lowerVal || textLower === lowerVal || 
+                    optLower.replace(/[`']/g, "") === lowerVal.replace(/[`']/g, "") ||
+                    textLower.replace(/[`']/g, "") === lowerVal.replace(/[`']/g, "") ||
                     optLower.includes(lowerVal) || textLower.includes(lowerVal) ||
                     lowerVal.includes(optLower) || lowerVal.includes(textLower)) {
                     matchedVal = optVal;
@@ -4367,6 +4390,7 @@
                 demographic_area: 'demographicArea',
                 marital_status: 'maritalStatus',
                 occupation: 'occupation',
+                occupation_other: 'occupationOther',
                 socioeconomic_status: 'socioeconomicStatus',
                 private_facility: 'privateFacility',
                 public_phi: 'publicPhi',
