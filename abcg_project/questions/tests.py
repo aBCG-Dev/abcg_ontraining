@@ -2715,6 +2715,48 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertEqual(p.match_hrg, "Elderly (Age >= 60)")
         self.assertIn("Individuals aged 60 years or above", p.risk_factors)
 
+    def test_registration_age_45_not_elderly(self):
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        initial_count = Participant.objects.count()
+
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "Younger",
+            "last_name": "Person",
+            "age": 45,
+            "dob": "1981-05-12",
+            "gender": "Male",
+            "primary_phone": "9876543235",
+            "address": "123 Young Way",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "facility": "Tiruvallur PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Teaching professional",
+            "socioeconomic_status": "APL",
+            "symptoms": ["Asymptomatic"],
+            "hiv_status": "Non Reactive / Negative",
+            "height_cm": 170,
+            "weight_kg": 45,
+            "bmi": 15.57,
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Individuals with BMI < 18 during the BCG campaign period"]
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Participant.objects.count(), initial_count + 1)
+        p = Participant.objects.latest("created_at")
+        self.assertTrue(p.eligible)
+        self.assertEqual(p.match_hrg, "Malnourished (BMI < 18)")
+        self.assertNotIn("Individuals aged 60 years or above", p.risk_factors)
+        self.assertIn("Undernourished / Malnourished (BMI <18 kg/m2)", p.risk_factors)
+
+
 
 
 

@@ -501,18 +501,26 @@ def registration(request, pk=None):
             for c in bcg_eligibility_criteria_list:
                 cl = c.lower()
                 if "60" in cl:
-                    derived_rf.append("Individuals aged 60 years or above")
+                    if age >= 60:
+                        derived_rf.append("Individuals aged 60 years or above")
+                        derived_rf.append(c)
                 elif "past" in cl and "tb" in cl:
                     derived_rf.append("Past History of TB")
+                    derived_rf.append(c)
                 elif "diabetes" in cl:
                     derived_rf.append("Diabetes")
+                    derived_rf.append(c)
                 elif "smoker" in cl or "tobacco" in cl:
                     derived_rf.append("Current / Ex-Smoker")
+                    derived_rf.append(c)
                 elif "contact" in cl:
                     derived_rf.append("Contact of Known TB Patients")
+                    derived_rf.append(c)
                 elif "bmi" in cl or "malnourish" in cl:
                     derived_rf.append("Undernourished / Malnourished (BMI <18 kg/m2)")
-                derived_rf.append(c)
+                    derived_rf.append(c)
+                else:
+                    derived_rf.append(c)
             risk_factors_list = list(dict.fromkeys(derived_rf))
             
         risk_factors = ", ".join(risk_factors_list) if risk_factors_list else "Not Applicable"
@@ -520,9 +528,8 @@ def registration(request, pk=None):
         # Check target HRGs using RiskFactor configurations
         target_hrg_names = list(RiskFactor.objects.filter(is_target_hrg=True, is_active=True).values_list("name", flat=True))
         
-        is_elderly = (
-            age >= 60 
-            or "Individuals aged 60 years or above" in risk_factors_list 
+        is_elderly = (age >= 60) if age > 0 else (
+            "Individuals aged 60 years or above" in risk_factors_list 
             or "Elderly (age >60 years)" in risk_factors_list 
             or any("60 years" in name for name in risk_factors_list)
             or any(">=60" in c or "60 years" in c for c in bcg_eligibility_criteria_list)

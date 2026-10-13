@@ -2477,12 +2477,17 @@
             if (dobInput.value) {
                 const dob = new Date(dobInput.value);
                 const today = new Date();
-                let age = today.getFullYear() - dob.getFullYear();
-                const m = today.getMonth() - dob.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-                    age--;
+                if (!isNaN(dob.getTime()) && dob.getFullYear() >= 1900 && dob <= today) {
+                    let age = today.getFullYear() - dob.getFullYear();
+                    const m = today.getMonth() - dob.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                        age--;
+                    }
+                    ageInput.value = age >= 0 ? age : 0;
                 }
-                ageInput.value = age >= 0 ? age : 0;
+            }
+            if (typeof updateAgeBcgCriteria === 'function') {
+                updateAgeBcgCriteria();
             }
         });
 
@@ -2541,6 +2546,9 @@
             if (bcgCriteriaSection) {
                 if (eligibleBcgCampaignSelect && eligibleBcgCampaignSelect.value === "Yes") {
                     bcgCriteriaSection.classList.remove("d-none");
+                    if (typeof updateAgeBcgCriteria === 'function') {
+                        updateAgeBcgCriteria();
+                    }
                 } else {
                     bcgCriteriaSection.classList.add("d-none");
                     if (bcgCriteriaCbs) {
@@ -2745,7 +2753,7 @@
 
 
 
-        // Auto-check age criteria for BCG eligibility checklist
+        // Auto-check and enforce age criteria for BCG eligibility checklist
         function updateAgeBcgCriteria() {
             const ageInput = document.getElementById("age");
             const age = parseInt(ageInput ? ageInput.value : 0) || 0;
@@ -2753,6 +2761,10 @@
             if (bcgAge) {
                 if (age >= 60) {
                     bcgAge.checked = true;
+                    bcgAge.disabled = false;
+                } else {
+                    bcgAge.checked = false;
+                    bcgAge.disabled = true;
                 }
             }
         }
@@ -2762,6 +2774,21 @@
             ageInputEl.addEventListener("input", updateAgeBcgCriteria);
             ageInputEl.addEventListener("change", updateAgeBcgCriteria);
         }
+
+        // Prevent checking bcg_elig_age manually if participant age < 60
+        const bcgAgeInput = document.getElementById("bcg_elig_age");
+        if (bcgAgeInput) {
+            bcgAgeInput.addEventListener("click", function(e) {
+                const ageInput = document.getElementById("age");
+                const age = parseInt(ageInput ? ageInput.value : 0) || 0;
+                if (age < 60) {
+                    e.preventDefault();
+                    bcgAgeInput.checked = false;
+                    alert("This eligibility criterion is only applicable to individuals aged 60 years or above. The participant's current age is " + (age || "under 60") + ".");
+                }
+            });
+        }
+        updateAgeBcgCriteria(); // Initialize on script load
 
         // --- BMI calculation & malnourished auto-check logic ---
         const heightInput = document.getElementById("heightCm");
@@ -2778,12 +2805,14 @@
                 // Auto check malnourished criteria if BMI < 18
                 const bcgBmi = document.getElementById("bcg_elig_bmi");
                 if (bcgBmi) {
-                    if (bmi < 18) {
-                        bcgBmi.checked = true;
-                    }
+                    bcgBmi.checked = (bmi < 18);
                 }
             } else {
                 bmiInput.value = "";
+                const bcgBmi = document.getElementById("bcg_elig_bmi");
+                if (bcgBmi) {
+                    bcgBmi.checked = false;
+                }
             }
         }
 
@@ -4240,6 +4269,11 @@
                 return;
             }
 
+            const bcgAge = document.getElementById("bcg_elig_age");
+            if (bcgAge && bcgAge.checked) {
+                bcgAge.disabled = false;
+            }
+
             formSubmissionConfirmed = true;
             form.submit();
         });
@@ -4443,9 +4477,8 @@
                 });
             } else if (draftData.risk_factors) {
                 // Legacy support: map old risk factors to BCG eligibility criteria
-                const rf = Array.isArray(draftData.risk_factors) ? draftData.risk_factors : [draftData.risk_factors];
-                const rfStr = rf.join(" ").toLowerCase();
-                if (rfStr.includes("60") || (draftData.age && parseInt(draftData.age) >= 60)) {
+                const draftAge = parseInt(draftData.age || document.getElementById("age")?.value || 0) || 0;
+                if (draftAge >= 60) {
                     const cb = document.getElementById("bcg_elig_age");
                     if (cb) cb.checked = true;
                 }
@@ -4465,10 +4498,14 @@
                     const cb = document.getElementById("bcg_elig_contact");
                     if (cb) cb.checked = true;
                 }
-                if (rfStr.includes("malnourished") || rfStr.includes("less than 18") || (draftData.bmi && parseFloat(draftData.bmi) < 18)) {
+                const draftBmi = parseFloat(draftData.bmi || document.getElementById("bmiField")?.value || 0) || 0;
+                if (rfStr.includes("malnourished") || rfStr.includes("less than 18") || (draftBmi > 0 && draftBmi < 18)) {
                     const cb = document.getElementById("bcg_elig_bmi");
                     if (cb) cb.checked = true;
                 }
+            }
+            if (typeof updateAgeBcgCriteria === 'function') {
+                updateAgeBcgCriteria();
             }
             if (typeof updateBcgCampaignVisibility === 'function') {
                 updateBcgCampaignVisibility();
