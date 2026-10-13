@@ -761,7 +761,7 @@
 
                         <!-- Phone Change Section -->
                         <div class="col-md-6">
-                            <label for="recentlyChangedPhone" class="form-label fw-semibold text-muted small">Has the participant recently changed their phone number?</label>
+                            <label for="recentlyChangedPhone" class="form-label fw-semibold text-muted small">Has the participant changed their phone number after the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period|default:"Jun 2024 - Aug 2024" }}</span>)?</label>
                             <select class="form-select" id="recentlyChangedPhone" name="recently_changed_phone"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                                 <option value="No" selected>No</option>
@@ -861,7 +861,7 @@
 
                         <!-- Address Change Section -->
                         <div class="col-md-6">
-                            <label for="recentlyChangedAddress" class="form-label fw-semibold text-muted small">Has the participant recently changed their residential address?</label>
+                            <label for="recentlyChangedAddress" class="form-label fw-semibold text-muted small">Has the participant changed their residential address after the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period|default:"Jun 2024 - Aug 2024" }}</span>)?</label>
                             <select class="form-select" id="recentlyChangedAddress" name="recently_changed_address"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                                 <option value="No" selected>No</option>
@@ -2569,19 +2569,18 @@
             if (dynDistrictSpan && districtInput && districtInput.value) {
                 dynDistrictSpan.textContent = districtInput.value;
             }
-            if (tbUnitInput) {
-                const tbuVal = (tbUnitInput.value || "").trim();
-                const period = siteCampaignPeriods[tbuVal] || "{{ site.campaign_period|default:'Jun 2024 - Aug 2024' }}";
-                if (dynCampaignPeriodSpan) {
-                    dynCampaignPeriodSpan.textContent = period;
-                }
-                if (bannerCampaignPeriod) {
-                    bannerCampaignPeriod.textContent = period;
-                }
-                document.querySelectorAll(".dynCampaignPeriod").forEach(span => {
-                    span.textContent = period;
-                });
+            const distVal = (districtInput?.value || "").trim();
+            const tbuVal = (tbUnitInput?.value || "").trim();
+            const period = siteCampaignPeriods[tbuVal] || siteCampaignPeriods[distVal] || "{{ site.campaign_period|default:'Jun 2024 - Aug 2024' }}";
+            if (dynCampaignPeriodSpan) {
+                dynCampaignPeriodSpan.textContent = period;
             }
+            if (bannerCampaignPeriod) {
+                bannerCampaignPeriod.textContent = period;
+            }
+            document.querySelectorAll(".dynCampaignPeriod").forEach(span => {
+                span.textContent = period;
+            });
         }
 
         const publicPhiSelect = document.getElementById("publicPhi");

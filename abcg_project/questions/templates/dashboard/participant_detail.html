@@ -696,7 +696,7 @@
 
                         {% if p.recently_changed_phone == "Yes" and p.previous_phone_number %}
                         <div class="col-6 col-sm-4">
-                            <div class="data-label">Previous Phone (Changed)</div>
+                            <div class="data-label">Previous Phone (Changed Post-Campaign)</div>
                             <div class="data-value font-monospace">
                                 <i class="bi bi-clock-history text-warning me-1"></i>{{ p.previous_phone_number }}
                             </div>
@@ -728,7 +728,7 @@
                                 </div>
                                 {% if p.recently_changed_address == "Yes" and p.previous_address %}
                                 <div class="col-12">
-                                    <div class="data-label">Previous Address (Recently Changed)</div>
+                                    <div class="data-label">Previous Address (Changed Post-Campaign)</div>
                                     <div class="data-value text-muted">
                                         <i class="bi bi-clock-history text-warning me-1"></i>{{ p.previous_address }}
                                     </div>

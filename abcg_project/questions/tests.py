@@ -2409,9 +2409,9 @@ class NewVerificationFieldsTestCase(TestCase):
         headers = csv_content.split("\n")[0]
         self.assertIn("Does the participant have any government-issued identification?", headers)
         self.assertIn("Which government-issued ID does the participant have?", headers)
-        self.assertIn("Has the participant recently changed their phone number?", headers)
+        self.assertIn("Has the participant changed their phone number after the BCG campaign period?", headers)
         self.assertIn("Previous Phone Number", headers)
-        self.assertIn("Has the participant recently changed their residential address?", headers)
+        self.assertIn("Has the participant changed their residential address after the BCG campaign period?", headers)
         self.assertIn("Previous Address", headers)
         self.assertIn("Where did you receive the vaccination?", headers)
         self.assertIn("What is the address of the vaccination facility?", headers)
@@ -2443,6 +2443,39 @@ class NewVerificationFieldsTestCase(TestCase):
         inel_rows = [line for line in csv_lines if "INEL-999999" in line]
         self.assertTrue(len(inel_rows) > 0)
         self.assertNotIn("Some Criteria", inel_rows[0])
+
+    def test_registration_form_campaign_period_questions(self):
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.get(reverse("questions:registration"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("Has the participant changed their phone number after the BCG campaign period", content)
+        self.assertIn("Has the participant changed their residential address after the BCG campaign period", content)
+        self.assertIn("dynCampaignPeriod", content)
+
+    def test_participant_detail_campaign_period_labels(self):
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        p = Participant.objects.create(
+            first_name="Detail",
+            last_name="Test",
+            study_id="DET-777888",
+            recently_changed_phone="Yes",
+            previous_phone_number="9876543211",
+            recently_changed_address="Yes",
+            previous_address="Old Detail Address",
+            eligible=True,
+            age=28,
+            gender="Female",
+            date_enroll=timezone.localdate()
+        )
+        response = self.client.get(reverse("questions:participant_detail", args=[p.study_id]))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("Previous Phone (Changed Post-Campaign)", content)
+        self.assertIn("Previous Address (Changed Post-Campaign)", content)
+        self.assertIn("9876543211", content)
+        self.assertIn("Old Detail Address", content)
 
     def test_participants_line_list_view_renders_for_authorized_users(self):
         profile = self.user.profile

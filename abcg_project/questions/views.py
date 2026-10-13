@@ -5179,7 +5179,7 @@ def data_export_view(request):
             ("Weight (kg)", lambda p: p.weight_kg),
             ("BMI", lambda p: p.bmi),
             ("Contact Number", lambda p: p.contact_number),
-            ("Has the participant recently changed their phone number?", lambda p: getattr(p, "recently_changed_phone", "No")),
+            ("Has the participant changed their phone number after the BCG campaign period?", lambda p: getattr(p, "recently_changed_phone", "No")),
             ("Previous Phone Number", lambda p: getattr(p, "previous_phone_number", "")),
             ("Secondary Phone", lambda p: p.secondary_phone),
             ("Secondary Phone 1", lambda p: p.secondary_phone_1),
@@ -5192,7 +5192,7 @@ def data_export_view(request):
             ("Landmark", lambda p: p.landmark),
             ("Village", lambda p: p.village),
             ("Pincode", lambda p: p.pincode),
-            ("Has the participant recently changed their residential address?", lambda p: getattr(p, "recently_changed_address", "No")),
+            ("Has the participant changed their residential address after the BCG campaign period?", lambda p: getattr(p, "recently_changed_address", "No")),
             ("Previous Address", lambda p: getattr(p, "previous_address", "")),
             ("Marital Status", lambda p: p.marital_status),
             ("Socioeconomic Status", lambda p: p.socioeconomic_status),
@@ -5718,9 +5718,16 @@ def participant_detail_view(request, study_id):
             v_status = "Verified (Adjudicated)"
             adj_status = "Adjudication Completed"
             
+        camp_period = get_campaign_period_for_site(
+            tb_unit=getattr(participant, "tb_unit", None),
+            district=getattr(participant, "district", None),
+            state=getattr(participant, "state", None)
+        )
+            
         return render(request, "questions/participant_detail.html", {
             "p": participant,
             "cohort": cohort,
+            "campaign_period": camp_period,
             "ptb_details": ptb_details,
             "eptb_details": eptb_details,
             "q_answers": q_answers,

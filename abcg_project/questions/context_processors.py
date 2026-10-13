@@ -18,7 +18,10 @@ def get_site_campaign_periods_dict():
     try:
         from questions.models import StudySite
         for s in StudySite.objects.filter(is_active=True):
-            periods[s.tb_unit] = s.campaign_period_display
+            if s.tb_unit:
+                periods[s.tb_unit] = s.campaign_period_display
+            if s.district and s.district not in periods:
+                periods[s.district] = s.campaign_period_display
     except Exception:
         pass
     return periods
