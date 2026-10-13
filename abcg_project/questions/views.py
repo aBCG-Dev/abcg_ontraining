@@ -492,19 +492,70 @@ def registration(request, pk=None):
         symptoms = ", ".join(symptoms_list) if symptoms_list else "Asymptomatic"
         
         risk_factors_list = request.POST.getlist("risk_factors")
+        bcg_eligibility_criteria_list = request.POST.getlist("bcg_eligibility_criteria")
+        bcg_eligibility_criteria = ", ".join(bcg_eligibility_criteria_list) if bcg_eligibility_criteria_list else ""
+        
+        # If risk_factors not provided directly (new form where section was removed), derive from bcg_eligibility_criteria
+        if not risk_factors_list and bcg_eligibility_criteria_list:
+            derived_rf = []
+            for c in bcg_eligibility_criteria_list:
+                cl = c.lower()
+                if "60" in cl:
+                    derived_rf.append("Individuals aged 60 years or above")
+                elif "past" in cl and "tb" in cl:
+                    derived_rf.append("Past History of TB")
+                elif "diabetes" in cl:
+                    derived_rf.append("Diabetes")
+                elif "smoker" in cl or "tobacco" in cl:
+                    derived_rf.append("Current / Ex-Smoker")
+                elif "contact" in cl:
+                    derived_rf.append("Contact of Known TB Patients")
+                elif "bmi" in cl or "malnourish" in cl:
+                    derived_rf.append("Undernourished / Malnourished (BMI <18 kg/m2)")
+                derived_rf.append(c)
+            risk_factors_list = list(dict.fromkeys(derived_rf))
+            
         risk_factors = ", ".join(risk_factors_list) if risk_factors_list else "Not Applicable"
         
         # Check target HRGs using RiskFactor configurations
         target_hrg_names = list(RiskFactor.objects.filter(is_target_hrg=True, is_active=True).values_list("name", flat=True))
         
-        is_elderly = age >= 60 or "Individuals aged 60 years or above" in risk_factors_list or "Elderly (age >60 years)" in risk_factors_list or any("60 years" in name for name in risk_factors_list)
-        is_malnourished = "Individuals with a Body Mass Index of less than 18 kg per sq.mts" in risk_factors_list or "Undernourished / Malnourished (BMI <18.5 kg/m2)" in risk_factors_list or "Undernourished / Malnourished (BMI <18 kg/m2)" in risk_factors_list
-        is_contact = "Contacts of current TB patients as well as all those contacts of index TB cases enrolled in Ni-kshay from 1st January 2021" in risk_factors_list or "Contact of Known TB Patients" in risk_factors_list
-        is_diabetes = "Diabetes (Self- reported)." in risk_factors_list or "Diabetes" in risk_factors_list
-        is_past_tb = "People who are reported to have at least one episode of TB in past 5 years." in risk_factors_list or "Past History of TB" in risk_factors_list
-        is_smoker = "Individuals with a history of smoking tobacco (Current / Past User)- self reported" in risk_factors_list or "Tobacco/smoker" in risk_factors_list or "Smoker" in risk_factors_list
+        is_elderly = (
+            age >= 60 
+            or "Individuals aged 60 years or above" in risk_factors_list 
+            or "Elderly (age >60 years)" in risk_factors_list 
+            or any("60 years" in name for name in risk_factors_list)
+            or any(">=60" in c or "60 years" in c for c in bcg_eligibility_criteria_list)
+        )
+        is_malnourished = (
+            "Individuals with a Body Mass Index of less than 18 kg per sq.mts" in risk_factors_list 
+            or "Undernourished / Malnourished (BMI <18.5 kg/m2)" in risk_factors_list 
+            or "Undernourished / Malnourished (BMI <18 kg/m2)" in risk_factors_list
+            or any("bmi < 18" in c.lower() or "bmi <18" in c.lower() or "malnourished" in c.lower() for c in bcg_eligibility_criteria_list)
+        )
+        is_contact = (
+            "Contacts of current TB patients as well as all those contacts of index TB cases enrolled in Ni-kshay from 1st January 2021" in risk_factors_list 
+            or "Contact of Known TB Patients" in risk_factors_list
+            or any("close contact" in c.lower() for c in bcg_eligibility_criteria_list)
+        )
+        is_diabetes = (
+            "Diabetes (Self- reported)." in risk_factors_list 
+            or "Diabetes" in risk_factors_list
+            or any("diabetes" in c.lower() for c in bcg_eligibility_criteria_list)
+        )
+        is_past_tb = (
+            "People who are reported to have at least one episode of TB in past 5 years." in risk_factors_list 
+            or "Past History of TB" in risk_factors_list
+            or any("past history of tb" in c.lower() for c in bcg_eligibility_criteria_list)
+        )
+        is_smoker = (
+            "Individuals with a history of smoking tobacco (Current / Past User)- self reported" in risk_factors_list 
+            or "Tobacco/smoker" in risk_factors_list 
+            or "Smoker" in risk_factors_list
+            or any("smoking" in c.lower() for c in bcg_eligibility_criteria_list)
+        )
         
-        has_checked_hrg = any(r in target_hrg_names for r in risk_factors_list)
+        has_checked_hrg = any(r in target_hrg_names for r in risk_factors_list) or (len(bcg_eligibility_criteria_list) > 0)
         has_hrg = is_elderly or is_malnourished or is_contact or is_diabetes or is_past_tb or is_smoker or has_checked_hrg
 
         # Fallback derivation for bcg_eligibility_criteria if empty/absent and not from the new form
@@ -1115,6 +1166,10 @@ def registration(request, pk=None):
             obj.hiv_status = hiv_status
             obj.eligible_bcg_campaign = eligible_bcg_campaign
             obj.bcg_eligibility_criteria = bcg_eligibility_criteria
+            obj.past_tb = is_past_tb
+            obj.diabetes = is_diabetes
+            obj.smoker = is_smoker
+            obj.close_contact = is_contact
             
             # Height, Weight, BMI
             obj.height_cm = height_cm
@@ -5711,6 +5766,8 @@ def participant_detail_view(request, study_id):
                 
         symptoms_list = [s.strip() for s in participant.symptoms.split(",") if s.strip()] if getattr(participant, "symptoms", None) else []
         risk_factors_list = [r.strip() for r in participant.risk_factors.split(",") if r.strip()] if getattr(participant, "risk_factors", None) else []
+        if (not risk_factors_list or risk_factors_list == ["Not Applicable"]) and getattr(participant, "bcg_eligibility_criteria", None):
+            risk_factors_list = [c.strip() for c in participant.bcg_eligibility_criteria.split(",") if c.strip()]
         
         # Fetch actual audit trail from AuditLog model
         audit_trail = AuditLog.objects.filter(action__icontains=f"study_id={participant.study_id}").order_by("-timestamp")

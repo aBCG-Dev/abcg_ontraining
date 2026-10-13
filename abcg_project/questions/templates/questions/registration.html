@@ -1004,36 +1004,8 @@
                         4. High Risk Group
                     </h2>
 
-                    <!-- Risk Factors Checklist Grid -->
-                    <div class="mb-4">
-                        <span class="summary-label fw-bold d-block text-muted mb-2">KEY POPULATION &amp; RISK FACTORS
-                            (CHECK ALL THAT APPLY)</span>
-                        <div class="p-3 border rounded bg-light mb-2"
-                            style="max-height: 250px; overflow-y: scroll; border-radius: var(--radius);">
-                            <div class="row g-2">
-                                {% for risk in risk_factors_list %}
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input risk-cb" type="checkbox" name="risk_factors"
-                                            id="{% if risk.code == 'not_applicable' %}riskNA{% else %}risk_{{ risk.code }}{% endif %}" 
-                                            value="{{ risk.name }}"
-                                            {% if risk.code == 'not_applicable' %}checked{% endif %}>
-                                        <label class="form-check-label small {% if risk.code == 'not_applicable' %}fw-bold text-dark{% else %}text-dark{% endif %}" 
-                                            for="{% if risk.code == 'not_applicable' %}riskNA{% else %}risk_{{ risk.code }}{% endif %}">
-                                            {{ risk.name }}{% if risk.code == 'not_applicable' %} (Clear All){% endif %}
-                                        </label>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        <div id="riskError" class="text-danger small mt-1 d-none fw-semibold">
-                            Please select at least one Key Population / Risk Factor. If none apply, check "Not Applicable".
-                        </div>
-                    </div>
-
                     <!-- Campaign Eligibility -->
-                    <div class="row g-3 border-top pt-3">
+                    <div class="row g-3">
                         <input type="hidden" id="hivStatus" name="hiv_status" value="Unknown">
                         <div class="col-md-12">
                             <label for="eligibleBcgCampaign" class="form-label fw-semibold text-muted small">
@@ -1103,6 +1075,9 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div id="bcgCriteriaError" class="text-danger small mt-1 d-none fw-semibold">
+                            Please select at least one eligibility criterion under which the BCG vaccine was administered.
                         </div>
                     </div>
 
@@ -2770,75 +2745,22 @@
 
 
 
-        // Risk Factors Mutual Exclusivity: "Not Applicable" vs others
-        const riskCbs = document.querySelectorAll(".risk-cb");
-        const naRiskCb = document.getElementById("riskNA");
-
-        riskCbs.forEach(cb => {
-            cb.addEventListener("change", function () {
-                if (cb === naRiskCb && naRiskCb.checked) {
-                    riskCbs.forEach(otherCb => {
-                        if (otherCb !== naRiskCb) {
-                            otherCb.checked = false;
-                        }
-                    });
-                } else if (cb !== naRiskCb && cb.checked) {
-                    naRiskCb.checked = false;
-                }
-            });
-        });
-
-        // Auto-sync top Risk Factors with bottom BCG Eligibility Criteria checklist
-        function syncRiskFactorsWithBcgCriteria() {
+        // Auto-check age criteria for BCG eligibility checklist
+        function updateAgeBcgCriteria() {
             const ageInput = document.getElementById("age");
             const age = parseInt(ageInput ? ageInput.value : 0) || 0;
-
-            const elderlyCb = document.getElementById("risk_elderly");
-            const malnourishedCb = document.getElementById("risk_malnourished");
-            const contactCb = document.getElementById("risk_contact");
-            const diabetesCb = document.getElementById("risk_diabetes");
-            const pastTbCb = document.getElementById("risk_past_tb");
-            const naRiskCb = document.getElementById("riskNA");
-
-            if (elderlyCb && age >= 60) {
-                elderlyCb.checked = true;
-                if (naRiskCb && naRiskCb.checked) {
-                    naRiskCb.checked = false;
+            const bcgAge = document.getElementById("bcg_elig_age");
+            if (bcgAge) {
+                if (age >= 60) {
+                    bcgAge.checked = true;
                 }
             }
-
-            const bcgAge = document.getElementById("bcg_elig_age");
-            const bcgBmi = document.getElementById("bcg_elig_bmi");
-            const bcgContact = document.getElementById("bcg_elig_contact");
-            const bcgDiabetes = document.getElementById("bcg_elig_diabetes");
-            const bcgPastTb = document.getElementById("bcg_elig_past_tb");
-            const smokerCb = document.getElementById("risk_smoker");
-            const bcgSmoking = document.getElementById("bcg_elig_smoking");
-
-            if (bcgAge) bcgAge.checked = (age >= 60 || (elderlyCb ? elderlyCb.checked : false));
-            if (bcgBmi) bcgBmi.checked = (malnourishedCb ? malnourishedCb.checked : false);
-            if (bcgContact) bcgContact.checked = (contactCb ? contactCb.checked : false);
-            if (bcgDiabetes) bcgDiabetes.checked = (diabetesCb ? diabetesCb.checked : false);
-            if (bcgPastTb) bcgPastTb.checked = (pastTbCb ? pastTbCb.checked : false);
-            if (bcgSmoking) bcgSmoking.checked = (smokerCb ? smokerCb.checked : false);
-            updateTptSectionVisibility();
         }
 
-        // Trigger sync on risk factor changes
-        riskCbs.forEach(cb => {
-            cb.addEventListener("change", syncRiskFactorsWithBcgCriteria);
-        });
-
-        // Trigger sync on age changes
         const ageInputEl = document.getElementById("age");
         if (ageInputEl) {
-            ageInputEl.addEventListener("input", syncRiskFactorsWithBcgCriteria);
-            ageInputEl.addEventListener("change", syncRiskFactorsWithBcgCriteria);
-        }
-
-        // Trigger sync when campaign eligibility is changed to Yes
-        if (eligibleBcgCampaignSelect) {
-            eligibleBcgCampaignSelect.addEventListener("change", syncRiskFactorsWithBcgCriteria);
+            ageInputEl.addEventListener("input", updateAgeBcgCriteria);
+            ageInputEl.addEventListener("change", updateAgeBcgCriteria);
         }
 
         // --- BMI calculation & malnourished auto-check logic ---
@@ -2853,15 +2775,11 @@
                 const bmi = w / ((h / 100) * (h / 100));
                 bmiInput.value = bmi.toFixed(2);
                 
-                // Auto check malnourished risk factor if BMI < 18
-                const malnourishedCb = document.getElementById("risk_malnourished");
-                if (malnourishedCb) {
+                // Auto check malnourished criteria if BMI < 18
+                const bcgBmi = document.getElementById("bcg_elig_bmi");
+                if (bcgBmi) {
                     if (bmi < 18) {
-                        malnourishedCb.checked = true;
-                        malnourishedCb.dispatchEvent(new Event("change"));
-                    } else {
-                        malnourishedCb.checked = false;
-                        malnourishedCb.dispatchEvent(new Event("change"));
+                        bcgBmi.checked = true;
                     }
                 }
             } else {
@@ -2873,6 +2791,19 @@
             heightInput.addEventListener("input", calculateBmi);
             weightInput.addEventListener("input", calculateBmi);
         }
+
+        // BCG eligibility criteria checkbox listeners
+        document.querySelectorAll(".bcg-elig-cb").forEach(cb => {
+            cb.addEventListener("change", function () {
+                const bcgCriteriaError = document.getElementById("bcgCriteriaError");
+                const bcgCriteriaContainer = document.getElementById("bcg_eligibility_criteria_section")?.querySelector(".p-3");
+                if (bcgCriteriaError) bcgCriteriaError.classList.add("d-none");
+                if (bcgCriteriaContainer) bcgCriteriaContainer.classList.remove("border-danger");
+                if (cb.id === "bcg_elig_contact") {
+                    updateTptSectionVisibility();
+                }
+            });
+        });
 
         // --- TPT toggle and duration calculation logic ---
         const tptUndergoneSelect = document.getElementById("tptUndergone");
@@ -2915,7 +2846,7 @@
         }
 
         function updateTptSectionVisibility() {
-            const contactCb = document.getElementById("risk_contact");
+            const contactCb = document.getElementById("bcg_elig_contact");
             const tptMainContainer = document.getElementById("tpt_main_container");
             
             if (contactCb && contactCb.checked) {
@@ -3291,51 +3222,24 @@
             }
 
             if (currentStep === 4) {
-                // Check if at least one Risk Factor is checked
-                const checkedRisks = document.querySelectorAll(".risk-cb:checked");
-                const riskError = document.getElementById("riskError");
-                if (checkedRisks.length === 0) {
-                    if (riskError) riskError.classList.remove("d-none");
-                    const riskContainer = document.querySelector(".risk-cb").closest(".p-3");
-                    if (riskContainer) {
-                        riskContainer.classList.add("border-danger");
-                    }
-                    document.querySelector(".risk-cb").scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    return;
-                } else {
-                    if (riskError) riskError.classList.add("d-none");
-                    const riskContainer = document.querySelector(".risk-cb").closest(".p-3");
-                    if (riskContainer) {
-                        riskContainer.classList.remove("border-danger");
-                    }
-                }
-
-                // 1. Evaluate target HRGs check: at least one of the 6 target HRGs
-                const age = parseInt(ageInput.value) || 0;
-                const elderlyCb = document.getElementById("risk_elderly");
-                const malnourishedCb = document.getElementById("risk_malnourished");
-                const contactCb = document.getElementById("risk_contact");
-                const diabetesCb = document.getElementById("risk_diabetes");
-                const pastTbCb = document.getElementById("risk_past_tb");
-                const smokerCb = document.getElementById("risk_smoker");
-
-                const isElderly = age >= 60 || (elderlyCb ? elderlyCb.checked : false);
-                const isMalnourished = malnourishedCb ? malnourishedCb.checked : false;
-                const isContact = contactCb ? contactCb.checked : false;
-                const isDiabetes = diabetesCb ? diabetesCb.checked : false;
-                const isPastTb = pastTbCb ? pastTbCb.checked : false;
-                const isSmoker = smokerCb ? smokerCb.checked : false;
-
-                const hasHrg = isElderly || isMalnourished || isContact || isDiabetes || isPastTb || isSmoker;
                 const eligibleBcgCampaignSelect = document.getElementById("eligibleBcgCampaign");
                 const isBcgCampaignSelected = eligibleBcgCampaignSelect ? (eligibleBcgCampaignSelect.value === "Yes") : false;
                 
-                // Must have at least one BCG eligibility criteria checkbox checked if Yes is selected
                 const checkedBcgCriteria = document.querySelectorAll(".bcg-elig-cb:checked");
-                const isBcgCriteriaMet = !isBcgCampaignSelected || (checkedBcgCriteria.length > 0);
-                
-                const isBcgCampaignEligible = isBcgCampaignSelected && isBcgCriteriaMet;
-                const eligible = hasHrg && isBcgCampaignEligible;
+                const bcgCriteriaError = document.getElementById("bcgCriteriaError");
+                const bcgCriteriaContainer = document.getElementById("bcg_eligibility_criteria_section")?.querySelector(".p-3");
+
+                if (isBcgCampaignSelected && checkedBcgCriteria.length === 0) {
+                    if (bcgCriteriaError) bcgCriteriaError.classList.remove("d-none");
+                    if (bcgCriteriaContainer) bcgCriteriaContainer.classList.add("border-danger");
+                    document.getElementById("bcg_eligibility_criteria_section")?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                } else {
+                    if (bcgCriteriaError) bcgCriteriaError.classList.add("d-none");
+                    if (bcgCriteriaContainer) bcgCriteriaContainer.classList.remove("border-danger");
+                }
+
+                const eligible = isBcgCampaignSelected && (checkedBcgCriteria.length > 0);
 
                 if (eligible) {
                     const tptUndergoneVal = tptUndergoneSelect ? tptUndergoneSelect.value : "No";
@@ -4526,16 +4430,6 @@
                 });
             }
 
-            // Set risk factors checkboxes
-            if (draftData.risk_factors && Array.isArray(draftData.risk_factors)) {
-                draftData.risk_factors.forEach(risk => {
-                    const cb = document.querySelector(`input[name="risk_factors"][value="${risk}"]`);
-                    if (cb) {
-                        cb.checked = true;
-                    }
-                });
-            }
-
             // Set BCG campaign eligibility criteria checkboxes
             if (draftData.bcg_eligibility_criteria) {
                 const criteriaList = Array.isArray(draftData.bcg_eligibility_criteria) 
@@ -4547,6 +4441,34 @@
                         cb.checked = true;
                     }
                 });
+            } else if (draftData.risk_factors) {
+                // Legacy support: map old risk factors to BCG eligibility criteria
+                const rf = Array.isArray(draftData.risk_factors) ? draftData.risk_factors : [draftData.risk_factors];
+                const rfStr = rf.join(" ").toLowerCase();
+                if (rfStr.includes("60") || (draftData.age && parseInt(draftData.age) >= 60)) {
+                    const cb = document.getElementById("bcg_elig_age");
+                    if (cb) cb.checked = true;
+                }
+                if (rfStr.includes("past history of tb") || rfStr.includes("past tb")) {
+                    const cb = document.getElementById("bcg_elig_past_tb");
+                    if (cb) cb.checked = true;
+                }
+                if (rfStr.includes("diabetes")) {
+                    const cb = document.getElementById("bcg_elig_diabetes");
+                    if (cb) cb.checked = true;
+                }
+                if (rfStr.includes("smoking") || rfStr.includes("smoker")) {
+                    const cb = document.getElementById("bcg_elig_smoking");
+                    if (cb) cb.checked = true;
+                }
+                if (rfStr.includes("contact")) {
+                    const cb = document.getElementById("bcg_elig_contact");
+                    if (cb) cb.checked = true;
+                }
+                if (rfStr.includes("malnourished") || rfStr.includes("less than 18") || (draftData.bmi && parseFloat(draftData.bmi) < 18)) {
+                    const cb = document.getElementById("bcg_elig_bmi");
+                    if (cb) cb.checked = true;
+                }
             }
             if (typeof updateBcgCampaignVisibility === 'function') {
                 updateBcgCampaignVisibility();

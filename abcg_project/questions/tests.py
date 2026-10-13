@@ -2630,6 +2630,92 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertIn('Please specify *', content)
         self.assertIn('<option value="Don\'t know">Don\'t know</option>', content)
 
+    def test_registration_form_no_key_population_risk_factors_checklist(self):
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.get(reverse("questions:registration"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertNotIn("KEY POPULATION & RISK FACTORS (CHECK ALL THAT APPLY)", content)
+        self.assertIn("Under which eligibility criteria was the BCG vaccine administered to the participant?", content)
+        self.assertIn("bcg-elig-cb", content)
+
+    def test_registration_with_only_bcg_eligibility_criteria(self):
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        initial_count = Participant.objects.count()
+
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "Criteria",
+            "last_name": "Only",
+            "age": 45,
+            "dob": "1981-05-12",
+            "gender": "Male",
+            "primary_phone": "9876543233",
+            "address": "456 Test Lane",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "facility": "Tiruvallur PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Teaching professional",
+            "socioeconomic_status": "APL",
+            "symptoms": ["Asymptomatic"],
+            "hiv_status": "Non Reactive / Negative",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Self-reported diabetes during the BCG campaign period"]
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Participant.objects.count(), initial_count + 1)
+        p = Participant.objects.latest("created_at")
+        self.assertTrue(p.eligible)
+        self.assertEqual(p.match_hrg, "Diabetes")
+        self.assertTrue(p.diabetes)
+        self.assertIn("Diabetes", p.risk_factors)
+        self.assertIn("Self-reported diabetes during the BCG campaign period", p.bcg_eligibility_criteria)
+
+    def test_registration_with_elderly_bcg_eligibility_criteria(self):
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        initial_count = Participant.objects.count()
+
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "Elderly",
+            "last_name": "Criteria",
+            "age": 65,
+            "dob": "1961-05-12",
+            "gender": "Female",
+            "primary_phone": "9876543234",
+            "address": "789 Elder St",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "facility": "Tiruvallur PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Married",
+            "occupation": "Homemaker",
+            "socioeconomic_status": "BPL",
+            "symptoms": ["Asymptomatic"],
+            "hiv_status": "Non Reactive / Negative",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Individuals aged ≥60 years"]
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Participant.objects.count(), initial_count + 1)
+        p = Participant.objects.latest("created_at")
+        self.assertTrue(p.eligible)
+        self.assertEqual(p.match_hrg, "Elderly (Age >= 60)")
+        self.assertIn("Individuals aged 60 years or above", p.risk_factors)
+
+
 
 
 
