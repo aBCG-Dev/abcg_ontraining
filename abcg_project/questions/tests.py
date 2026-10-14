@@ -2756,6 +2756,206 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertNotIn("Individuals aged 60 years or above", p.risk_factors)
         self.assertIn("Undernourished / Malnourished (BMI <18 kg/m2)", p.risk_factors)
 
+    def test_classification_naat_rif_not_detected_is_control(self):
+        """Verifies that 'MTB NOT DETECTED - RIF RESISTANCE NOT DETECTED' classifies as Control, not Case."""
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "RifNeg",
+            "last_name": "Test",
+            "age": 65,
+            "dob": "1961-05-12",
+            "gender": "Male",
+            "primary_phone": "9876543201",
+            "address": "456 Health St",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Active",
+            "public_phi": "Avadi PHC",
+            "village": "Karani",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Married",
+            "occupation": "Farmer",
+            "socioeconomic_status": "BPL",
+            "symptoms": ["Asymptomatic"],
+            "hiv_status": "Non Reactive / Negative",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "cxr_done": "Yes",
+            "cxr_result": "Normal",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB NOT DETECTED - RIF RESISTANCE NOT DETECTED",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Individuals aged 60 years or above"]
+        })
+        self.assertEqual(response.status_code, 302)
+        p = Participant.objects.filter(first_name="RifNeg").latest("created_at")
+        self.assertEqual(p.classification, "Control")
+        self.assertIn("Normal CXR, Negative NAAT", p.classification_reason)
+
+    def test_classification_cxr_suggestive_without_sputum_is_case(self):
+        """Verifies that CXR Suggestive of TB classifies as Case even if sputum test has not been undergone."""
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "CxrSuggestive",
+            "last_name": "Only",
+            "age": 62,
+            "dob": "1964-01-01",
+            "gender": "Female",
+            "primary_phone": "9876543202",
+            "address": "789 Clinic Rd",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "facility": "Tiruvallur PHC",
+            "village": "Karani",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Married",
+            "occupation": "Home Maker",
+            "socioeconomic_status": "BPL",
+            "symptoms": ["Cough for more than 2 weeks"],
+            "hiv_status": "Non Reactive / Negative",
+            "undergone_testing": "No",
+            "cxr_done": "Yes",
+            "cxr_result": "Suggestive of TB",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Individuals aged 60 years or above"]
+        })
+        self.assertEqual(response.status_code, 302)
+        p = Participant.objects.filter(first_name="CxrSuggestive").latest("created_at")
+        self.assertEqual(p.classification, "Case")
+        self.assertIn("suggestive of TB", p.classification_reason.lower())
+
+    def test_classification_eptb_symptoms_without_investigation_is_pending(self):
+        """Verifies that candidates with active EPTB symptoms but no test done are Pending, not Control."""
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "EptbPresumptive",
+            "last_name": "Candidate",
+            "age": 62,
+            "dob": "1964-01-01",
+            "gender": "Male",
+            "primary_phone": "9876543203",
+            "address": "123 Hill St",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "facility": "Tiruvallur PHC",
+            "village": "Karani",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "BPL",
+            "symptoms": ["Asymptomatic"],
+            "eptb_q1a": "Yes",
+            "hiv_status": "Non Reactive / Negative",
+            "undergone_testing": "Yes",
+            "naat_status": "MTB Not Detected",
+            "cxr_done": "Yes",
+            "cxr_result": "Normal",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Individuals aged 60 years or above"]
+        })
+        self.assertEqual(response.status_code, 302)
+        p = Participant.objects.filter(first_name="EptbPresumptive").latest("created_at")
+        self.assertEqual(p.classification, "Pending")
+        self.assertIn("EPTB", p.classification_reason)
+
+    def test_doctor_queue_loads_diagnostics_from_ptb_test_details(self):
+        """Verifies that doctor_queue extracts cxr_status and naat_status from ptb_test_details."""
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        import json
+        p = Participant.objects.create(
+            first_name="QueueDoc",
+            last_name="Test",
+            full_name="QueueDoc Test",
+            age=65,
+            gender="Male",
+            contact_number="9876543204",
+            address="12 Queue Rd",
+            state="Tamil Nadu",
+            district="Tiruvallur",
+            tb_unit="Tiruvallur TU",
+            study_id="ABCG-TN-TIR-2026-999901",
+            classification="Pending",
+            created_by=self.user,
+            date_enroll=timezone.localdate(),
+            ptb_test_details=json.dumps({
+                "cxr_details": {"cxr_done": "Yes", "cxr_result": "Suggestive of TB"},
+                "result_details": {"final_interpretation": "MTB Detected"}
+            })
+        )
+        profile = self.user.profile
+        profile.role = "Doctor"
+        profile.save()
+        response = self.client.get(reverse("questions:doctor_queue"))
+        self.assertEqual(response.status_code, 200)
+        pending_list = response.context["pending_list"]
+        matched = next((item for item in pending_list if item["record"].pk == p.pk), None)
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched["cxr_status"], "Suggestive of TB")
+        self.assertEqual(matched["naat_status"], "MTB Detected")
+
+    def test_cases_view_defaults_to_cases_only(self):
+        """Verifies that cases_view defaults to showing only confirmed Cases, not all Pending participants."""
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        profile = self.user.profile
+        profile.role = "Doctor"
+        profile.save()
+        p_case = Participant.objects.create(
+            first_name="ConfirmedCase",
+            last_name="Person",
+            full_name="ConfirmedCase Person",
+            age=40,
+            gender="Male",
+            contact_number="9876543205",
+            address="11 Case Rd",
+            state="Tamil Nadu",
+            district="Tiruvallur",
+            tb_unit="Tiruvallur TU",
+            study_id="ABCG-TN-TIR-2026-999902",
+            classification="Case",
+            created_by=self.user,
+            date_enroll=timezone.localdate()
+        )
+        p_pending = Participant.objects.create(
+            first_name="PendingCandidate",
+            last_name="Person",
+            full_name="PendingCandidate Person",
+            age=40,
+            gender="Female",
+            contact_number="9876543206",
+            address="12 Pending Rd",
+            state="Tamil Nadu",
+            district="Tiruvallur",
+            tb_unit="Tiruvallur TU",
+            study_id="ABCG-TN-TIR-2026-999903",
+            classification="Pending",
+            created_by=self.user,
+            date_enroll=timezone.localdate()
+        )
+        response = self.client.get(reverse("questions:cases"))
+        self.assertEqual(response.status_code, 200)
+        cases_list = list(response.context["cases"])
+        case_ids = [c["studyId"] for c in cases_list]
+        self.assertIn(p_case.study_id, case_ids)
+        self.assertNotIn(p_pending.study_id, case_ids)
+
+
 
 
 

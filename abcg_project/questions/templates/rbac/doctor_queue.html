@@ -314,8 +314,19 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("modalCxr").innerText = this.dataset.cxr;
             document.getElementById("modalEptb").innerText = this.dataset.eptb;
             
-            document.getElementById("modalCurrentClass").innerText = this.dataset.classification;
-            document.getElementById("modalSelectClass").value = this.dataset.classification === "Pending" ? "Case" : this.dataset.classification;
+            let recommendedClass = this.dataset.classification || "Pending";
+            if (this.dataset.classification === "Pending") {
+                const naatUpper = (this.dataset.naat || "").toUpperCase();
+                const cxrUpper = (this.dataset.cxr || "").toUpperCase();
+                if ((naatUpper.includes("DETECTED") && !naatUpper.includes("NOT DETECTED")) || naatUpper.includes("POSITIVE") || cxrUpper.includes("SUGGESTIVE")) {
+                    recommendedClass = "Case";
+                } else if ((naatUpper.includes("NOT DETECTED") || naatUpper.includes("NEGATIVE")) && cxrUpper.includes("NORMAL")) {
+                    recommendedClass = "Control";
+                } else {
+                    recommendedClass = "Pending";
+                }
+            }
+            document.getElementById("modalSelectClass").value = recommendedClass;
 
             // Set Form action endpoint dynamically
             reviewForm.action = `/dashboard/doctor/verify/${pk}/`;

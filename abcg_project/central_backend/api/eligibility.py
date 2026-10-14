@@ -131,41 +131,49 @@ class RulesEngine:
         except Exception:
             ptb_details = {}
             
+        result_details = ptb_details.get("result_details", {}) if isinstance(ptb_details.get("result_details"), dict) else {}
+        cxr_details = ptb_details.get("cxr_details", {}) if isinstance(ptb_details.get("cxr_details"), dict) else {}
+
         undergone_testing = ptb_details.get("undergone_testing", "No")
-        final_interpretation = ptb_details.get("final_interpretation", "")
-        naat_status = ptb_details.get("naat_status", "")
-        cxr_result = ptb_details.get("cxr_result", "")
-        cxr_status = ptb_details.get("cxr_status", "")
-        cxr_done = ptb_details.get("cxr_done", "")
+        final_interpretation = result_details.get("final_interpretation") or ptb_details.get("final_interpretation", "")
+        naat_status = ptb_details.get("naat_status") or participant_data.get("ptb_test_result", "")
+        cxr_result = cxr_details.get("cxr_result") or ptb_details.get("cxr_result", "")
+        cxr_status = cxr_details.get("cxr_status") or ptb_details.get("cxr_status", "")
+        cxr_done = cxr_details.get("cxr_done") or ptb_details.get("cxr_done", "")
         
         mctb = "PENDING"
-        if undergone_testing == "No":
+        effective_naat = (final_interpretation or naat_status or "").strip()
+        if effective_naat:
+            val = effective_naat.upper()
+            if "MTB NOT DETECTED" in val or val in ["NEGATIVE", "NOT DETECTED"] or ("NEGATIVE" in val and "POSITIVE" not in val and "DETECTED" not in val):
+                mctb = "NEGATIVE"
+            elif "MTB DETECTED" in val or "POSITIVE" in val or "RIF RESISTANT" in val or "RIF SENSITIVE" in val:
+                mctb = "POSITIVE"
+            elif "RIF NOT DETECTED" in val or "RIF NEGATIVE" in val:
+                mctb = "NEGATIVE"
+            else:
+                mctb = "PENDING"
+        elif undergone_testing == "No":
             mctb = "PENDING"
         else:
-            effective_naat = final_interpretation or naat_status
-            if effective_naat:
-                val = effective_naat.upper()
-                if "MTB DETECTED" in val or "RIF" in val or "POSITIVE" in val:
-                    mctb = "POSITIVE"
-                elif "MTB NOT DETECTED" in val or "NEGATIVE" in val:
-                    mctb = "NEGATIVE"
+            mctb = "PENDING"
                     
-        cxr = "NORMAL"
-        if undergone_testing == "No":
-            cxr = "PENDING"
-        else:
-            effective_cxr_result = cxr_result or cxr_status
-            if cxr_done == "Yes":
-                if effective_cxr_result == "Suggestive of TB":
-                    cxr = "SUGGESTIVE_OF_TB"
-                elif effective_cxr_result == "Normal":
-                    cxr = "NORMAL"
-                elif effective_cxr_result == "Abnormal (Non-TB)":
-                    cxr = "ABNORMAL_NON_TB"
-                else:
-                    cxr = "PENDING"
-            elif cxr_done == "No":
+        # Determine CXR status independently of PTB sputum testing
+        effective_cxr_result = (cxr_result or cxr_status or "").strip()
+        is_asymptomatic = participant_data.get("symptoms") == "Asymptomatic" or not participant_data.get("symptoms")
+        if cxr_done == "Yes":
+            if "Suggestive of TB" in effective_cxr_result:
+                cxr = "SUGGESTIVE_OF_TB"
+            elif "Abnormal (Non-TB)" in effective_cxr_result:
+                cxr = "ABNORMAL_NON_TB"
+            elif "Normal" in effective_cxr_result:
                 cxr = "NORMAL"
+            else:
+                cxr = "PENDING"
+        elif cxr_done == "No" or cxr_status == "Not Done":
+            cxr = "NORMAL" if is_asymptomatic else "NOT_DONE"
+        else:
+            cxr = "PENDING"
                 
         # EPTB symptoms & status
         eptb_details_raw = participant_data.get("eptb_details", "{}")
@@ -189,10 +197,12 @@ class RulesEngine:
         eptb_status = "NEGATIVE"
         pending_sites = []
         if has_eptb_symptoms and isinstance(eptb_answers, dict):
+            any_performed = False
             any_pending = False
             any_positive = False
             for k, v in eptb_answers.items():
                 if k.startswith("eptb_investigation_") and k.endswith("_performed") and v == "Yes":
+                    any_performed = True
                     base_key = k[:-10]
                     result_key = f"{base_key}_result_findings"
                     result_val = eptb_answers.get(result_key, "").strip()
@@ -207,8 +217,11 @@ class RulesEngine:
                 eptb_status = "POSITIVE"
             elif any_pending:
                 eptb_status = "PENDING"
-            else:
+            elif any_performed:
                 eptb_status = "NEGATIVE"
+            else:
+                eptb_status = "PENDING"
+                pending_sites.append("presumptive EPTB investigation")
                 
         # 30-day testing timeout check
         date_enroll_raw = participant_data.get("date_enroll")

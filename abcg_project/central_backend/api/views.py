@@ -62,17 +62,25 @@ class BulkSyncView(APIView):
             
             # Print audit warning if client-side classification differs from server-side re-evaluation
             client_class = p_data.get("classification")
+            client_reason = p_data.get("classification_reason")
             if client_class != classification:
                 print(f"[AUDIT WARNING] Classification mismatch for study_id={study_id}: Client={client_class}, Server={classification}")
             
+            # If record was clinically confirmed on the field (Case, Control, Excluded, TPT+BCG), do not degrade to Pending
+            final_class = classification
+            final_reason = classification_reason
+            if client_class in ["Case", "Control", "Excluded", "TPT+BCG"] and classification == "Pending":
+                final_class = client_class
+                final_reason = client_reason or classification_reason
+
             participant_obj, created = Participant.objects.update_or_create(
                 study_id=study_id,
                 defaults={
                     **p_data,
                     "eligible": eligible,
                     "match_hrg": match_hrg,
-                    "classification": classification,
-                    "classification_reason": classification_reason,
+                    "classification": final_class,
+                    "classification_reason": final_reason,
                     "sync_receipt_id": receipt_id,
                     "sync_verified_at": now,
                     "uploaded_by": request.user

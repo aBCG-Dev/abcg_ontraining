@@ -849,6 +849,9 @@ def registration(request, pk=None):
                 "result_availability": result_availability,
                 "sample_details": sample_details,
                 "result_details": result_details,
+                "final_interpretation": final_interpretation,
+                "cxr_done": cxr_done,
+                "cxr_result": cxr_result,
                 "cxr_status": cxr_status,
                 "cxr_details": cxr_details,
                 "naat_status": naat_status
@@ -911,38 +914,38 @@ def registration(request, pk=None):
         questionnaire_answers = json.dumps(qa_dict)
 
         # Eligibility Engine: Case / Control / Pending / Excluded status classification
+        effective_naat = (final_interpretation or naat_status or "").strip()
         mctb = "PENDING"
-        if undergone_testing == "No":
-            mctb = "PENDING"
-        else:
-            effective_naat = final_interpretation or naat_status
-            if effective_naat:
-                val = effective_naat.upper()
-                if "MTB DETECTED" in val or "RIF" in val or "POSITIVE" in val:
-                    mctb = "POSITIVE"
-                elif "MTB NOT DETECTED" in val or "NEGATIVE" in val:
-                    mctb = "NEGATIVE"
-                else:
-                    mctb = "PENDING"
+        if effective_naat:
+            val = effective_naat.upper()
+            if "MTB NOT DETECTED" in val or val in ["NEGATIVE", "NOT DETECTED"] or ("NEGATIVE" in val and "POSITIVE" not in val and "DETECTED" not in val):
+                mctb = "NEGATIVE"
+            elif "MTB DETECTED" in val or "POSITIVE" in val or "RIF RESISTANT" in val or "RIF SENSITIVE" in val:
+                mctb = "POSITIVE"
+            elif "RIF NOT DETECTED" in val or "RIF NEGATIVE" in val:
+                mctb = "NEGATIVE"
             else:
                 mctb = "PENDING"
-
-        cxr = "NORMAL"
-        if undergone_testing == "No":
-            cxr = "PENDING"
+        elif undergone_testing == "No":
+            mctb = "PENDING"
         else:
-            effective_cxr_result = cxr_result or cxr_status
-            if cxr_done == "Yes":
-                if effective_cxr_result == "Suggestive of TB":
-                    cxr = "SUGGESTIVE_OF_TB"
-                elif effective_cxr_result == "Normal":
-                    cxr = "NORMAL"
-                elif effective_cxr_result == "Abnormal (Non-TB)":
-                    cxr = "ABNORMAL_NON_TB"
-                else:
-                    cxr = "PENDING"
-            elif cxr_done == "No":
+            mctb = "PENDING"
+
+        # Determine CXR status independently of PTB sputum testing
+        effective_cxr_result = (cxr_result or cxr_status or "").strip()
+        if cxr_done == "Yes":
+            if "Suggestive of TB" in effective_cxr_result:
+                cxr = "SUGGESTIVE_OF_TB"
+            elif "Abnormal (Non-TB)" in effective_cxr_result:
+                cxr = "ABNORMAL_NON_TB"
+            elif "Normal" in effective_cxr_result:
                 cxr = "NORMAL"
+            else:
+                cxr = "PENDING"
+        elif cxr_done == "No" or cxr_status == "Not Done":
+            cxr = "NORMAL" if is_asymptomatic else "NOT_DONE"
+        else:
+            cxr = "PENDING"
 
         # EPTB symptoms & status
         has_eptb_symptoms = False
@@ -959,10 +962,12 @@ def registration(request, pk=None):
         eptb_status = "NEGATIVE"
         pending_sites = []
         if has_eptb_symptoms:
+            any_performed = False
             any_pending = False
             any_positive = False
             for k, v in eptb_answers.items():
                 if k.startswith("eptb_investigation_") and k.endswith("_performed") and v == "Yes":
+                    any_performed = True
                     base_key = k[:-10]
                     result_key = f"{base_key}_result_findings"
                     result_val = eptb_answers.get(result_key, "").strip()
@@ -977,8 +982,12 @@ def registration(request, pk=None):
                 eptb_status = "POSITIVE"
             elif any_pending:
                 eptb_status = "PENDING"
-            else:
+            elif any_performed:
                 eptb_status = "NEGATIVE"
+            else:
+                # EPTB symptoms are present but no diagnostic investigations were performed yet
+                eptb_status = "PENDING"
+                pending_sites.append("presumptive EPTB investigation")
 
         # Check if BCG verification and vaccine details are filled
         bcg_status_str = (bcg_status or "").strip()
@@ -1038,11 +1047,13 @@ def registration(request, pk=None):
                     pending_list.append("NAAT (MCTB) is pending because clinical testing has not been undergone")
                 else:
                     pending_list.append("NAAT (MCTB) is pending because test result is blank or not recorded")
-            if cxr == "PENDING":
-                if undergone_testing == "No":
-                    pending_list.append("Chest X-Ray is pending because clinical testing has not been undergone")
-                else:
+            if cxr in ["PENDING", "NOT_DONE"]:
+                if cxr_done == "No":
+                    pending_list.append("Chest X-Ray has not been performed")
+                elif not effective_cxr_result:
                     pending_list.append("Chest X-Ray is pending because interpretation findings are blank or not recorded")
+                else:
+                    pending_list.append("Chest X-Ray investigation is pending")
             if eptb_status == "PENDING":
                 if pending_sites:
                     pending_list.append(f"EPTB is pending because investigation results are not recorded for {', '.join(pending_sites)}")
@@ -3398,20 +3409,36 @@ def doctor_queue(request):
             eptb_findings = "Not Done"
 
             try:
-                answers = json.loads(r.questionnaire_answers)
+                answers = json.loads(r.questionnaire_answers) if r.questionnaire_answers else {}
             except Exception:
                 answers = {}
 
             try:
-                eptb_details = json.loads(r.eptb_details)
+                ptb_details = json.loads(r.ptb_test_details) if r.ptb_test_details else {}
+            except Exception:
+                ptb_details = {}
+
+            try:
+                eptb_details = json.loads(r.eptb_details) if r.eptb_details else {}
             except Exception:
                 eptb_details = {}
 
-            cxr_done = answers.get("cxr_details", {}).get("cxr_done", "No")
+            cxr_det = ptb_details.get("cxr_details", {}) if isinstance(ptb_details.get("cxr_details"), dict) else {}
+            cxr_done = cxr_det.get("cxr_done") or ptb_details.get("cxr_done") or answers.get("cxr_details", {}).get("cxr_done", "No")
             if cxr_done == "Yes" or r.cxr_record_file:
-                cxr_status = answers.get("cxr_details", {}).get("cxr_result") or answers.get("cxr_status") or "Done"
+                cxr_status = cxr_det.get("cxr_result") or ptb_details.get("cxr_result") or ptb_details.get("cxr_status") or answers.get("cxr_status") or "Done"
+            else:
+                cxr_status = "Not Done"
             
-            naat_status = answers.get("naat_status") or r.ptb_test_result or "Not Done"
+            result_det = ptb_details.get("result_details", {}) if isinstance(ptb_details.get("result_details"), dict) else {}
+            naat_status = (
+                result_det.get("final_interpretation") or 
+                ptb_details.get("final_interpretation") or 
+                ptb_details.get("naat_status") or 
+                answers.get("naat_status") or 
+                r.ptb_test_result or 
+                "Not Done"
+            )
             
             if r.eptb_screened:
                 eptb_findings = eptb_details.get("site_name") or "Yes (Screened)"
@@ -3968,7 +3995,8 @@ def _map_participant_to_dict(p):
         'ptbNaat': 1 if p.ptb_test_result == "Positive" else 0,
         'ptbCxr': 'Abnormal' if p.ptb_test_result == "Suggestive" else 'Normal',
         'bcgStatus': 1 if p.bcg_status.startswith("Yes") else 0,
-        'caseControlStatus': 1 if p.classification == "Case" else 0,
+        'caseControlStatus': 1 if p.classification == "Case" else (0 if p.classification == "Control" else 2),
+        'classification': p.classification,
         'matchSetId': match_set_id,
         'matchStatus': match_status,
         'diseaseType': disease_type,
@@ -4234,6 +4262,10 @@ def cases_view(request):
             participants_qs = participants_qs.filter(tb_unit__icontains=tb_unit_filter)
         if classification_filter:
             participants_qs = participants_qs.filter(classification=classification_filter)
+        elif not verification_status and not adjudication_status and not q and not reg_date_filter:
+            # Default to showing confirmed Cases on the Cases line list
+            participants_qs = participants_qs.filter(classification="Case")
+            classification_filter = "Case"
         if reg_date_filter:
             participants_qs = participants_qs.filter(date_enroll=reg_date_filter)
             
