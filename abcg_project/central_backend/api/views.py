@@ -73,10 +73,32 @@ class BulkSyncView(APIView):
                 final_class = client_class
                 final_reason = client_reason or classification_reason
 
+            # Check if study_id exists or if participant is a duplicate entry
+            from .deduplication import ParticipantDeduplicator
+            dedup_p = ParticipantDeduplicator(model_class=Participant)
+            target_study_id = study_id
+            
+            existing_match = Participant.objects.filter(study_id=study_id).first()
+            if not existing_match:
+                is_dup, match_rec, tier, reason = dedup_p.check_candidate_duplicate(
+                    first_name=p_data.get("first_name", ""),
+                    last_name=p_data.get("last_name", ""),
+                    full_name=p_data.get("full_name", ""),
+                    contact_number=p_data.get("contact_number", ""),
+                    nikshay_id=p_data.get("nikshay_id", ""),
+                    dob=p_data.get("dob"),
+                    age=p_data.get("age"),
+                    gender=p_data.get("gender", "")
+                )
+                if is_dup and match_rec:
+                    existing_match = match_rec
+                    target_study_id = match_rec.study_id
+
             participant_obj, created = Participant.objects.update_or_create(
-                study_id=study_id,
+                study_id=target_study_id,
                 defaults={
                     **p_data,
+                    "study_id": target_study_id,
                     "eligible": eligible,
                     "match_hrg": match_hrg,
                     "classification": final_class,
@@ -86,51 +108,92 @@ class BulkSyncView(APIView):
                     "uploaded_by": request.user
                 }
             )
-            synced_participants.append(study_id)
+            synced_participants.append(target_study_id)
             receipts[study_id] = {
                 "receipt_id": receipt_id,
                 "verified_at": now.isoformat(),
-                "cohort": "Participant"
+                "cohort": "Participant",
+                "study_id": target_study_id
             }
             
         # 2. Ingest TPT Individuals
+        dedup_t = ParticipantDeduplicator(model_class=TptIndividual)
         for t_data in validated_data.get("tpt_individuals", []):
             study_id = t_data.get("study_id")
             receipt_id = f"REC-T-{uuid.uuid4().hex[:10].upper()}"
+            target_study_id = study_id
+            
+            existing_match = TptIndividual.objects.filter(study_id=study_id).first()
+            if not existing_match:
+                is_dup, match_rec, tier, reason = dedup_t.check_candidate_duplicate(
+                    first_name=t_data.get("first_name", ""),
+                    last_name=t_data.get("last_name", ""),
+                    full_name=t_data.get("full_name", ""),
+                    contact_number=t_data.get("contact_number", ""),
+                    nikshay_id=t_data.get("nikshay_id", ""),
+                    dob=t_data.get("dob"),
+                    age=t_data.get("age"),
+                    gender=t_data.get("gender", "")
+                )
+                if is_dup and match_rec:
+                    target_study_id = match_rec.study_id
+
             tpt_obj, created = TptIndividual.objects.update_or_create(
-                study_id=study_id,
+                study_id=target_study_id,
                 defaults={
                     **t_data,
+                    "study_id": target_study_id,
                     "sync_receipt_id": receipt_id,
                     "sync_verified_at": now,
                     "uploaded_by": request.user
                 }
             )
-            synced_tpt.append(study_id)
+            synced_tpt.append(target_study_id)
             receipts[study_id] = {
                 "receipt_id": receipt_id,
                 "verified_at": now.isoformat(),
-                "cohort": "TPT"
+                "cohort": "TPT",
+                "study_id": target_study_id
             }
             
         # 3. Ingest Ineligible Individuals
+        dedup_i = ParticipantDeduplicator(model_class=IneligibleIndividual)
         for i_data in validated_data.get("ineligible_individuals", []):
             study_id = i_data.get("study_id")
             receipt_id = f"REC-I-{uuid.uuid4().hex[:10].upper()}"
+            target_study_id = study_id
+            
+            existing_match = IneligibleIndividual.objects.filter(study_id=study_id).first()
+            if not existing_match:
+                is_dup, match_rec, tier, reason = dedup_i.check_candidate_duplicate(
+                    first_name=i_data.get("first_name", ""),
+                    last_name=i_data.get("last_name", ""),
+                    full_name=i_data.get("full_name", ""),
+                    contact_number=i_data.get("contact_number", ""),
+                    nikshay_id=i_data.get("nikshay_id", ""),
+                    dob=i_data.get("dob"),
+                    age=i_data.get("age"),
+                    gender=i_data.get("gender", "")
+                )
+                if is_dup and match_rec:
+                    target_study_id = match_rec.study_id
+
             ineligible_obj, created = IneligibleIndividual.objects.update_or_create(
-                study_id=study_id,
+                study_id=target_study_id,
                 defaults={
                     **i_data,
+                    "study_id": target_study_id,
                     "sync_receipt_id": receipt_id,
                     "sync_verified_at": now,
                     "uploaded_by": request.user
                 }
             )
-            synced_ineligible.append(study_id)
+            synced_ineligible.append(target_study_id)
             receipts[study_id] = {
                 "receipt_id": receipt_id,
                 "verified_at": now.isoformat(),
-                "cohort": "Ineligible"
+                "cohort": "Ineligible",
+                "study_id": target_study_id
             }
             
         # 4. Ingest Telemetry Log

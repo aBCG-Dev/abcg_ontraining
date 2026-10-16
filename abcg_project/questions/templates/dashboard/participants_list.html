@@ -23,7 +23,7 @@
     <!-- Export Action Buttons -->
     <div class="flex items-center gap-2">
       <a
-        href="{% url 'questions:data_export' %}?format=excel"
+        href="{% url 'questions:data_export' %}?format=excel&dedup={{ filters.dedup|default:'unique' }}"
         class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 transition-all text-decoration-none active:scale-95"
         title="Download sanitized study registry in Excel (.xlsx) format"
       >
@@ -31,7 +31,7 @@
         <span>Export Excel</span>
       </a>
       <a
-        href="{% url 'questions:data_export' %}?format=csv"
+        href="{% url 'questions:data_export' %}?format=csv&dedup={{ filters.dedup|default:'unique' }}"
         class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-muted transition-all text-decoration-none active:scale-95"
         title="Download master dataset in CSV format"
       >
@@ -233,12 +233,30 @@
           >
         </div>
 
+        <!-- Deduplication View Mode Filter -->
+        <div>
+          <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            Deduplication Filter
+          </label>
+          <select
+            name="dedup"
+            class="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="unique" {% if filters.dedup == 'unique' %}selected{% endif %}>Unique Individuals (Filtered)</option>
+            <option value="all" {% if filters.dedup == 'all' %}selected{% endif %}>All Records (Unfiltered - Show All Submissions)</option>
+            <option value="duplicates" {% if filters.dedup == 'duplicates' %}selected{% endif %}>Duplicate Submissions Only</option>
+          </select>
+        </div>
+
       </div>
 
       <!-- Action Buttons Row -->
       <div class="flex items-center justify-between border-t border-border/40 pt-3">
         <div class="text-xs text-muted-foreground">
           Showing <span class="font-bold text-foreground">{{ participants.start_index|default:0 }}-{{ participants.end_index|default:0 }}</span> of <span class="font-bold text-foreground">{{ total_count }}</span> matched participants
+          {% if dedup_mode == 'unique' and dedup_meta.duplicates_filtered > 0 %}
+            <span class="text-emerald-600 font-medium">({{ dedup_meta.duplicates_filtered }} duplicates filtered)</span>
+          {% endif %}
         </div>
 
         <div class="flex items-center gap-2">
@@ -258,6 +276,55 @@
         </div>
       </div>
     </form>
+  </div>
+
+  <!-- Data Preservation & Deduplication Status Banner -->
+  <div class="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3.5 text-xs text-blue-900 dark:text-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+    <div class="flex items-start sm:items-center gap-2.5">
+      <div class="rounded-lg bg-blue-500/20 p-2 text-blue-600 dark:text-blue-400 shrink-0">
+        <i data-lucide="shield-check" class="size-4"></i>
+      </div>
+      <div>
+        <div class="font-bold flex items-center gap-2">
+          <span>Data Preservation Active</span>
+          <span class="rounded bg-blue-500/20 px-2 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+            Database Untouched • 100% Retained
+          </span>
+        </div>
+        <p class="text-[11px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
+          All <strong>{{ total_raw_count }}</strong> collected submissions are permanently preserved in the database.
+          {% if dedup_mode == 'unique' %}
+            Displaying <strong>{{ total_count }}</strong> unique individuals (<strong class="text-emerald-700 dark:text-emerald-400">{{ dedup_meta.duplicates_filtered }} duplicate submissions</strong> filtered on-the-fly).
+          {% elif dedup_mode == 'duplicates' %}
+            Displaying <strong>{{ total_count }}</strong> submissions that have duplicate profiles.
+          {% else %}
+            Displaying all <strong>{{ total_count }}</strong> raw submissions without duplicate filtering.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <!-- Quick Switch Links -->
+    <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+      {% if dedup_mode != 'unique' %}
+        <a
+          href="?{% for k, v in request.GET.items %}{% if k != 'dedup' %}{{ k }}={{ v }}&{% endif %}{% endfor %}dedup=unique"
+          class="inline-flex items-center gap-1 rounded-lg border border-blue-400/40 bg-card px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300 shadow-sm hover:bg-blue-500/20 transition-all text-decoration-none"
+        >
+          <i data-lucide="filter" class="size-3"></i>
+          <span>Show Unique (Filtered)</span>
+        </a>
+      {% endif %}
+      {% if dedup_mode != 'all' %}
+        <a
+          href="?{% for k, v in request.GET.items %}{% if k != 'dedup' %}{{ k }}={{ v }}&{% endif %}{% endfor %}dedup=all"
+          class="inline-flex items-center gap-1 rounded-lg border border-blue-400/40 bg-card px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300 shadow-sm hover:bg-blue-500/20 transition-all text-decoration-none"
+        >
+          <i data-lucide="layers" class="size-3"></i>
+          <span>Show All {{ total_raw_count }} Records</span>
+        </a>
+      {% endif %}
+    </div>
   </div>
 
   <!-- Master Line List Data Table -->
@@ -306,6 +373,17 @@
                 <div class="text-[10px] text-muted-foreground mt-0.5">
                   {{ p.age }} yrs • {{ p.gender }}
                 </div>
+                {% if p.is_duplicate %}
+                  <div class="mt-1 flex items-center gap-1">
+                    <span
+                      class="inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                      title="Participant entered {{ p.duplicate_count }} times in field collection. All {{ p.duplicate_count }} entries safely preserved in database. Associated IDs: {{ p.duplicate_study_ids|join:', ' }}"
+                    >
+                      <i data-lucide="copy" class="size-3"></i>
+                      <span>{{ p.duplicate_count }} submissions preserved</span>
+                    </span>
+                  </div>
+                {% endif %}
               </td>
 
               <!-- Contact -->
@@ -423,7 +501,7 @@
         <div class="flex items-center gap-1">
           {% if participants.has_previous %}
             <a
-              href="?page={{ participants.previous_page_number }}&q={{ filters.q }}&classification={{ filters.classification }}&eligibility={{ filters.eligibility }}&state={{ filters.state }}&district={{ filters.district }}&tb_unit={{ filters.tb_unit }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}"
+              href="?page={{ participants.previous_page_number }}&q={{ filters.q }}&classification={{ filters.classification }}&eligibility={{ filters.eligibility }}&state={{ filters.state }}&district={{ filters.district }}&tb_unit={{ filters.tb_unit }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&dedup={{ filters.dedup }}"
               class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-all text-decoration-none"
             >
               <i data-lucide="chevron-left" class="size-3.5"></i>
@@ -437,7 +515,7 @@
 
           {% if participants.has_next %}
             <a
-              href="?page={{ participants.next_page_number }}&q={{ filters.q }}&classification={{ filters.classification }}&eligibility={{ filters.eligibility }}&state={{ filters.state }}&district={{ filters.district }}&tb_unit={{ filters.tb_unit }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}"
+              href="?page={{ participants.next_page_number }}&q={{ filters.q }}&classification={{ filters.classification }}&eligibility={{ filters.eligibility }}&state={{ filters.state }}&district={{ filters.district }}&tb_unit={{ filters.tb_unit }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&dedup={{ filters.dedup }}"
               class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-all text-decoration-none"
             >
               <span>Next</span>

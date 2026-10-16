@@ -757,6 +757,16 @@
                                     style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
                                 <div class="invalid-feedback">Must be 10 digits without a leading zero.</div>
                             </div>
+                            <!-- Live Duplicate Alert Container -->
+                            <div id="duplicateAlertBox" class="alert alert-warning mt-2 d-none py-2 px-3 shadow-sm" style="border-radius: var(--radius); font-size: 0.8rem; border-left: 4px solid #f59e0b;" role="alert">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="me-2">
+                                        <i class="bi bi-exclamation-triangle-fill me-1 text-warning"></i>
+                                        <span id="duplicateAlertText" class="fw-semibold">Participant already registered!</span>
+                                    </div>
+                                    <a id="duplicateProfileBtn" href="#" class="btn btn-sm btn-dark py-0 px-2 text-nowrap" style="font-size: 0.75rem;">View Profile</a>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Phone Change Section -->
@@ -2174,6 +2184,65 @@
                 input.setAttribute('max', todayStr);
             });
         }
+
+        // Real-time live duplicate check as-you-type in Demographics step
+        let dupTimeout = null;
+        function checkParticipantDuplicate() {
+            const phoneInput = document.getElementById('primaryPhone');
+            const firstNameInput = document.getElementById('firstName');
+            const lastNameInput = document.getElementById('lastName');
+            const nikshayInput = document.getElementById('nikshayIdField') || document.querySelector('input[name="nikshay_id"]');
+            const alertBox = document.getElementById('duplicateAlertBox');
+            const alertText = document.getElementById('duplicateAlertText');
+            const profileBtn = document.getElementById('duplicateProfileBtn');
+            
+            if (!alertBox || !phoneInput) return;
+            
+            const phone = (phoneInput.value || '').trim();
+            const fn = firstNameInput ? (firstNameInput.value || '').trim() : '';
+            const ln = lastNameInput ? (lastNameInput.value || '').trim() : '';
+            const nik = nikshayInput ? (nikshayInput.value || '').trim() : '';
+            
+            if (phone.length < 10 && nik.length < 4) {
+                alertBox.classList.add('d-none');
+                return;
+            }
+            
+            clearTimeout(dupTimeout);
+            dupTimeout = setTimeout(() => {
+                const params = new URLSearchParams({
+                    contact_number: phone,
+                    first_name: fn,
+                    last_name: ln,
+                    nikshay_id: nik
+                });
+                {% if participant %}
+                params.append('exclude_pk', '{{ participant.pk }}');
+                {% endif %}
+                
+                fetch(`/api/check-duplicate/?${params.toString()}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.duplicate_found && data.match) {
+                            alertText.innerText = `Existing participant detected: ${data.match.full_name} (${data.match.study_id}). Duplicate entry will automatically update this profile.`;
+                            profileBtn.href = `/dashboard/participant/${data.match.study_id}/`;
+                            alertBox.classList.remove('d-none');
+                        } else {
+                            alertBox.classList.add('d-none');
+                        }
+                    })
+                    .catch(() => alertBox.classList.add('d-none'));
+            }, 350);
+        }
+
+        const phoneEl = document.getElementById('primaryPhone');
+        if (phoneEl) phoneEl.addEventListener('input', checkParticipantDuplicate);
+        const fnEl = document.getElementById('firstName');
+        if (fnEl) fnEl.addEventListener('input', checkParticipantDuplicate);
+        const lnEl = document.getElementById('lastName');
+        if (lnEl) lnEl.addEventListener('input', checkParticipantDuplicate);
+        const nikEl = document.getElementById('nikshayIdField') || document.querySelector('input[name="nikshay_id"]');
+        if (nikEl) nikEl.addEventListener('input', checkParticipantDuplicate);
 
         function updateSpecifyField(selectEl, isInitial = false) {
             const otherValues = ["Other", "Others", "Other vulnerable group", "Other Testing Lab", "Other Collection Site"];

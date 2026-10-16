@@ -37,6 +37,8 @@ urlpatterns = [
     path("dashboard/adjudication/", views.adjudication_view, name="adjudication"),
     path("dashboard/analytics/", views.analytics_view, name="analytics"),
     path("dashboard/data-quality/", views.data_quality_view, name="data_quality"),
+    path("dashboard/data-quality/merge-duplicates/", views.merge_duplicates_api, name="merge_duplicates"),
+    path("api/check-duplicate/", views.check_duplicate_participant_api, name="api_check_duplicate"),
     path("dashboard/site-monitoring/", RedirectView.as_view(pattern_name="questions:study_site", permanent=True), name="site_monitoring"),
     path("dashboard/study-site/", views.study_site_view, name="study_site"),
     path("dashboard/telemetry/", views.sync_telemetry_view, name="sync_telemetry"),

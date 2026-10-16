@@ -1,6 +1,7 @@
 import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.http import JsonResponse
@@ -635,7 +636,8 @@ def registration(request, pk=None):
         cxr_status = "Not Done"
         naat_status = ""
         final_interpretation = ""
- 
+        is_asymptomatic = True
+
         if eligible:
             ptb_screened = True
             other_symptom = request.POST.get("other_symptom", "").strip()
@@ -1091,7 +1093,32 @@ def registration(request, pk=None):
                 return "UNK"
             return name[:3] if len(name) >= 3 else name.ljust(3, 'X')
 
-        # Generate unique study ID / screening ID
+        # Combine names
+        full_name = f"{first_name} {last_name}".strip()
+
+        # Real-time Deduplication Gate: Check if participant already exists before generating new Study ID
+        existing_dup_rec = None
+        if not participant:
+            from questions.deduplication import ParticipantDeduplicator
+            target_model = IneligibleIndividual if not eligible else (TptIndividual if is_tpt_bcg else Participant)
+            dedup = ParticipantDeduplicator(model_class=target_model)
+            is_dup, match_rec, tier, reason = dedup.check_candidate_duplicate(
+                first_name=first_name,
+                last_name=last_name,
+                full_name=full_name,
+                contact_number=primary_phone,
+                nikshay_id=nikshay_id,
+                dob=dob,
+                age=age,
+                gender=gender
+            )
+            if is_dup and match_rec:
+                participant = match_rec
+                study_id = match_rec.study_id
+                screening_id = getattr(match_rec, "screening_id", None) or study_id
+                existing_dup_rec = match_rec
+
+        # Generate unique study ID / screening ID if not an existing or matched participant
         if not participant:
             today_code = timezone.localdate().strftime("%y%m%d")
             rand_code = random.randint(1000, 9999)
@@ -1148,9 +1175,6 @@ def registration(request, pk=None):
                     study_id = participant.study_id
             else:
                 study_id = screening_id
-
-        # Combine names
-        full_name = f"{first_name} {last_name}".strip()
 
         # Helper function to populate fields of either model
         def populate_fields(obj):
@@ -1321,6 +1345,13 @@ def registration(request, pk=None):
             populate_fields(obj)
             obj.save()
             sync_nikshay_record(obj, nikshay_id, user=request.user)
+
+        if existing_dup_rec:
+            from django.contrib import messages
+            messages.info(
+                request,
+                f"Existing participant profile matched ({existing_dup_rec.study_id}). Record updated safely with screening results (Deduplication Gate applied)."
+            )
             
         # Attempt immediate safe transfer to central backend if online
         try:
@@ -4173,11 +4204,16 @@ def participants_line_list_view(request):
     for i in inel_qs:
         all_records.append(_format_record(i, "IneligibleIndividual"))
 
-    # Sort descending by date_enroll
-    all_records.sort(key=lambda r: r["date_enroll"] if r["date_enroll"] else datetime.date(1970, 1, 1), reverse=True)
+    # 7. Non-destructive Deduplication Filter (all database records remain 100% intact)
+    from questions.deduplication import filter_participant_records_on_the_fly
+    dedup_mode = request.GET.get('dedup', 'unique').strip().lower()
+    if dedup_mode not in ['unique', 'duplicates', 'all']:
+        dedup_mode = 'unique'
 
-    # 7. Pagination (25 items per page)
-    paginator = Paginator(all_records, 25)
+    display_records, dedup_meta = filter_participant_records_on_the_fly(all_records, mode=dedup_mode)
+
+    # 8. Pagination (25 items per page)
+    paginator = Paginator(display_records, 25)
     page_number = request.GET.get('page', 1)
     try:
         page_obj = paginator.page(page_number)
@@ -4192,7 +4228,10 @@ def participants_line_list_view(request):
         "participants": page_obj,
         "paginator": paginator,
         "page_obj": page_obj,
-        "total_count": len(all_records),
+        "total_count": len(display_records),
+        "total_raw_count": len(all_records),
+        "dedup_mode": dedup_mode,
+        "dedup_meta": dedup_meta,
         "metrics": {
             "total_participants": total_participants,
             "eligible_count": eligible_count,
@@ -4212,6 +4251,7 @@ def participants_line_list_view(request):
             "tb_unit": tb_unit_filter,
             "date_from": date_from,
             "date_to": date_to,
+            "dedup": dedup_mode,
         },
         "available_states": available_states,
         "available_districts": available_districts,
@@ -4756,12 +4796,135 @@ def data_quality_view(request):
                 "status": "Open"
             })
             ex_idx += 1
+
+    # Rule DQ-05: Duplicate Participant Records Detection & Clustering
+    from questions.deduplication import ParticipantDeduplicator
+    dedup = ParticipantDeduplicator(model_class=Participant)
+    clusters = dedup.find_duplicate_clusters()
+    
+    duplicate_clusters_summary = []
+    total_duplicates = 0
+    for c in clusters:
+        master = dedup.select_master_record(c)
+        dups = [rec for rec in c if rec.pk != master.pk]
+        total_duplicates += len(dups)
+        
+        duplicate_clusters_summary.append({
+            "master_study_id": master.study_id,
+            "master_name": master.full_name,
+            "master_phone": master.contact_number,
+            "master_gender": master.gender,
+            "master_age": master.age,
+            "master_classification": master.classification,
+            "total_occurrences": len(c),
+            "duplicate_count": len(dups),
+            "duplicate_study_ids": [d.study_id for d in dups],
+            "duplicates": [{
+                "study_id": d.study_id,
+                "name": d.full_name,
+                "classification": d.classification,
+                "created_at": d.created_at.strftime("%Y-%m-%d %H:%M") if getattr(d, "created_at", None) else "-"
+            } for d in dups]
+        })
+        
+        for d in dups:
+            exceptions.append({
+                "exceptionId": f"EX-DQ-{ex_idx:04d}",
+                "studyId": d.study_id,
+                "rule": "DQ-05: Duplicate Participant",
+                "severity": "Critical",
+                "note": f"Duplicate participant entry ({len(c)} occurrences detected). Primary Master Study ID is '{master.study_id}'.",
+                "raised": d.created_at.strftime("%Y-%m-%d") if getattr(d, "created_at", None) else timezone.now().strftime("%Y-%m-%d"),
+                "status": "Open"
+            })
+            ex_idx += 1
             
     return render(request, "dashboard/data_quality.html", {
         "exceptions": exceptions,
         "dq_count": len(exceptions),
+        "duplicate_clusters": duplicate_clusters_summary,
+        "duplicate_count": total_duplicates,
+        "total_participants": Participant.objects.count(),
         "page": "data_quality"
     })
+
+
+@login_required
+def check_duplicate_participant_api(request):
+    """
+    AJAX endpoint for real-time live duplicate warning as-you-type in the participant registration wizard.
+    """
+    first_name = request.GET.get("first_name", "").strip()
+    last_name = request.GET.get("last_name", "").strip()
+    full_name = request.GET.get("full_name", "").strip()
+    contact_number = request.GET.get("contact_number", "").strip()
+    nikshay_id = request.GET.get("nikshay_id", "").strip()
+    dob = request.GET.get("dob", "").strip() or None
+    age = request.GET.get("age", "").strip()
+    gender = request.GET.get("gender", "").strip()
+    exclude_pk = request.GET.get("exclude_pk", "").strip() or None
+    
+    from questions.deduplication import ParticipantDeduplicator
+    from questions.models import Participant
+    
+    dedup = ParticipantDeduplicator(model_class=Participant)
+    is_dup, match_rec, tier, reason = dedup.check_candidate_duplicate(
+        first_name=first_name,
+        last_name=last_name,
+        full_name=full_name,
+        contact_number=contact_number,
+        nikshay_id=nikshay_id,
+        dob=dob,
+        age=age,
+        gender=gender,
+        exclude_pk=exclude_pk
+    )
+    
+    if is_dup and match_rec:
+        return JsonResponse({
+            "duplicate_found": True,
+            "tier": tier,
+            "reason": reason,
+            "match": {
+                "study_id": match_rec.study_id,
+                "full_name": match_rec.full_name,
+                "contact_number": match_rec.contact_number,
+                "classification": match_rec.classification,
+                "pk": match_rec.pk
+            }
+        })
+    return JsonResponse({"duplicate_found": False})
+
+
+@group_required("Super Admin", "Admin", "Nodal Officer")
+def merge_duplicates_api(request):
+    """
+    AJAX / POST endpoint to merge duplicate participant clusters from the Data Quality dashboard.
+    """
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST method required"}, status=405)
+        
+    from questions.deduplication import ParticipantDeduplicator
+    from questions.models import Participant
+    
+    dedup = ParticipantDeduplicator(model_class=Participant)
+    master_study_id = request.POST.get("master_study_id", "").strip()
+    
+    if master_study_id:
+        clusters = dedup.find_duplicate_clusters()
+        target_cluster = None
+        for c in clusters:
+            m = dedup.select_master_record(c)
+            if m.study_id == master_study_id:
+                target_cluster = c
+                break
+        if not target_cluster:
+            return JsonResponse({"status": "error", "message": f"Cluster with Master '{master_study_id}' not found."}, status=404)
+        rep = dedup.merge_cluster(target_cluster, user=request.user, dry_run=False)
+        return JsonResponse({"status": "success", "report": rep})
+    else:
+        summary = dedup.deduplicate_all(user=request.user, dry_run=False)
+        return JsonResponse({"status": "success", "summary": summary})
 
 
 REAL_DEFAULT_STUDY_SITES = [
@@ -5162,6 +5325,39 @@ def data_export_view(request):
         all_records = list(participants) + list(tpts) + list(ineligibles)
         # Sort combined list by date_enroll descending
         all_records.sort(key=lambda x: x.date_enroll if x.date_enroll else timezone.localdate(), reverse=True)
+
+        export_dedup = request.GET.get("dedup", "unique")
+        if export_dedup == "unique" and len(all_records) > 1:
+            from questions.deduplication import match_participant_records, DisjointSetUnion
+            from collections import defaultdict
+            dsu = DisjointSetUnion()
+            n = len(all_records)
+            phone_map = defaultdict(list)
+            nik_map = defaultdict(list)
+            for i, r in enumerate(all_records):
+                ph = getattr(r, "contact_number", None) or getattr(r, "primary_phone", None)
+                if ph and len(str(ph).strip()) >= 10:
+                    phone_map[str(ph).strip()[-10:]].append(i)
+                nik = getattr(r, "nikshay_id", None)
+                if nik and str(nik).strip() not in ["", "—", "None", "0"]:
+                    nik_map[str(nik).strip().upper()].append(i)
+            for indices in nik_map.values():
+                for idx in indices[1:]:
+                    dsu.union(indices[0], idx)
+            for indices in phone_map.values():
+                for a_idx in range(len(indices)):
+                    for b_idx in range(a_idx + 1, len(indices)):
+                        m, _, _ = match_participant_records(all_records[indices[a_idx]], all_records[indices[b_idx]])
+                        if m:
+                            dsu.union(indices[a_idx], indices[b_idx])
+            seen_roots = set()
+            unique_records = []
+            for i in range(n):
+                root = dsu.find(i)
+                if root not in seen_roots:
+                    seen_roots.add(root)
+                    unique_records.append(all_records[i])
+            all_records = unique_records
         
         import json
 
@@ -5830,6 +6026,28 @@ def participant_detail_view(request, study_id):
             district=getattr(participant, "district", None),
             state=getattr(participant, "state", None)
         )
+
+        # Check for other submissions for this individual in database (non-destructive preservation)
+        from questions.deduplication import normalize_phone, normalize_nikshay
+        associated_submissions = []
+        clean_nik = normalize_nikshay(getattr(participant, "nikshay_id", None))
+        clean_phone = normalize_phone(getattr(participant, "contact_number", None) or getattr(participant, "primary_phone", None))
+        if clean_nik or clean_phone:
+            from django.db.models import Q
+            q_assoc = Q()
+            if clean_nik:
+                q_assoc |= Q(nikshay_id__iexact=clean_nik)
+            if clean_phone and len(clean_phone) == 10:
+                q_assoc |= Q(contact_number__icontains=clean_phone)
+            assoc_qs = Participant.objects.filter(q_assoc).exclude(pk=participant.pk)
+            for a in assoc_qs:
+                associated_submissions.append({
+                    "study_id": a.study_id,
+                    "date_enroll": getattr(a, "date_enroll", None),
+                    "classification": getattr(a, "classification", "—"),
+                    "contact_number": getattr(a, "contact_number", "—"),
+                    "facility": getattr(a, "facility", "—"),
+                })
             
         return render(request, "questions/participant_detail.html", {
             "p": participant,
@@ -5842,7 +6060,8 @@ def participant_detail_view(request, study_id):
             "risk_factors_list": risk_factors_list,
             "audit_trail": audit_trail,
             "verification_status": v_status,
-            "adjudication_status": adj_status
+            "adjudication_status": adj_status,
+            "associated_submissions": associated_submissions,
         })
         
     # 2. Fallback / Mock participant adapter (renders in the NEW model template)
