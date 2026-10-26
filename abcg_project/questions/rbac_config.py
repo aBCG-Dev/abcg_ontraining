@@ -7,27 +7,27 @@ Defines sidebar visibility, module descriptions, and module-to-URL mappings.
 SIDEBAR_CONFIG = {
     "Super Admin": [
         "dashboard", "participants", "classification", "cases", "controls", "matching",
-        "adjudication", "analytics", "data_quality", "study_site",
-        "sync_telemetry", "data_export", "settings", "audit_logs",
+        "adjudication", "analytics", "photos_gallery", "data_quality", "study_site",
+        "daily_opd", "sync_telemetry", "data_export", "settings", "audit_logs",
         "user_management", "rbac_matrix"
     ],
     "Admin": [
-        "dashboard", "participants", "registration", "classification", "cases", "controls",
-        "matching", "analytics", "data_quality", "study_site",
+        "dashboard", "participants", "registration", "daily_opd", "classification", "cases", "controls",
+        "matching", "analytics", "photos_gallery", "data_quality", "study_site",
         "sync_telemetry", "data_export", "settings", "audit_logs",
         "user_management"
     ],
     "Nodal Officer": [
         "dashboard", "participants", "classification", "cases", "controls",
-        "matching", "analytics", "data_quality", "study_site",
-        "sync_telemetry", "audit_logs"
+        "matching", "analytics", "photos_gallery", "data_quality", "study_site",
+        "daily_opd", "sync_telemetry", "audit_logs"
     ],
     "Doctor": [
         "dashboard", "participants", "classification", "cases", "controls",
-        "matching", "adjudication", "doctor_queue"
+        "matching", "adjudication", "doctor_queue", "photos_gallery"
     ],
     "Project Nurse": [
-        "dashboard", "registration", "search", "sync_telemetry"
+        "dashboard", "daily_opd", "registration", "search", "photos_gallery", "sync_telemetry"
     ]
 }
 
@@ -37,6 +37,12 @@ MODULE_DESCRIPTIONS = {
         "label": "Dashboard",
         "description": "Operations dashboard and study statistics",
         "url_name": "questions:dashboard_home"
+    },
+    "daily_opd": {
+        "icon": "clipboard-plus",
+        "label": "Daily OPD Entry",
+        "description": "Daily site OPD count by age group and gender",
+        "url_name": "questions:daily_opd"
     },
     "participants": {
         "icon": "users",
@@ -127,6 +133,12 @@ MODULE_DESCRIPTIONS = {
         "label": "Data Export",
         "description": "Export authorized datasets in multiple formats",
         "url_name": "questions:data_export"
+    },
+    "photos_gallery": {
+        "icon": "images",
+        "label": "Photo Gallery",
+        "description": "Inspect collected BCG scar, vaccine card, and chest X-ray photos",
+        "url_name": "questions:photos_gallery"
     },
     "settings": {
         "icon": "settings",

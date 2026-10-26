@@ -140,6 +140,10 @@
           <i data-lucide="bar-chart-3"></i>
           <span>Analytics</span>
         </a>
+        <a class="nav-link {% if page == 'photos' %}active{% endif %}" href="{% url 'questions:photos_gallery' %}">
+          <i data-lucide="images"></i>
+          <span>Photo Gallery</span>
+        </a>
         <a class="nav-link {% if page == 'pending_sync' %}active{% endif %}" href="{% url 'questions:pending_sync' %}">
           <i data-lucide="refresh-cw"></i>
           <span>Sync Status</span>

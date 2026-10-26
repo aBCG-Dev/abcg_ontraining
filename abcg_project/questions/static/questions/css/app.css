@@ -298,6 +298,11 @@ body {
     border-left: 4px solid var(--brand) !important;
 }
 
+.workflow-card-opd {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
+    border-left: 4px solid #0284c7 !important;
+}
+
 .workflow-card-sync {
     background: linear-gradient(135deg, #ffffff 0%, #fbf7ff 100%) !important;
     border-left: 4px solid #8b5cf6 !important;

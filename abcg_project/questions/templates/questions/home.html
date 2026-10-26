@@ -142,7 +142,12 @@
                         <p class="text-muted small mb-0">{{ action.description }}</p>
                     </div>
                 </div>
-                <div class="d-flex justify-content-end mt-4">
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    {% if action.status %}
+                        <span class="badge {{ action.badge_class|default:'bg-light text-dark border' }} px-2.5 py-1.5" style="font-size: 0.75rem; border-radius: 6px;">{{ action.status }}</span>
+                    {% else %}
+                        <span></span>
+                    {% endif %}
                     <div class="action-button-circle">
                         <i class="bi bi-arrow-right"></i>
                     </div>
@@ -159,8 +164,30 @@
     <h2 class="h5 fw-bold text-dark mb-4">Daily Statistics</h2>
 
     <div class="row g-3">
+        <!-- Today's OPD Count -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card"
+                style="border-radius: var(--radius); border-left: 5px solid #0284c7 !important; background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;">
+                <div>
+                    <span class="summary-label mb-1">Today's OPD Count</span>
+                    <strong class="text-dark fs-2 d-block" style="line-height: 1.1;">{{ stats.today_opd_count }}</strong>
+                    <small class="text-muted">
+                        {% if stats.has_today_opd %}
+                            <span class="badge bg-success text-white py-0.5 px-2" style="font-size: 0.7rem;">Recorded</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark py-0.5 px-2" style="font-size: 0.7rem;">Pending</span>
+                        {% endif %}
+                        site footfall
+                    </small>
+                </div>
+                <div class="fs-1 text-info-emphasis opacity-25">
+                    <i class="bi bi-hospital"></i>
+                </div>
+            </div>
+        </div>
+
         <!-- Registered Today -->
-        <div class="col-md-4">
+        <div class="col-lg-3 col-md-6">
             <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-registered"
                 style="border-radius: var(--radius); border-left: 5px solid var(--brand) !important;">
                 <div>
@@ -175,7 +202,7 @@
         </div>
 
         <!-- Total Cases -->
-        <div class="col-md-4">
+        <div class="col-lg-3 col-md-6">
             <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-case"
                 style="border-radius: var(--radius); border-left: 5px solid var(--accent) !important;">
                 <div>
@@ -190,7 +217,7 @@
         </div>
 
         <!-- Total Controls -->
-        <div class="col-md-4">
+        <div class="col-lg-3 col-md-6">
             <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-control"
                 style="border-radius: var(--radius); border-left: 5px solid #d97706 !important;">
                 <div>

@@ -2956,6 +2956,139 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertNotIn(p_pending.study_id, case_ids)
 
 
+from questions.models import DailyOpdCount
+
+class DailyOpdCountTestCase(TestCase):
+    def setUp(self):
+        self.username = "nurse_test"
+        self.password = "pass123"
+        self.nurse_user = User.objects.create_user(username=self.username, password=self.password)
+        self.nurse_profile = self.nurse_user.profile
+        self.nurse_profile.role = "Project Nurse"
+        self.nurse_profile.state = "Tamil Nadu"
+        self.nurse_profile.district = "Tiruvallur"
+        self.nurse_profile.tb_unit = "Tiruvallur TU"
+        self.nurse_profile.save()
+
+        # Admin user for exports
+        self.admin_user = User.objects.create_superuser(username="admin_test", password="adminpassword", email="admin@test.com")
+        self.admin_profile = self.admin_user.profile
+        self.admin_profile.role = "Super Admin"
+        self.admin_profile.save()
+
+    def test_opd_model_calculation(self):
+        opd = DailyOpdCount.objects.create(
+            tb_unit="Tiruvallur TU",
+            facility="District Hospital",
+            date=timezone.localdate(),
+            breakdown={
+                "0-14": {"male": 5, "female": 10, "other": 1},
+                "15-29": {"male": 15, "female": 20, "other": 0},
+                "30-44": {"male": 25, "female": 30, "other": 0},
+                "45-59": {"male": 12, "female": 18, "other": 0},
+                "60+": {"male": 8, "female": 7, "other": 0},
+            },
+            entered_by=self.nurse_user
+        )
+        self.assertEqual(opd.total_male, 65)
+        self.assertEqual(opd.total_female, 85)
+        self.assertEqual(opd.total_other, 1)
+        self.assertEqual(opd.grand_total, 151)
+        self.assertEqual(opd.breakdown["0-14"]["total"], 16)
+        self.assertEqual(opd.breakdown["60+"]["total"], 15)
+
+    def test_daily_opd_get_nurse_login(self):
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.get(reverse("questions:daily_opd"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Daily Outpatient Department (OPD) Attendance")
+        self.assertContains(response, "Tiruvallur TU")
+        self.assertContains(response, "0–14 years")
+        self.assertContains(response, "60+ years")
+
+    def test_daily_opd_post_nurse_submission(self):
+        self.client.login(username=self.username, password=self.password)
+        payload = {
+            "date": timezone.localdate().isoformat(),
+            "facility": "Primary Health Centre",
+            "0-14_male": "10",
+            "0-14_female": "12",
+            "0-14_other": "0",
+            "15-29_male": "20",
+            "15-29_female": "25",
+            "15-29_other": "0",
+            "30-44_male": "15",
+            "30-44_female": "18",
+            "30-44_other": "0",
+            "45-59_male": "8",
+            "45-59_female": "9",
+            "45-59_other": "0",
+            "60+_male": "14",
+            "60+_female": "16",
+            "60+_other": "1",
+            "remarks": "Normal clinic flow today."
+        }
+        response = self.client.post(reverse("questions:daily_opd"), payload)
+        self.assertEqual(response.status_code, 302)
+
+        opd = DailyOpdCount.objects.filter(tb_unit="Tiruvallur TU", facility="Primary Health Centre").first()
+        self.assertIsNotNone(opd)
+        self.assertEqual(opd.total_male, 67)
+        self.assertEqual(opd.total_female, 80)
+        self.assertEqual(opd.total_other, 1)
+        self.assertEqual(opd.grand_total, 148)
+        self.assertEqual(opd.remarks, "Normal clinic flow today.")
+
+    def test_nurse_home_shows_opd_status(self):
+        DailyOpdCount.objects.create(
+            tb_unit="Tiruvallur TU",
+            facility="Tiruvallur TU PHI",
+            date=timezone.localdate(),
+            breakdown={"0-14": {"male": 50, "female": 50, "other": 0}},
+            entered_by=self.nurse_user
+        )
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.get(reverse("questions:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Today's OPD Count")
+        self.assertContains(response, "100")
+        self.assertContains(response, "Daily OPD Entry")
+
+    def test_export_opd_excel(self):
+        DailyOpdCount.objects.create(
+            tb_unit="Tiruvallur TU",
+            facility="Tiruvallur PHI",
+            date=timezone.localdate(),
+            breakdown={"60+": {"male": 10, "female": 12, "other": 0}},
+            entered_by=self.nurse_user
+        )
+        self.client.login(username="admin_test", password="adminpassword")
+        response = self.client.get(reverse("questions:export_opd_data") + "?format=excel")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        self.assertTrue(len(response.content) > 1000)
+
+    def test_export_opd_csv(self):
+        DailyOpdCount.objects.create(
+            tb_unit="Tiruvallur TU",
+            facility="Tiruvallur PHI",
+            date=timezone.localdate(),
+            breakdown={"0-14": {"male": 5, "female": 5, "other": 0}},
+            entered_by=self.nurse_user
+        )
+        self.client.login(username="admin_test", password="adminpassword")
+        response = self.client.get(reverse("questions:export_opd_data") + "?format=csv")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response["Content-Type"])
+        content = response.content.decode("utf-8-sig")
+        self.assertIn("0-14 Male", content)
+        self.assertIn("Tiruvallur TU", content)
+
+
+
 
 
 

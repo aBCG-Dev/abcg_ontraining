@@ -94,3 +94,14 @@ class IneligibleIndividualAdmin(admin.ModelAdmin):
     search_fields = ("study_id", "full_name", "contact_number", "nikshay_id")
     ordering = ("-created_at",)
 
+
+from .models import DailyOpdCount
+
+@admin.register(DailyOpdCount)
+class DailyOpdCountAdmin(admin.ModelAdmin):
+    list_display = ("date", "tb_unit", "facility", "total_male", "total_female", "total_other", "grand_total", "entered_by", "updated_at")
+    list_filter = ("date", "state", "district", "tb_unit")
+    search_fields = ("tb_unit", "facility", "remarks", "entered_by__username")
+    ordering = ("-date", "-created_at")
+
+

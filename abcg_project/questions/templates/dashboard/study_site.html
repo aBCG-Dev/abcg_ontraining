@@ -18,6 +18,10 @@
         </span>
         <span>Real-Time Fleet Live</span>
       </div>
+      <a href="{% url 'questions:export_opd_data' %}?format=excel" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 bg-sky-50 text-sky-700 text-xs font-semibold hover:bg-sky-100 transition-all shadow-xs text-decoration-none" title="Download all site daily OPD attendance reports in Excel">
+        <i data-lucide="file-spreadsheet" class="size-3.5 text-sky-600"></i>
+        <span>Download OPD Excel</span>
+      </a>
       <button onclick="pollRealtimeMetrics(true)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-all cursor-pointer shadow-xs" title="Refresh real-time data">
         <i data-lucide="refresh-cw" class="size-3.5 text-muted-foreground" id="globalRefreshIcon"></i>
         <span>Refresh</span>

@@ -893,5 +893,80 @@ def get_campaign_period_for_site(tb_unit=None, district=None, state=None):
     return "Jun 2024 - Aug 2024"
 
 
+class DailyOpdCount(models.Model):
+    """
+    Daily Outpatient Department (OPD) count collected from study sites by Project Nurses.
+    Records daily OPD attendance categorized by standard age groups (0-14, 15-29, 30-44, 45-59, 60+)
+    and gender (Male, Female, Transgender/Other).
+    """
+    STANDARD_AGE_GROUPS = [
+        ("0-14", "0–14 years"),
+        ("15-29", "15–29 years"),
+        ("30-44", "30–44 years"),
+        ("45-59", "45–59 years"),
+        ("60+", "60+ years"),
+    ]
+
+    date = models.DateField(default=timezone.localdate, db_index=True)
+    state = models.CharField(max_length=100, default="Tamil Nadu")
+    district = models.CharField(max_length=100, default="Tiruvallur")
+    tb_unit = models.CharField(max_length=100, db_index=True)
+    facility = models.CharField(max_length=150, blank=True, default="")
+
+    # Aggregated totals for rapid reporting and filtering
+    total_male = models.PositiveIntegerField(default=0)
+    total_female = models.PositiveIntegerField(default=0)
+    total_other = models.PositiveIntegerField(default=0)
+    grand_total = models.PositiveIntegerField(default=0)
+
+    # Detailed matrix breakdown: { "0-14": {"male": 10, "female": 12, "other": 0, "total": 22}, ... }
+    breakdown = models.JSONField(default=dict)
+
+    remarks = models.TextField(blank=True, default="")
+    entered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="daily_opd_entries")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+        verbose_name = "Daily OPD Count"
+        verbose_name_plural = "Daily OPD Counts"
+        unique_together = ("tb_unit", "facility", "date")
+
+    def __str__(self):
+        facility_str = f" - {self.facility}" if self.facility else ""
+        return f"OPD {self.date} | {self.tb_unit}{facility_str}: {self.grand_total} attendees"
+
+    def calculate_totals(self):
+        """Helper to compute column and row totals from the breakdown dictionary."""
+        t_male = 0
+        t_female = 0
+        t_other = 0
+        if isinstance(self.breakdown, dict):
+            for group_code, _ in self.STANDARD_AGE_GROUPS:
+                counts = self.breakdown.get(group_code, {})
+                if isinstance(counts, dict):
+                    m = int(counts.get("male", 0) or 0)
+                    f = int(counts.get("female", 0) or 0)
+                    o = int(counts.get("other", 0) or 0)
+                    counts["male"] = m
+                    counts["female"] = f
+                    counts["other"] = o
+                    counts["total"] = m + f + o
+                    self.breakdown[group_code] = counts
+                    t_male += m
+                    t_female += f
+                    t_other += o
+        self.total_male = t_male
+        self.total_female = t_female
+        self.total_other = t_other
+        self.grand_total = t_male + t_female + t_other
+
+    def save(self, *args, **kwargs):
+        self.calculate_totals()
+        super().save(*args, **kwargs)
+
+
+
 
 

@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from .models import (
     Participant, Symptom, RiskFactor, Question, Option, BcgVaccination,
     TptIndividual, IneligibleIndividual, DeviceSyncLog, NikshayRecord, sync_nikshay_record,
-    StudySite, StudyDevice, get_campaign_period_for_site
+    StudySite, StudyDevice, get_campaign_period_for_site, DailyOpdCount
 )
 from eptb.forms import EPTBScreeningForm
 from eptb.models import EptbSite, EptbSubQuestion
@@ -209,6 +209,11 @@ def home(request):
     total_cases = participants_filtered.filter(classification="Case").count()
     total_controls = participants_filtered.filter(classification="Control").count()
     
+    # Query today's OPD attendance submission for this nurse's site
+    today_opd_entry = DailyOpdCount.objects.filter(tb_unit=profile.tb_unit, date=today).first()
+    today_opd_count = today_opd_entry.grand_total if today_opd_entry else 0
+    has_today_opd = today_opd_entry is not None
+
     context = {
         "site": {
             "state": profile.state,
@@ -217,15 +222,27 @@ def home(request):
         },
         "stats": {
             "registered_today": total_registered_today,
+            "today_opd_count": today_opd_count,
+            "has_today_opd": has_today_opd,
             "cases": total_cases,
             "controls": total_controls,
         },
         "actions": [
             {
+                "icon": "bi-hospital",
+                "title": "Daily OPD Entry",
+                "description": "Record daily outpatient department attendance by age group and gender.",
+                "status": f"Today: {today_opd_count} Recorded" if has_today_opd else "Today: Pending Entry",
+                "badge_class": "bg-success text-white" if has_today_opd else "bg-warning text-dark",
+                "url_name": "questions:daily_opd",
+                "card_class": "workflow-card-opd"
+            },
+            {
                 "icon": "bi-person-plus",
                 "title": "New Registration",
                 "description": "Register participant, check campaign lock, and verify high-risk eligibility.",
                 "status": "Module 01",
+                "badge_class": "bg-light text-dark border",
                 "url_name": "questions:registration",
                 "card_class": "workflow-card-registration"
             },
@@ -234,6 +251,7 @@ def home(request):
                 "title": "Search Participant",
                 "description": "Find records by Study ID or Nikshay ID.",
                 "status": "Module 03",
+                "badge_class": "bg-light text-dark border",
                 "url_name": "questions:search",
                 "card_class": "workflow-card-search"
             },
@@ -242,6 +260,7 @@ def home(request):
                 "title": "Data Synchronization",
                 "description": "Review, validate, and synchronize staged offline records.",
                 "status": "Module 04",
+                "badge_class": "bg-light text-dark border",
                 "url_name": "questions:pending_sync",
                 "card_class": "workflow-card-sync"
             },
@@ -6146,3 +6165,567 @@ def participant_detail_view(request, study_id):
         "verification_status": v_status,
         "adjudication_status": adj_status
     })
+
+
+@group_required("Super Admin", "Admin", "Nodal Officer", "Doctor", "Project Nurse")
+def photos_gallery_view(request):
+    """
+    Clinical Photo Gallery to browse, inspect, and verify all captured participant media:
+    BCG Scar Photos, Vaccination Cards, and Chest X-Ray Radiographs.
+    """
+    import os, datetime, sqlite3
+    from django.conf import settings
+    from django.shortcuts import render
+    from questions.models import Participant, TptIndividual, IneligibleIndividual
+
+    media_roots = [
+        str(settings.MEDIA_ROOT),
+        os.path.join(str(settings.BASE_DIR), "central_backend", "media"),
+    ]
+
+    db_mapping = {}
+    for p in Participant.objects.all():
+        if p.bcg_scar_file:
+            db_mapping[os.path.basename(str(p.bcg_scar_file))] = {"study_id": p.study_id, "name": p.full_name, "category": "BCG Scar"}
+        if p.bcg_record_file:
+            db_mapping[os.path.basename(str(p.bcg_record_file))] = {"study_id": p.study_id, "name": p.full_name, "category": "Vaccination Card"}
+        if p.cxr_record_file:
+            db_mapping[os.path.basename(str(p.cxr_record_file))] = {"study_id": p.study_id, "name": p.full_name, "category": "Chest X-Ray"}
+
+    central_db_path = os.path.join(str(settings.BASE_DIR), "central_backend", "db.sqlite3")
+    if os.path.exists(central_db_path):
+        try:
+            conn = sqlite3.connect(central_db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT study_id, full_name, bcg_scar_file, bcg_record_file, cxr_record_file FROM api_participant")
+            for sid, name, scar, record, cxr in cur.fetchall():
+                if scar: db_mapping[os.path.basename(scar)] = {"study_id": sid, "name": name, "category": "BCG Scar"}
+                if record: db_mapping[os.path.basename(record)] = {"study_id": sid, "name": name, "category": "Vaccination Card"}
+                if cxr: db_mapping[os.path.basename(cxr)] = {"study_id": sid, "name": name, "category": "Chest X-Ray"}
+            conn.close()
+        except Exception:
+            pass
+
+    categories = {
+        "bcg_scar_records": {"label": "BCG Scar Photos", "code": "scar", "icon": "camera"},
+        "bcg_records": {"label": "Vaccination Cards", "code": "card", "icon": "card-heading"},
+        "cxr_records": {"label": "Chest X-Ray Films", "code": "cxr", "icon": "film"},
+    }
+
+    seen_files = set()
+    photos = []
+
+    for m_root in media_roots:
+        if not os.path.exists(m_root):
+            continue
+        for cat_folder, cat_info in categories.items():
+            dir_path = os.path.join(m_root, cat_folder)
+            if not os.path.exists(dir_path):
+                continue
+            for fname in sorted(os.listdir(dir_path)):
+                if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.tiff', '.tif')):
+                    rel_key = f"{cat_folder}/{fname}"
+                    if rel_key in seen_files:
+                        continue
+                    seen_files.add(rel_key)
+                    full_p = os.path.join(dir_path, fname)
+                    sz_bytes = os.path.getsize(full_p)
+                    mtime = os.path.getmtime(full_p)
+                    mtime_dt = datetime.datetime.fromtimestamp(mtime).strftime("%d %b %Y, %H:%M")
+
+                    if sz_bytes < 1024:
+                        sz_str = f"{sz_bytes} B"
+                    elif sz_bytes < 1024 * 1024:
+                        sz_str = f"{sz_bytes / 1024:.1f} KB"
+                    else:
+                        sz_str = f"{sz_bytes / (1024 * 1024):.2f} MB"
+
+                    part_info = db_mapping.get(fname, {})
+
+                    photos.append({
+                        "filename": fname,
+                        "rel_path": rel_key,
+                        "url": f"/media/{cat_folder}/{fname}",
+                        "absolute_path": full_p,
+                        "category_folder": cat_folder,
+                        "category_label": cat_info["label"],
+                        "category_code": cat_info["code"],
+                        "category_icon": cat_info["icon"],
+                        "size_str": sz_str,
+                        "size_bytes": sz_bytes,
+                        "modified_date": mtime_dt,
+                        "study_id": part_info.get("study_id", ""),
+                        "participant_name": part_info.get("name", ""),
+                    })
+
+    photos.sort(key=lambda x: (x["size_bytes"] > 100, x["modified_date"]), reverse=True)
+
+    cat_filter = request.GET.get("category", "all").strip().lower()
+    q = request.GET.get("q", "").strip().lower()
+
+    filtered_photos = photos
+    if cat_filter in ["scar", "card", "cxr"]:
+        filtered_photos = [p for p in filtered_photos if p["category_code"] == cat_filter]
+
+    if q:
+        filtered_photos = [
+            p for p in filtered_photos
+            if q in p["filename"].lower()
+            or q in p["study_id"].lower()
+            or q in p["participant_name"].lower()
+            or q in p["category_label"].lower()
+        ]
+
+    total_count = len(photos)
+    scar_count = sum(1 for p in photos if p["category_code"] == "scar")
+    card_count = sum(1 for p in photos if p["category_code"] == "card")
+    cxr_count = sum(1 for p in photos if p["category_code"] == "cxr")
+
+    context = {
+        "page": "photos",
+        "photos": filtered_photos,
+        "total_count": total_count,
+        "displayed_count": len(filtered_photos),
+        "scar_count": scar_count,
+        "card_count": card_count,
+        "cxr_count": cxr_count,
+        "active_category": cat_filter,
+        "q": q,
+        "local_media_path": os.path.abspath(os.path.join(str(settings.BASE_DIR), "central_backend", "media")),
+    }
+    return render(request, "dashboard/photos_gallery.html", context)
+
+
+@login_required
+def daily_opd_view(request):
+    """
+    Daily Outpatient Department (OPD) data entry and site monitoring view.
+    Designed for Project Nurses to record daily site OPD attendance categorized by
+    gender (Male, Female, Other) and standard age groups (0-14, 15-29, 30-44, 45-59, 60+).
+    Also accessible by supervisors, nodal officers, and administrators.
+    """
+    from questions.models import DailyOpdCount
+    from questions.locations_data import JURISDICTION_DATA
+    from django.contrib import messages
+    import datetime
+
+    profile = getattr(request.user, "profile", None)
+    if not profile:
+        messages.error(request, "User profile not found. Please log in again.")
+        return redirect("questions:home")
+
+    role = getattr(profile, "role", "Project Nurse")
+    today = timezone.localdate()
+
+    # Determine site details
+    state = profile.state or "Tamil Nadu"
+    district = profile.district or "Tiruvallur"
+    tb_unit = profile.tb_unit or "Tiruvallur TU"
+
+    # Facility options for this TB Unit from master jurisdiction data
+    facility_options = []
+    try:
+        juris_facs = JURISDICTION_DATA.get(state, {}).get(district, {}).get(tb_unit, [])
+        if isinstance(juris_facs, list):
+            facility_options.extend(juris_facs)
+    except Exception:
+        pass
+
+    # Also include any facilities previously recorded for this site
+    known_facs = list(
+        DailyOpdCount.objects.filter(tb_unit=tb_unit)
+        .exclude(facility="")
+        .values_list("facility", flat=True)
+        .distinct()
+    )
+    for f in known_facs:
+        if f and f not in facility_options:
+            facility_options.append(f)
+
+    if not facility_options:
+        facility_options = [f"{tb_unit} PHI"]
+
+    # Target date selection (defaults to today)
+    target_date_str = request.GET.get("date") or request.POST.get("date")
+    target_date = today
+    if target_date_str:
+        try:
+            target_date = datetime.date.fromisoformat(target_date_str.strip())
+        except Exception:
+            target_date = today
+
+    # Target facility selection
+    selected_facility = request.GET.get("facility") or request.POST.get("facility")
+    if not selected_facility and facility_options:
+        selected_facility = facility_options[0]
+
+    # POST handling: Save or update OPD headcount record
+    if request.method == "POST":
+        remarks = request.POST.get("remarks", "").strip()
+        custom_facility = request.POST.get("custom_facility", "").strip()
+        if custom_facility:
+            selected_facility = custom_facility
+        elif not selected_facility and facility_options:
+            selected_facility = facility_options[0]
+
+        breakdown = {}
+        for group_code, group_label in DailyOpdCount.STANDARD_AGE_GROUPS:
+            try:
+                m = max(0, int(request.POST.get(f"{group_code}_male", 0) or 0))
+            except (ValueError, TypeError):
+                m = 0
+            try:
+                f = max(0, int(request.POST.get(f"{group_code}_female", 0) or 0))
+            except (ValueError, TypeError):
+                f = 0
+            try:
+                o = max(0, int(request.POST.get(f"{group_code}_other", 0) or 0))
+            except (ValueError, TypeError):
+                o = 0
+
+            breakdown[group_code] = {
+                "male": m,
+                "female": f,
+                "other": o,
+                "total": m + f + o,
+            }
+
+        # Update or create OPD record for this site, facility, and date
+        opd_record, created = DailyOpdCount.objects.update_or_create(
+            tb_unit=tb_unit,
+            facility=selected_facility,
+            date=target_date,
+            defaults={
+                "state": state,
+                "district": district,
+                "breakdown": breakdown,
+                "remarks": remarks,
+                "entered_by": request.user,
+            }
+        )
+
+        action_word = "recorded" if created else "updated"
+        messages.success(
+            request,
+            f"Daily OPD count of {opd_record.grand_total} attendees for {tb_unit} "
+            f"({selected_facility or 'General'}) on {target_date.strftime('%d-%b-%Y')} "
+            f"successfully {action_word}!"
+        )
+        return redirect(f"{request.path}?date={target_date.isoformat()}&facility={selected_facility}")
+
+    # Query existing entry for prefill
+    existing_entry = DailyOpdCount.objects.filter(
+        tb_unit=tb_unit,
+        facility=selected_facility,
+        date=target_date
+    ).first()
+
+    # Build form matrix rows
+    age_groups_matrix = []
+    initial_breakdown = existing_entry.breakdown if (existing_entry and isinstance(existing_entry.breakdown, dict)) else {}
+
+    col_total_male = 0
+    col_total_female = 0
+    col_total_other = 0
+
+    for group_code, group_label in DailyOpdCount.STANDARD_AGE_GROUPS:
+        counts = initial_breakdown.get(group_code, {})
+        m = int(counts.get("male", 0) or 0)
+        f = int(counts.get("female", 0) or 0)
+        o = int(counts.get("other", 0) or 0)
+        row_tot = m + f + o
+        col_total_male += m
+        col_total_female += f
+        col_total_other += o
+
+        age_groups_matrix.append({
+            "code": group_code,
+            "label": group_label,
+            "male": m if existing_entry else "",
+            "female": f if existing_entry else "",
+            "other": o if existing_entry else "",
+            "row_total": row_tot if existing_entry else 0,
+        })
+
+    grand_total = col_total_male + col_total_female + col_total_other
+
+    # Query recent submission history
+    if role in ["Super Admin", "Admin", "Nodal Officer"]:
+        history_qs = filter_by_jurisdiction(DailyOpdCount.objects.all(), request)
+    else:
+        history_qs = DailyOpdCount.objects.filter(tb_unit=tb_unit)
+
+    history_records = history_qs.order_by("-date", "-created_at")[:25]
+
+    # Site OPD metrics (Last 7 days total, today total)
+    seven_days_ago = today - datetime.timedelta(days=7)
+    site_records_7d = history_qs.filter(date__gte=seven_days_ago)
+    opd_7d_total = sum(r.grand_total for r in site_records_7d)
+    opd_today_total = sum(r.grand_total for r in history_qs.filter(date=today))
+
+    context = {
+        "page": "daily_opd",
+        "site": {
+            "state": state,
+            "district": district,
+            "tb_unit": tb_unit,
+        },
+        "target_date": target_date,
+        "target_date_str": target_date.isoformat(),
+        "today_str": today.isoformat(),
+        "facility_options": facility_options,
+        "selected_facility": selected_facility,
+        "existing_entry": existing_entry,
+        "age_groups_matrix": age_groups_matrix,
+        "remarks": existing_entry.remarks if existing_entry else "",
+        "col_total_male": col_total_male if existing_entry else 0,
+        "col_total_female": col_total_female if existing_entry else 0,
+        "col_total_other": col_total_other if existing_entry else 0,
+        "grand_total": grand_total if existing_entry else 0,
+        "history_records": history_records,
+        "opd_7d_total": opd_7d_total,
+        "opd_today_total": opd_today_total,
+    }
+    return render(request, "questions/daily_opd.html", context)
+
+
+@login_required
+def export_opd_excel_view(request):
+    """
+    Central Dashboard view to export Daily OPD attendance records from all sites.
+    Generates a professionally formatted Excel (.xlsx) or CSV (.csv) workbook
+    containing site metadata, age-group-wise and gender-wise OPD counts, totals,
+    and submission audit info.
+    """
+    import csv
+    from django.http import HttpResponse
+    from questions.models import DailyOpdCount
+    import datetime
+
+    # Apply jurisdiction filter based on user role and session filters
+    qs = filter_by_jurisdiction(DailyOpdCount.objects.all(), request)
+
+    # Optional date filters
+    start_date_str = request.GET.get("start_date")
+    end_date_str = request.GET.get("end_date")
+    if start_date_str:
+        try:
+            sd = datetime.date.fromisoformat(start_date_str.strip())
+            qs = qs.filter(date__gte=sd)
+        except Exception:
+            pass
+    if end_date_str:
+        try:
+            ed = datetime.date.fromisoformat(end_date_str.strip())
+            qs = qs.filter(date__lte=ed)
+        except Exception:
+            pass
+
+    records = list(qs.order_by("-date", "state", "district", "tb_unit", "facility"))
+    export_format = request.GET.get("format", "excel").lower()
+    timestamp_str = timezone.now().strftime("%Y%m%d_%H%M%S")
+
+    headers = [
+        "S.No", "Date", "State", "District", "TB Unit", "Facility / PHI",
+        "0-14 Male", "0-14 Female", "0-14 Total",
+        "15-29 Male", "15-29 Female", "15-29 Total",
+        "30-44 Male", "30-44 Female", "30-44 Total",
+        "45-59 Male", "45-59 Female", "45-59 Total",
+        "60+ Male", "60+ Female", "60+ Total",
+        "Total Male", "Total Female", "Total Transgender/Other", "Grand Total OPD",
+        "Remarks", "Entered By", "Submitted At"
+    ]
+
+    def extract_row_data(idx, r):
+        bd = r.breakdown if isinstance(r.breakdown, dict) else {}
+        def get_g(code):
+            c = bd.get(code, {})
+            m = int(c.get("male", 0) or 0)
+            f = int(c.get("female", 0) or 0)
+            return m, f, (m + f + int(c.get("other", 0) or 0))
+
+        m14, f14, t14 = get_g("0-14")
+        m29, f29, t29 = get_g("15-29")
+        m44, f44, t44 = get_g("30-44")
+        m59, f59, t59 = get_g("45-59")
+        m60, f60, t60 = get_g("60+")
+
+        return [
+            idx,
+            r.date.strftime("%Y-%m-%d"),
+            r.state,
+            r.district,
+            r.tb_unit,
+            r.facility or "General",
+            m14, f14, t14,
+            m29, f29, t29,
+            m44, f44, t44,
+            m59, f59, t59,
+            m60, f60, t60,
+            r.total_male,
+            r.total_female,
+            r.total_other,
+            r.grand_total,
+            r.remarks or "",
+            r.entered_by.username if r.entered_by else "System",
+            r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else ""
+        ]
+
+    # 1. CSV EXPORT
+    if export_format == "csv":
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="aBCG_Daily_OPD_Report_{timestamp_str}.csv"'
+        response.write("\ufeff")  # BOM for Excel UTF-8 compatibility
+        writer = csv.writer(response)
+        writer.writerow(headers)
+        for i, r in enumerate(records, 1):
+            writer.writerow(extract_row_data(i, r))
+        return response
+
+    # 2. EXCEL (.xlsx) EXPORT via openpyxl
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from io import BytesIO
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Daily OPD Attendance"
+
+    # Professional styles
+    title_font = Font(name="Calibri", size=14, bold=True, color="1F4E79")
+    subtitle_font = Font(name="Calibri", size=10, italic=True, color="595959")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    data_font = Font(name="Calibri", size=10)
+    bold_data_font = Font(name="Calibri", size=10, bold=True)
+    summary_font = Font(name="Calibri", size=11, bold=True, color="1F4E79")
+
+    header_fill = PatternFill(start_color="0F2942", end_color="0F2942", fill_type="solid")
+    alt_fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+    summary_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
+
+    thin_border = Border(
+        left=Side(style='thin', color='D9D9D9'),
+        right=Side(style='thin', color='D9D9D9'),
+        top=Side(style='thin', color='D9D9D9'),
+        bottom=Side(style='thin', color='D9D9D9')
+    )
+    summary_border = Border(
+        top=Side(style='thin', color='1F4E79'),
+        bottom=Side(style='double', color='1F4E79'),
+        left=Side(style='thin', color='D9D9D9'),
+        right=Side(style='thin', color='D9D9D9')
+    )
+
+    # Title Rows
+    ws.append(["Adult BCG Vaccine Effectiveness Study (aBCG) - Daily OPD Attendance Report"])
+    ws.cell(row=1, column=1).font = title_font
+
+    generated_info = f"Generated on: {timezone.now().strftime('%d-%b-%Y %H:%M')} | Total Records: {len(records)} | Exported from Central Dashboard"
+    ws.append([generated_info])
+    ws.cell(row=2, column=1).font = subtitle_font
+    ws.append([])  # Spacer
+
+    # Table Header (Row 4)
+    ws.append(headers)
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=4, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = thin_border
+    ws.row_dimensions[4].height = 28
+
+    # Data Rows
+    current_row = 5
+    for i, r in enumerate(records, 1):
+        row_vals = extract_row_data(i, r)
+        ws.append(row_vals)
+        is_alt = (i % 2 == 0)
+        for col_idx, val in enumerate(row_vals, 1):
+            cell = ws.cell(row=current_row, column=col_idx)
+            cell.font = data_font
+            cell.border = thin_border
+            if is_alt:
+                cell.fill = alt_fill
+
+            if col_idx == 1:
+                cell.alignment = Alignment(horizontal="center")
+            elif col_idx in [2, 3, 4, 5, 6]:
+                cell.alignment = Alignment(horizontal="left")
+            elif 7 <= col_idx <= 25:
+                cell.alignment = Alignment(horizontal="right")
+                cell.number_format = '#,##0'
+                if col_idx in [9, 12, 15, 18, 21, 22, 23, 25]:
+                    cell.font = bold_data_font
+            else:
+                cell.alignment = Alignment(horizontal="left")
+
+        current_row += 1
+
+    # Summary Row
+    if records:
+        total_male_sum = sum(r.total_male for r in records)
+        total_female_sum = sum(r.total_female for r in records)
+        total_other_sum = sum(r.total_other for r in records)
+        grand_total_sum = sum(r.grand_total for r in records)
+
+        summary_row = [
+            "TOTAL", f"{len(records)} entries", "", "", "", "All Sites Combined",
+            sum(int((r.breakdown or {}).get("0-14", {}).get("male", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("0-14", {}).get("female", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("0-14", {}).get("total", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("15-29", {}).get("male", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("15-29", {}).get("female", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("15-29", {}).get("total", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("30-44", {}).get("male", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("30-44", {}).get("female", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("30-44", {}).get("total", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("45-59", {}).get("male", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("45-59", {}).get("female", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("45-59", {}).get("total", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("60+", {}).get("male", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("60+", {}).get("female", 0) or 0) for r in records),
+            sum(int((r.breakdown or {}).get("60+", {}).get("total", 0) or 0) for r in records),
+            total_male_sum,
+            total_female_sum,
+            total_other_sum,
+            grand_total_sum,
+            "", "", ""
+        ]
+        ws.append(summary_row)
+        for col_idx in range(1, len(summary_row) + 1):
+            cell = ws.cell(row=current_row, column=col_idx)
+            cell.font = summary_font
+            cell.fill = summary_fill
+            cell.border = summary_border
+            if 7 <= col_idx <= 25:
+                cell.alignment = Alignment(horizontal="right")
+                cell.number_format = '#,##0'
+            else:
+                cell.alignment = Alignment(horizontal="center" if col_idx == 1 else "left")
+        ws.row_dimensions[current_row].height = 24
+
+    # Column Auto-Width
+    for col in ws.columns:
+        col_letter = get_column_letter(col[0].column)
+        max_len = 0
+        for cell in col:
+            if cell.row < 4:
+                continue
+            val_str = str(cell.value or "")
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 11)
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="aBCG_Daily_OPD_Surveillance_{timestamp_str}.xlsx"'
+    return response
+

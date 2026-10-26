@@ -9,6 +9,7 @@ urlpatterns = [
     path("logout/", views.user_logout, name="logout"),
     path("registration/", views.registration, name="registration"),
     path("registration/edit/<int:pk>/", views.registration, name="registration_edit"),
+    path("daily-opd/", views.daily_opd_view, name="daily_opd"),
     path("search/", views.search, name="search"),
     path("registration/verify-beneficiary/", views.verify_beneficiary, name="verify_beneficiary"),
     path("pending-sync/", views.pending_sync, name="pending_sync"),
@@ -44,6 +45,8 @@ urlpatterns = [
     path("dashboard/telemetry/", views.sync_telemetry_view, name="sync_telemetry"),
     path("dashboard/export/", views.data_export_view, name="data_export"),
     path("dashboard/data-export/", RedirectView.as_view(pattern_name="questions:data_export", permanent=True)),
+    path("dashboard/export/opd/", views.export_opd_excel_view, name="export_opd_data"),
+    path("dashboard/photos/", views.photos_gallery_view, name="photos_gallery"),
     path("dashboard/settings/", views.settings_view, name="settings"),
     path("dashboard/participant/<str:study_id>/", views.participant_detail_view, name="participant_detail"),
 ]

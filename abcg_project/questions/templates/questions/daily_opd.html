@@ -1,0 +1,511 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+{% load rbac_tags %}
+
+{% block title %}Daily OPD Entry | aBCG Study{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-md-4" style="max-width: 1280px;">
+
+    <!-- Breadcrumb & Navigation -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb bg-transparent p-0 mb-0 small">
+            <li class="breadcrumb-item"><a href="{% url 'questions:home' %}" class="text-decoration-none text-muted"><i class="bi bi-house me-1"></i>Dashboard</a></li>
+            <li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">Daily OPD Attendance Register</li>
+        </ol>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 pb-3 mb-4 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                    <i class="bi bi-hospital me-1"></i>Site Denominator Surveillance
+                </span>
+                {% if existing_entry %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill fw-bold" style="font-size: 0.72rem;">
+                        <i class="bi bi-check-circle-fill me-1"></i>Record Saved
+                    </span>
+                {% else %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill fw-bold" style="font-size: 0.72rem;">
+                        <i class="bi bi-clock-history me-1"></i>New Entry
+                    </span>
+                {% endif %}
+            </div>
+            <h1 class="h3 fw-bold text-dark mt-2 mb-1">Daily Outpatient Department (OPD) Attendance</h1>
+            <p class="text-muted small mb-0">Record and monitor site OPD footfall categorized by standard age groups and gender for TB screening rate &amp; study denominator analysis.</p>
+        </div>
+
+        <!-- Metric KPI Pills -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="card border-0 shadow-sm px-3 py-2 bg-white" style="border-radius: var(--radius); min-width: 130px;">
+                <div class="text-muted text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.5px;">Today's OPD</div>
+                <div class="fs-4 fw-bold text-primary" style="line-height: 1.1;">{{ opd_today_total }}</div>
+                <div class="small text-muted" style="font-size: 0.7rem;">Site Attendees</div>
+            </div>
+            <div class="card border-0 shadow-sm px-3 py-2 bg-white" style="border-radius: var(--radius); min-width: 140px;">
+                <div class="text-muted text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.5px;">Last 7 Days Total</div>
+                <div class="fs-4 fw-bold text-success" style="line-height: 1.1;">{{ opd_7d_total }}</div>
+                <div class="small text-muted" style="font-size: 0.7rem;">Combined OPD Count</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Django Messages Alert Banner -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center gap-2 mb-4" role="alert" style="border-radius: var(--radius);">
+                {% if message.tags == 'success' %}
+                    <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+                {% elif message.tags == 'error' or message.tags == 'danger' %}
+                    <i class="bi bi-exclamation-triangle-fill fs-5 text-danger"></i>
+                {% else %}
+                    <i class="bi bi-info-circle-fill fs-5 text-info"></i>
+                {% endif %}
+                <div class="fw-medium">{{ message }}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Main Entry Form Card -->
+    <div class="card border-0 shadow-sm bg-white mb-4" style="border-radius: var(--radius);">
+        <div class="card-header bg-white border-bottom py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3">
+                    <i class="bi bi-ui-checks-grid fs-5"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">OPD Data Collection Grid</h5>
+                    <small class="text-muted">Enter headcount for each age group by gender</small>
+                </div>
+            </div>
+
+            <!-- Fast Action Controls -->
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" onclick="prefillZeros()" title="Fill empty cells with 0">
+                    <i class="bi bi-0-circle"></i>
+                    <span>Fill Zeros</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" onclick="clearMatrix()" title="Clear all matrix values">
+                    <i class="bi bi-eraser"></i>
+                    <span>Clear All</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <form method="post" id="dailyOpdForm">
+                {% csrf_token %}
+
+                <!-- 1. Metadata / Scope Bar -->
+                <div class="row g-3 p-3 bg-light rounded-3 border mb-4" style="border-color: #e2e8f0 !important;">
+                    <!-- Date Picker -->
+                    <div class="col-md-3">
+                        <label for="opd_date" class="form-label text-muted fw-bold small mb-1">
+                            <i class="bi bi-calendar3 me-1 text-primary"></i>REPORTING DATE <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <input type="date" class="form-control form-control-sm fw-semibold" id="opd_date" name="date" value="{{ target_date_str }}" max="{{ today_str }}" required onchange="handleDateChange(this.value)">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="setTodayDate()" title="Jump to Today">Today</button>
+                        </div>
+                        <small class="text-muted" style="font-size: 0.72rem;">Changing date loads that date's data</small>
+                    </div>
+
+                    <!-- State & District (Locked from Profile) -->
+                    <div class="col-md-3">
+                        <label class="form-label text-muted fw-bold small mb-1">
+                            <i class="bi bi-geo-alt me-1 text-secondary"></i>STATE &amp; DISTRICT
+                        </label>
+                        <input type="text" class="form-control form-control-sm bg-white" value="{{ site.state }} &bull; {{ site.district }}" readonly disabled>
+                        <small class="text-muted" style="font-size: 0.72rem;">Assigned Study Jurisdiction</small>
+                    </div>
+
+                    <!-- TB Unit (Locked from Profile) -->
+                    <div class="col-md-3">
+                        <label class="form-label text-muted fw-bold small mb-1">
+                            <i class="bi bi-pin-map me-1 text-secondary"></i>TUBERCULOSIS UNIT (TBU)
+                        </label>
+                        <input type="text" class="form-control form-control-sm bg-white fw-bold text-dark" value="{{ site.tb_unit }}" readonly disabled>
+                        <small class="text-muted" style="font-size: 0.72rem;">Site Clinical Base</small>
+                    </div>
+
+                    <!-- Facility / PHI Selection -->
+                    <div class="col-md-3">
+                        <label for="opd_facility" class="form-label text-muted fw-bold small mb-1">
+                            <i class="bi bi-hospital me-1 text-primary"></i>FACILITY / PHI <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select form-select-sm fw-semibold" id="opd_facility" name="facility" onchange="handleFacilityChange(this.value)">
+                            {% for fac in facility_options %}
+                                <option value="{{ fac }}" {% if fac == selected_facility %}selected{% endif %}>{{ fac }}</option>
+                            {% endfor %}
+                            <option value="__custom__">+ Enter Custom Facility...</option>
+                        </select>
+                        <input type="text" class="form-control form-control-sm mt-1 d-none" id="custom_facility_input" name="custom_facility" placeholder="Enter facility name...">
+                    </div>
+                </div>
+
+                <!-- Existing Record Notice -->
+                {% if existing_entry %}
+                    <div class="alert alert-info py-2 px-3 border-0 bg-info-subtle text-info-emphasis d-flex align-items-center gap-2 mb-4" style="border-radius: 8px; font-size: 0.85rem;">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>
+                            <strong>Existing record found</strong> for <strong>{{ existing_entry.date|date:"d-M-Y" }}</strong> at <strong>{{ existing_entry.facility|default:site.tb_unit }}</strong>.
+                            Last updated on {{ existing_entry.updated_at|date:"d M Y, h:i A" }}{% if existing_entry.entered_by %} by <strong>{{ existing_entry.entered_by.username }}</strong>{% endif %}.
+                            You can edit values below and click <strong>Update OPD Attendance</strong>.
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 2. Gender x Age Group Matrix Table -->
+                <div class="table-responsive border rounded-3 mb-4 shadow-2xs">
+                    <table class="table table-bordered table-hover align-middle mb-0 opd-matrix-table" id="opdMatrixTable">
+                        <thead style="background-color: #0f2942; color: #ffffff;">
+                            <tr class="text-center align-middle" style="font-size: 0.85rem;">
+                                <th style="width: 28%; text-align: left; padding: 12px 16px;">
+                                    <i class="bi bi-people me-1"></i> AGE GROUP
+                                </th>
+                                <th style="width: 18%; background-color: #12385c; color: #93c5fd;">
+                                    <i class="bi bi-gender-male me-1"></i> MALE
+                                </th>
+                                <th style="width: 18%; background-color: #1a416b; color: #f472b6;">
+                                    <i class="bi bi-gender-female me-1"></i> FEMALE
+                                </th>
+                                <th style="width: 18%; background-color: #12385c; color: #cbd5e1;">
+                                    <i class="bi bi-gender-ambiguous me-1"></i> TRANSGENDER / OTHER
+                                </th>
+                                <th style="width: 18%; background-color: #0b1e30; color: #38bdf8;">
+                                    <i class="bi bi-calculator me-1"></i> AGE GROUP TOTAL
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white">
+                            {% for row in age_groups_matrix %}
+                            <tr data-group="{{ row.code }}">
+                                <!-- Age Group Label -->
+                                <td class="px-3 py-2.5">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 0.82rem; font-family: monospace;">{{ row.code }}</span>
+                                        <div>
+                                            <strong class="text-dark d-block" style="font-size: 0.9rem;">{{ row.label }}</strong>
+                                            {% if row.code == '0-14' %}
+                                                <small class="text-muted" style="font-size: 0.72rem;">Pediatric Outpatients</small>
+                                            {% elif row.code == '60+' %}
+                                                <small class="text-primary fw-semibold" style="font-size: 0.72rem;">Adult BCG High-Risk Eligible Age Group</small>
+                                            {% elif row.code == '15-29' %}
+                                                <small class="text-muted" style="font-size: 0.72rem;">Youth &amp; Young Adults</small>
+                                            {% else %}
+                                                <small class="text-muted" style="font-size: 0.72rem;">Adult Population</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Male Input -->
+                                <td class="p-2 text-center bg-blue-50/20">
+                                    <input type="number" 
+                                           class="form-control form-control-sm text-center fw-bold matrix-input male-input" 
+                                           name="{{ row.code }}_male" 
+                                           id="{{ row.code }}_male" 
+                                           min="0" 
+                                           step="1" 
+                                           placeholder="0" 
+                                           value="{{ row.male }}" 
+                                           oninput="recalculateTotals()" 
+                                           onfocus="this.select()"
+                                           style="border-color: #cbd5e1; font-size: 0.95rem; height: 38px;">
+                                </td>
+
+                                <!-- Female Input -->
+                                <td class="p-2 text-center bg-pink-50/20">
+                                    <input type="number" 
+                                           class="form-control form-control-sm text-center fw-bold matrix-input female-input" 
+                                           name="{{ row.code }}_female" 
+                                           id="{{ row.code }}_female" 
+                                           min="0" 
+                                           step="1" 
+                                           placeholder="0" 
+                                           value="{{ row.female }}" 
+                                           oninput="recalculateTotals()" 
+                                           onfocus="this.select()"
+                                           style="border-color: #cbd5e1; font-size: 0.95rem; height: 38px;">
+                                </td>
+
+                                <!-- Transgender / Other Input -->
+                                <td class="p-2 text-center">
+                                    <input type="number" 
+                                           class="form-control form-control-sm text-center fw-bold matrix-input other-input" 
+                                           name="{{ row.code }}_other" 
+                                           id="{{ row.code }}_other" 
+                                           min="0" 
+                                           step="1" 
+                                           placeholder="0" 
+                                           value="{{ row.other }}" 
+                                           oninput="recalculateTotals()" 
+                                           onfocus="this.select()"
+                                           style="border-color: #cbd5e1; font-size: 0.95rem; height: 38px;">
+                                </td>
+
+                                <!-- Row Total (Auto-calculated) -->
+                                <td class="px-3 py-2 text-center bg-light">
+                                    <span class="fs-6 fw-extrabold text-dark row-total-badge" id="row_total_{{ row.code }}">{{ row.row_total }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+
+                        <!-- Grand Total Footer Row -->
+                        <tfoot style="background-color: #f1f5f9; border-top: 2px solid #0f2942;">
+                            <tr class="align-middle">
+                                <td class="px-3 py-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-dark text-white px-2 py-1 uppercase fw-bold" style="font-size: 0.75rem;">SUMMARY</span>
+                                        <strong class="text-dark fs-6 text-uppercase">TOTAL SITE OPD ATTENDANCE</strong>
+                                    </div>
+                                </td>
+                                <!-- Male Total Column -->
+                                <td class="text-center py-3 bg-blue-50/50">
+                                    <div class="small text-muted" style="font-size: 0.7rem;">TOTAL MALE</div>
+                                    <span class="fs-5 fw-bold text-primary" id="col_total_male">{{ col_total_male }}</span>
+                                </td>
+                                <!-- Female Total Column -->
+                                <td class="text-center py-3 bg-pink-50/50">
+                                    <div class="small text-muted" style="font-size: 0.7rem;">TOTAL FEMALE</div>
+                                    <span class="fs-5 fw-bold text-danger" id="col_total_female">{{ col_total_female }}</span>
+                                </td>
+                                <!-- Other Total Column -->
+                                <td class="text-center py-3 bg-slate-50">
+                                    <div class="small text-muted" style="font-size: 0.7rem;">TOTAL OTHER</div>
+                                    <span class="fs-5 fw-bold text-secondary" id="col_total_other">{{ col_total_other }}</span>
+                                </td>
+                                <!-- Grand Total Column -->
+                                <td class="text-center py-3" style="background-color: #e0f2fe;">
+                                    <div class="small fw-bold text-primary" style="font-size: 0.72rem;">GRAND TOTAL OPD</div>
+                                    <span class="fs-4 fw-extrabold text-primary d-block" id="grand_total_badge" style="line-height: 1.1;">{{ grand_total }}</span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- 3. Operational Remarks Field -->
+                <div class="mb-4">
+                    <label for="opd_remarks" class="form-label text-muted fw-bold small mb-1">
+                        <i class="bi bi-chat-left-text me-1"></i>OPERATIONAL REMARKS / NOTES (OPTIONAL)
+                    </label>
+                    <textarea class="form-control form-control-sm" id="opd_remarks" name="remarks" rows="2" placeholder="e.g., General medicine clinic day, special health camp conducted, weather conditions affecting patient flow, etc.">{{ remarks }}</textarea>
+                </div>
+
+                <!-- 4. Action Buttons -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-3 border-top">
+                    <div class="text-muted small">
+                        <i class="bi bi-shield-lock-fill text-success me-1"></i>
+                        <span>Audit tracked with user account <strong>@{{ request.user.username }}</strong></span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{% url 'questions:home' %}" class="btn btn-outline-secondary px-4 py-2" style="border-radius: var(--radius); font-weight: 600;">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4 py-2 d-inline-flex align-items-center gap-2 shadow-sm" style="background-color: var(--brand); border: none; border-radius: var(--radius); font-weight: 700;">
+                            <i class="bi bi-check2-circle fs-5"></i>
+                            <span>{% if existing_entry %}Update OPD Attendance{% else %}Save Daily OPD Attendance{% endif %}</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Recent Site OPD Submissions Log Card -->
+    <div class="card border-0 shadow-sm bg-white" style="border-radius: var(--radius);">
+        <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-clock-history text-primary"></i>
+                    <span>Recent Site OPD Submissions</span>
+                </h5>
+                <small class="text-muted">History of past recorded OPD headcounts for this site</small>
+            </div>
+            {% if user|has_any_group:"Super Admin,Admin,Nodal Officer,Doctor" %}
+                <a href="{% url 'questions:export_opd_data' %}?format=excel" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5" title="Download all site OPD records to Excel">
+                    <i class="bi bi-file-earmark-excel"></i>
+                    <span>Download All Sites Excel</span>
+                </a>
+            {% endif %}
+        </div>
+
+        <div class="card-body p-0">
+            {% if history_records %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                        <thead class="table-light text-muted" style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <tr>
+                                <th class="ps-4">Date</th>
+                                <th>TB Unit</th>
+                                <th>Facility</th>
+                                <th class="text-center">Male</th>
+                                <th class="text-center">Female</th>
+                                <th class="text-center">Other</th>
+                                <th class="text-center fw-bold text-dark">Grand Total</th>
+                                <th>Entered By</th>
+                                <th>Recorded At</th>
+                                <th class="text-end pe-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in history_records %}
+                                <tr {% if rec.date == target_date %}class="table-primary-subtle"{% endif %}>
+                                    <td class="ps-4 fw-bold text-dark">
+                                        <i class="bi bi-calendar-event text-primary me-1"></i>
+                                        {{ rec.date|date:"d-M-Y" }}
+                                    </td>
+                                    <td>{{ rec.tb_unit }}</td>
+                                    <td><span class="badge bg-light text-dark border">{{ rec.facility|default:"General" }}</span></td>
+                                    <td class="text-center text-primary fw-semibold">{{ rec.total_male }}</td>
+                                    <td class="text-center text-danger fw-semibold">{{ rec.total_female }}</td>
+                                    <td class="text-center text-secondary">{{ rec.total_other }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary px-2.5 py-1.5 fs-6">{{ rec.grand_total }}</span>
+                                    </td>
+                                    <td class="small text-muted">{{ rec.entered_by.username|default:"System" }}</td>
+                                    <td class="small text-muted">{{ rec.created_at|date:"d-M-Y H:i" }}</td>
+                                    <td class="text-end pe-4">
+                                        <a href="?date={{ rec.date|date:'Y-m-d' }}&facility={{ rec.facility }}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" style="border-radius: 6px; font-size: 0.78rem;">
+                                            <i class="bi bi-pencil-square"></i> Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-clipboard-x fs-1 text-muted opacity-50 mb-2 d-block"></i>
+                    <p class="fw-semibold mb-1">No past OPD submissions recorded yet for this site</p>
+                    <p class="small text-muted mb-0">Fill in today's headcount in the matrix above and save to start building your site's surveillance history.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Client-side Calculation & Dynamic Form Interactivity -->
+<script>
+    // Live calculation of matrix row totals, column totals, and grand total
+    function recalculateTotals() {
+        const ageGroupRows = document.querySelectorAll('#opdMatrixTable tbody tr');
+        let grandMale = 0;
+        let grandFemale = 0;
+        let grandOther = 0;
+
+        ageGroupRows.forEach(row => {
+            const maleInput = row.querySelector('.male-input');
+            const femaleInput = row.querySelector('.female-input');
+            const otherInput = row.querySelector('.other-input');
+            const rowTotalSpan = row.querySelector('.row-total-badge');
+
+            const mVal = parseInt(maleInput.value, 10) || 0;
+            const fVal = parseInt(femaleInput.value, 10) || 0;
+            const oVal = parseInt(otherInput.value, 10) || 0;
+
+            const rowSum = mVal + fVal + oVal;
+            if (rowTotalSpan) {
+                rowTotalSpan.textContent = rowSum;
+            }
+
+            grandMale += mVal;
+            grandFemale += fVal;
+            grandOther += oVal;
+        });
+
+        const grandTotal = grandMale + grandFemale + grandOther;
+
+        // Update footer totals
+        const maleTotalEl = document.getElementById('col_total_male');
+        const femaleTotalEl = document.getElementById('col_total_female');
+        const otherTotalEl = document.getElementById('col_total_other');
+        const grandTotalEl = document.getElementById('grand_total_badge');
+
+        if (maleTotalEl) maleTotalEl.textContent = grandMale;
+        if (femaleTotalEl) femaleTotalEl.textContent = grandFemale;
+        if (otherTotalEl) otherTotalEl.textContent = grandOther;
+        if (grandTotalEl) grandTotalEl.textContent = grandTotal;
+    }
+
+    // Prefill all empty inputs with 0 for fast complete submission
+    function prefillZeros() {
+        const inputs = document.querySelectorAll('.matrix-input');
+        inputs.forEach(input => {
+            if (!input.value || input.value.trim() === '') {
+                input.value = 0;
+            }
+        });
+        recalculateTotals();
+    }
+
+    // Clear all inputs in the matrix
+    function clearMatrix() {
+        if (confirm("Are you sure you want to clear all numbers in the matrix?")) {
+            const inputs = document.querySelectorAll('.matrix-input');
+            inputs.forEach(input => {
+                input.value = '';
+            });
+            recalculateTotals();
+        }
+    }
+
+    // Quick Jump to Today's date
+    function setTodayDate() {
+        const todayStr = "{{ today_str }}";
+        const dateInput = document.getElementById('opd_date');
+        if (dateInput && dateInput.value !== todayStr) {
+            dateInput.value = todayStr;
+            handleDateChange(todayStr);
+        }
+    }
+
+    // Handle date change to reload existing entry for that date
+    function handleDateChange(newDate) {
+        if (!newDate) return;
+        const currentFacility = document.getElementById('opd_facility').value;
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('date', newDate);
+        if (currentFacility && currentFacility !== '__custom__') {
+            currentUrl.searchParams.set('facility', currentFacility);
+        }
+        window.location.href = currentUrl.toString();
+    }
+
+    // Handle facility change
+    function handleFacilityChange(selectedVal) {
+        const customInput = document.getElementById('custom_facility_input');
+        if (selectedVal === '__custom__') {
+            customInput.classList.remove('d-none');
+            customInput.focus();
+        } else {
+            customInput.classList.add('d-none');
+            const currentDate = document.getElementById('opd_date').value;
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('facility', selectedVal);
+            if (currentDate) {
+                currentUrl.searchParams.set('date', currentDate);
+            }
+            window.location.href = currentUrl.toString();
+        }
+    }
+
+    // Run initial calculation on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        recalculateTotals();
+
+        // Focus first matrix input if empty
+        const firstInput = document.querySelector('.matrix-input');
+        if (firstInput && !firstInput.value) {
+            firstInput.focus();
+        }
+    });
+</script>
+{% endblock %}
