@@ -1,7 +1,9 @@
+import json
 from django.test import TestCase
 from django.urls import reverse, resolve
 from django.contrib.auth.models import User
 from django.utils import timezone
+from questions.models import Participant
 from questions import views
 
 class QuestionsRoutingAndViewsTestCase(TestCase):
@@ -3086,6 +3088,181 @@ class DailyOpdCountTestCase(TestCase):
         content = response.content.decode("utf-8-sig")
         self.assertIn("0-14 Male", content)
         self.assertIn("Tiruvallur TU", content)
+
+
+class EPTBAsymptomaticTestCase(TestCase):
+    def setUp(self):
+        self.username = "eptb_nurse"
+        self.password = "pass123"
+        self.user = User.objects.create_user(username=self.username, password=self.password)
+        self.profile = self.user.profile
+        self.profile.role = "Project Nurse"
+        self.profile.state = "Tamil Nadu"
+        self.profile.district = "Tiruvallur"
+        self.profile.tb_unit = "Tiruvallur TU"
+        self.profile.save()
+
+        self.admin_user = User.objects.create_superuser(
+            username="eptb_admin", password="adminpassword", email="eptb_admin@test.com"
+        )
+        self.admin_profile = self.admin_user.profile
+        self.admin_profile.role = "Super Admin"
+        self.admin_profile.save()
+
+    def test_registration_saves_eptb_asymptomatic(self):
+        """Verifies selecting Asymptomatic in EPTB saves eptb_asymptomatic: Yes and all other symptoms as No."""
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "AsympEPTB",
+            "last_name": "Tester",
+            "age": 28,
+            "dob": "1998-01-01",
+            "gender": "Male",
+            "primary_phone": "9876543111",
+            "address": "456 Blue Road",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "facility": "Tiruvallur PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "APL",
+            "symptoms": ["Asymptomatic"],
+            "risk_factors": ["None"],
+            "hiv_status": "Non Reactive / Negative",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Individuals aged 60 years or above"],
+            "eptb_asymptomatic": "Yes",
+            "eptb_q1a": "No",
+            "eptb_q2a": "No"
+        })
+        self.assertRedirects(response, reverse("questions:home"))
+        p = Participant.objects.filter(first_name="AsympEPTB").latest("created_at")
+        eptb = json.loads(p.eptb_details)
+        self.assertEqual(eptb.get("eptb_asymptomatic"), "Yes")
+        self.assertEqual(eptb.get("eptb_q1a"), "No")
+        self.assertEqual(eptb.get("eptb_q2a"), "No")
+        self.assertFalse(p.eptb_screened)
+
+    def test_registration_eptb_asymptomatic_mutual_exclusion(self):
+        """Verifies mutual exclusivity: selecting Asymptomatic forces all symptoms to No on the backend."""
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.post(reverse("questions:registration"), data={
+            "first_name": "MutExEPTB",
+            "last_name": "Tester",
+            "age": 35,
+            "gender": "Female",
+            "primary_phone": "9876543112",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "facility": "Tiruvallur PHC",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Individuals aged 60 years or above"],
+            "eptb_asymptomatic": "Yes",
+            "eptb_q1a": "Yes",  # Contradictory symptom selection
+            "eptb_q3a": "Yes",
+            "eptb_investigation_lymph_node_tb_fnac_performed": "Yes"
+        })
+        self.assertRedirects(response, reverse("questions:home"))
+        p = Participant.objects.filter(first_name="MutExEPTB").latest("created_at")
+        eptb = json.loads(p.eptb_details)
+        self.assertEqual(eptb.get("eptb_asymptomatic"), "Yes")
+        self.assertEqual(eptb.get("eptb_q1a"), "No")
+        self.assertEqual(eptb.get("eptb_q3a"), "No")
+        self.assertNotIn("eptb_investigation_lymph_node_tb_fnac_performed", eptb)
+        self.assertFalse(p.eptb_screened)
+
+    def test_eptb_asymptomatic_excel_and_csv_export(self):
+        """Verifies Excel and CSV exports include EPTB Symptoms column reflecting 'Asymptomatic'."""
+        self.client.login(username="eptb_admin", password="adminpassword")
+        p = Participant.objects.create(
+            first_name="ExportAsymp",
+            last_name="Test",
+            study_id="EXP-ASYMP-01",
+            age=32,
+            gender="Female",
+            date_enroll=timezone.localdate(),
+            eptb_details=json.dumps({"eptb_asymptomatic": "Yes", "eptb_q1a": "No"})
+        )
+        
+        # Test CSV export
+        csv_response = self.client.get(reverse("questions:data_export") + "?format=csv")
+        self.assertEqual(csv_response.status_code, 200)
+        csv_content = csv_response.content.decode("utf-8")
+        headers = csv_content.split("\n")[0]
+        self.assertIn("EPTB Screened", headers)
+        self.assertIn("EPTB Symptoms", headers)
+        
+        # Verify row content
+        asymp_rows = [line for line in csv_content.split("\n") if "EXP-ASYMP-01" in line]
+        self.assertTrue(len(asymp_rows) > 0)
+        self.assertIn("Asymptomatic", asymp_rows[0])
+
+        # Test Excel export
+        excel_response = self.client.get(reverse("questions:data_export") + "?format=excel")
+        self.assertEqual(excel_response.status_code, 200)
+        import openpyxl
+        import io
+        wb = openpyxl.load_workbook(io.BytesIO(excel_response.content))
+        ws = wb.active
+        excel_headers = [cell.value for cell in ws[1]]
+        self.assertIn("EPTB Screened", excel_headers)
+        self.assertIn("EPTB Symptoms", excel_headers)
+        
+        symptoms_col_idx = excel_headers.index("EPTB Symptoms") + 1
+        found_asymp = False
+        for row in ws.iter_rows(min_row=2, values_only=False):
+            if row[0].value == "EXP-ASYMP-01":
+                self.assertEqual(row[symptoms_col_idx - 1].value, "Asymptomatic")
+                found_asymp = True
+                break
+        self.assertTrue(found_asymp)
+
+    def test_eptb_symptom_excel_and_csv_export(self):
+        """Verifies Excel and CSV exports record selected symptom name when active symptom is chosen."""
+        self.client.login(username="eptb_admin", password="adminpassword")
+        p = Participant.objects.create(
+            first_name="ExportSymp",
+            last_name="Test",
+            study_id="EXP-SYMP-02",
+            age=40,
+            gender="Male",
+            date_enroll=timezone.localdate(),
+            eptb_screened=True,
+            eptb_details=json.dumps({"eptb_asymptomatic": "No", "eptb_q1a": "Yes"})
+        )
+        
+        csv_response = self.client.get(reverse("questions:data_export") + "?format=csv")
+        self.assertEqual(csv_response.status_code, 200)
+        csv_content = csv_response.content.decode("utf-8")
+        symp_rows = [line for line in csv_content.split("\n") if "EXP-SYMP-02" in line]
+        self.assertTrue(len(symp_rows) > 0)
+        self.assertIn("Swelling in neck/armpit/groin (Lymph Node)", symp_rows[0])
+
+    def test_reopen_saved_record_eptb_asymptomatic(self):
+        """Verifies reopening a saved record pre-populates eptb_asymptomatic correctly."""
+        self.client.login(username=self.username, password=self.password)
+        p = Participant.objects.create(
+            first_name="ReopenAsymp",
+            last_name="Test",
+            study_id="REOPEN-ASYMP-01",
+            age=25,
+            gender="Female",
+            date_enroll=timezone.localdate(),
+            eptb_details=json.dumps({"eptb_asymptomatic": "Yes", "eptb_q1a": "No"})
+        )
+        response = self.client.get(reverse("questions:registration_edit", kwargs={"pk": p.pk}))
+        self.assertEqual(response.status_code, 200)
+        participant_json = response.context.get("participant_json")
+        self.assertIsNotNone(participant_json)
+        data = json.loads(participant_json)
+        self.assertEqual(data.get("eptb_details", {}).get("eptb_asymptomatic"), "Yes")
+        self.assertIn('id="eptb_asymptomatic"', response.content.decode("utf-8"))
+
 
 
 

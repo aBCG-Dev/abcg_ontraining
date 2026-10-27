@@ -952,7 +952,14 @@
                             </div>
                             {% endif %}
 
-                            {% if not eptb_details.lymph_node_tb == "Yes" and not eptb_details.pleural_tb == "Yes" and not eptb_details.spine_tb == "Yes" and not eptb_details.abdominal_tb == "Yes" %}
+                            {% if eptb_details.eptb_asymptomatic == "Yes" %}
+                            <div class="col-12">
+                                <div class="p-2.5 rounded-3 border border-success border-opacity-25 bg-success bg-opacity-10 d-flex align-items-center gap-2 text-success small">
+                                    <i class="bi bi-shield-check fs-6"></i>
+                                    <span><strong>Asymptomatic</strong> — Participant screened negative for all extrapulmonary TB symptoms.</span>
+                                </div>
+                            </div>
+                            {% elif not eptb_details.lymph_node_tb == "Yes" and not eptb_details.pleural_tb == "Yes" and not eptb_details.spine_tb == "Yes" and not eptb_details.abdominal_tb == "Yes" %}
                             <div class="col-12">
                                 <div class="p-2.5 rounded-3 border border-success border-opacity-25 bg-success bg-opacity-10 d-flex align-items-center gap-2 text-success small">
                                     <i class="bi bi-shield-check fs-6"></i>

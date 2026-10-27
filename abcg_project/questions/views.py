@@ -881,18 +881,26 @@ def registration(request, pk=None):
             
         # EPTB Screening & Testing parsing
         main_eptb_keys = ["eptb_q1a", "eptb_q2a", "eptb_q3a", "eptb_q4a", "eptb_q5a", "eptb_q6a", "eptb_q7", "eptb_q8", "eptb_q9", "eptb_q10", "eptb_q11"]
+        eptb_asymptomatic_val = request.POST.get("eptb_asymptomatic") in ["Yes", "on", "true"]
         
         eptb_answers = {}
-        for key in main_eptb_keys:
-            val = request.POST.get(key)
-            if val in ["Yes", "on", "true"]:
-                eptb_answers[key] = "Yes"
-            else:
+        if eptb_asymptomatic_val:
+            eptb_answers["eptb_asymptomatic"] = "Yes"
+            for key in main_eptb_keys:
                 eptb_answers[key] = "No"
+        else:
+            eptb_answers["eptb_asymptomatic"] = "No"
+            for key in main_eptb_keys:
+                val = request.POST.get(key)
+                if val in ["Yes", "on", "true"]:
+                    eptb_answers[key] = "Yes"
+                else:
+                    eptb_answers[key] = "No"
         
         for post_key, post_val in request.POST.items():
-            if post_key.startswith("eptb_") and post_key not in main_eptb_keys:
-                eptb_answers[post_key] = post_val
+            if post_key.startswith("eptb_") and post_key not in main_eptb_keys and post_key != "eptb_asymptomatic":
+                if not eptb_asymptomatic_val:
+                    eptb_answers[post_key] = post_val
             
         # Combine any EPTB result_findings that are "Other" with their specify value
         for key in list(eptb_answers.keys()):
@@ -5464,6 +5472,49 @@ def data_export_view(request):
                 return ""
             return val
 
+        def _get_eptb_screened(p):
+            if getattr(p, "eptb_screened", False):
+                return "Yes"
+            if getattr(p, "eptb_details", None):
+                try:
+                    d = json.loads(p.eptb_details) if isinstance(p.eptb_details, str) else p.eptb_details
+                    if isinstance(d, dict) and (d.get("eptb_asymptomatic") in ["Yes", True, "yes"] or any(d.get(k) in ["Yes", True, "yes"] for k in ["eptb_q1a", "eptb_q2a", "eptb_q3a", "eptb_q4a", "eptb_q5a", "eptb_q6a", "eptb_q7", "eptb_q8", "eptb_q9", "eptb_q10", "eptb_q11"])):
+                        return "Yes"
+                except Exception:
+                    pass
+            return "No"
+
+        def _get_eptb_symptoms(p):
+            if not getattr(p, "eptb_details", None):
+                return ""
+            try:
+                details = json.loads(p.eptb_details) if isinstance(p.eptb_details, str) else p.eptb_details
+            except Exception:
+                return ""
+            if not isinstance(details, dict):
+                return ""
+            
+            if details.get("eptb_asymptomatic") in ["Yes", True, "yes"]:
+                return "Asymptomatic"
+            
+            eptb_labels = [
+                ("eptb_q1a", "Swelling in neck/armpit/groin (Lymph Node)"),
+                ("eptb_q2a", "Chest pain + breathlessness (Pleural)"),
+                ("eptb_q3a", "Headache/altered mental/seizures (CNS)"),
+                ("eptb_q4a", "Abdominal pain/distension/vomiting (Abdominal)"),
+                ("eptb_q5a", "Pain in spine/joint region >6 weeks (Spine/Joint)"),
+                ("eptb_q6a", "Urinary or scrotal symptoms (Genitourinary)"),
+                ("eptb_q7", "Infertility/pelvic pain/menstrual (Female Genital)"),
+                ("eptb_q8", "Ulcer/discharging sinus/skin lesion (Cutaneous)"),
+                ("eptb_q9", "Redness/blurred vision/eye pain (Ocular)"),
+                ("eptb_q10", "Chest pain + breathlessness + ECG changes (Pericardial)"),
+                ("eptb_q11", "Multi-organ involvement + systemic symptoms (Disseminated / Miliary)"),
+            ]
+            selected = [label for key, label in eptb_labels if details.get(key) in ["Yes", True, "yes"]]
+            if selected:
+                return "; ".join(selected)
+            return ""
+
         # Fields mapping definition (Header name, lambda to extract raw value)
         # Sequenced chronologically matching the 8-Step Application Intake Wizard
         fields_map = [
@@ -5547,7 +5598,8 @@ def data_export_view(request):
             ("HIV Status", lambda p: p.hiv_status),
 
             # 6. Step 6: EPTB Screening
-            ("EPTB Screened", lambda p: getattr(p, "eptb_screened", False)),
+            ("EPTB Screened", lambda p: _get_eptb_screened(p)),
+            ("EPTB Symptoms", lambda p: _get_eptb_symptoms(p)),
 
             # 7. Step 7: Diagnosis (CXR & PTB/EPTB Tests)
             ("Chest X-Ray (CXR) Done?", lambda p: _get_cxr_done(p)),
