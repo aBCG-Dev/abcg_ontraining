@@ -618,6 +618,10 @@
                     <span class="verdict-badge verdict-tpt">
                         <i class="bi bi-plus-circle-fill"></i> TPT + BCG Cohort
                     </span>
+                    {% elif p.classification == 'Excluded' %}
+                    <span class="verdict-badge verdict-pending" style="background: #fef2f2; color: #dc2626; border-color: #fecaca;">
+                        <i class="bi bi-x-circle-fill"></i> Excluded from Study
+                    </span>
                     {% elif p.classification == 'Adjudication Pending' or p.classification == 'Pending' %}
                     <span class="verdict-badge verdict-pending">
                         <i class="bi bi-hourglass-split"></i> {{ p.classification|default:"Adjudication Pending" }}
@@ -1092,6 +1096,20 @@
                                     {% endif %}
                                 {% endif %}
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Informed Consent Status -->
+                    <div class="pt-2.5 pb-2.5 border-bottom border-slate-100 d-flex justify-content-between align-items-center">
+                        <span class="data-label mb-0">Informed Consent</span>
+                        <div>
+                            {% if p.consent == "Yes" %}
+                            <span class="pill-status-yes"><i class="bi bi-check-circle-fill"></i> Provided</span>
+                            {% elif p.consent == "No" or p.classification == "Excluded" %}
+                            <span class="pill-status-danger"><i class="bi bi-x-circle-fill"></i> Declined (Excluded)</span>
+                            {% else %}
+                            <span class="pill-status-warning"><i class="bi bi-dash-circle"></i> Not Recorded</span>
+                            {% endif %}
                         </div>
                     </div>
 

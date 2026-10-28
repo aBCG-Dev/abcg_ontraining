@@ -16,6 +16,7 @@ from eptb.models import EptbSite, EptbSubQuestion
 from django.contrib.auth.models import User
 from questions.models import UserProfile, AuditLog, RolePermission
 from questions.decorators import role_required, permission_required, has_role_permission, group_required
+from questions.locations_data import resolve_operational_location
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -637,6 +638,12 @@ def registration(request, pk=None):
                 reasons.append("Not eligible for BCG vaccine during campaign period")
             match_hrg = " & ".join(reasons)
  
+        # Consent extraction & validation
+        consent = request.POST.get("consent", "").strip()
+        if not consent and participant:
+            consent = getattr(participant, "consent", "") or ""
+        consent_declined = (eligible and consent == "No")
+
         # PTB Screening & Testing parsing
         ptb_screened = False
         ptb_test_registered = False
@@ -657,7 +664,7 @@ def registration(request, pk=None):
         final_interpretation = ""
         is_asymptomatic = True
 
-        if eligible:
+        if eligible and not consent_declined:
             ptb_screened = True
             other_symptom = request.POST.get("other_symptom", "").strip()
             
@@ -1031,7 +1038,7 @@ def registration(request, pk=None):
                 bcg_complete = True
 
         # TPT+BCG cohort override check (tpt_undergone already parsed from POST at line 238)
-        is_tpt_bcg = has_hrg and eligible_bcg_campaign and (tpt_undergone == "Yes") and bcg_status.startswith("Yes")
+        is_tpt_bcg = has_hrg and eligible_bcg_campaign and (tpt_undergone == "Yes") and bcg_status.startswith("Yes") and not consent_declined
 
         classification = "Pending"
         classification_reason = "One or more required investigation results are pending."
@@ -1039,6 +1046,21 @@ def registration(request, pk=None):
         if not eligible:
             classification = "Not Eligible"
             classification_reason = "Participant is ineligible under screening criteria."
+        elif consent_declined:
+            classification = "Excluded"
+            classification_reason = "Excluded from Study: Informed consent not provided"
+            symptoms = "Asymptomatic"
+            ptb_screened = False
+            ptb_test_registered = False
+            ptb_test_type = None
+            ptb_test_result = None
+            ptb_test_date = None
+            ptb_test_facility = None
+            ptb_test_details = "{}"
+            eptb_screened = False
+            eptb_details = "{}"
+            bcg_status = "No"
+            is_tpt_bcg = False
         elif not bcg_complete:
             classification = "Pending"
             classification_reason = "One or more required BCG verification or vaccine details are incomplete."
@@ -1092,24 +1114,19 @@ def registration(request, pk=None):
             if pending_list:
                 classification_reason = "One or more required investigation results are pending: " + "; ".join(pending_list) + "."
 
-        if 'details_dict' not in locals():
+        if consent_declined:
+            ptb_test_details = "{}"
+        elif 'details_dict' not in locals():
             details_dict = {"classification_reason": classification_reason}
+            ptb_test_details = json.dumps(details_dict)
         else:
             details_dict["classification_reason"] = classification_reason
-        ptb_test_details = json.dumps(details_dict)
+            ptb_test_details = json.dumps(details_dict)
 
         # Store audit log
         print(f"[AUDIT LOG] Eligibility engine executed for study_id={study_id if 'study_id' in locals() else 'NEW'}: status={classification}, reason={classification_reason}")
 
-        # Define helper functions to generate codes
-        def get_state_code(state_name):
-            name = (state_name or "").strip().upper()
-            if "TAMIL" in name:
-                return "TN"
-            if "MAHA" in name:
-                return "MH"
-            return name[:2] if name else "ST"
-
+        # Define helper function to generate TB Unit code
         def get_tu_code(tu_name):
             name = (tu_name or "").strip().upper()
             if name.endswith(" TU"):
@@ -1157,9 +1174,16 @@ def registration(request, pk=None):
                 screening_id = f"SCR-{today_code}-{rand_code}"
             
             if eligible:
-                profile = request.user.profile
-                state_code = get_state_code(profile.state)
-                tu_code = get_tu_code(profile.tb_unit)
+                target_state, target_dist, target_tu = resolve_operational_location(
+                    participant=None,
+                    user=request.user,
+                    session=request.session,
+                    submitted_state=state,
+                    submitted_district=district,
+                    submitted_tb_unit=tb_unit
+                )
+                state_code = get_state_code(target_state)
+                tu_code = get_tu_code(target_tu)
                 year_code = timezone.localdate().strftime("%Y")
                 rand_serial = random.randint(100000, 999999)
                 study_id = f"ABCG-{state_code}-{tu_code}-{year_code}-{rand_serial}"
@@ -1187,9 +1211,16 @@ def registration(request, pk=None):
             
             if eligible:
                 if participant.study_id.startswith("SCR-") or not participant.study_id.startswith("ABCG-"):
-                    profile = request.user.profile
-                    state_code = get_state_code(profile.state)
-                    tu_code = get_tu_code(profile.tb_unit)
+                    target_state, target_dist, target_tu = resolve_operational_location(
+                        participant=participant,
+                        user=request.user,
+                        session=request.session,
+                        submitted_state=state,
+                        submitted_district=district,
+                        submitted_tb_unit=tb_unit
+                    )
+                    state_code = get_state_code(target_state)
+                    tu_code = get_tu_code(target_tu)
                     year_code = timezone.localdate().strftime("%Y")
                     rand_serial = random.randint(100000, 999999)
                     study_id = f"ABCG-{state_code}-{tu_code}-{year_code}-{rand_serial}"
@@ -1205,7 +1236,9 @@ def registration(request, pk=None):
 
         # Helper function to populate fields of either model
         def populate_fields(obj):
-            obj.created_by = request.user
+            if not getattr(obj, "created_by", None):
+                obj.created_by = getattr(participant, "created_by", None) or request.user
+            obj.consent = consent
             obj.nikshay_id = nikshay_id
             obj.first_name = first_name
             obj.last_name = last_name
@@ -1218,11 +1251,20 @@ def registration(request, pk=None):
             obj.gender = gender
             obj.screening_id = screening_id
             obj.study_id = study_id
-            # Update site details to match the logged-in user profile's site details on save/update
-            profile = request.user.profile
-            obj.state = profile.state
-            obj.district = profile.district
-            obj.tb_unit = profile.tb_unit
+            # Geographical Scope Assignment:
+            # Strictly preserves participant's original location and whatever was entered.
+            # Logged-in user profile ('GLOBAL', 'ALL DISTRICTS', 'ALL TB UNITS') must NEVER overwrite.
+            final_st, final_dist, final_tu = resolve_operational_location(
+                participant=participant,
+                user=request.user,
+                session=request.session,
+                submitted_state=state,
+                submitted_district=district,
+                submitted_tb_unit=tb_unit
+            )
+            obj.state = final_st
+            obj.district = final_dist
+            obj.tb_unit = final_tu
             obj.facility = facility
             obj.village = village
             obj.pincode = pincode
@@ -1336,12 +1378,14 @@ def registration(request, pk=None):
         if not eligible:
             Participant.objects.filter(study_id=study_id).delete()
             TptIndividual.objects.filter(study_id=study_id).delete()
-            if pk:
-                obj, created = IneligibleIndividual.objects.get_or_create(
-                    pk=pk,
-                    defaults={"study_id": study_id, "age": age, "date_enroll": timezone.localdate()}
-                )
+            if screening_id:
+                Participant.objects.filter(screening_id=screening_id).delete()
+                TptIndividual.objects.filter(screening_id=screening_id).delete()
+            if pk and isinstance(participant, IneligibleIndividual):
+                obj = participant
             else:
+                if participant and not isinstance(participant, IneligibleIndividual):
+                    participant.delete()
                 obj = IneligibleIndividual(study_id=study_id, date_enroll=timezone.localdate())
             populate_fields(obj)
             obj.save()
@@ -1349,12 +1393,14 @@ def registration(request, pk=None):
         elif is_tpt_bcg:
             Participant.objects.filter(study_id=study_id).delete()
             IneligibleIndividual.objects.filter(study_id=study_id).delete()
-            if pk:
-                obj, created = TptIndividual.objects.get_or_create(
-                    pk=pk,
-                    defaults={"study_id": study_id, "age": age, "date_enroll": timezone.localdate()}
-                )
+            if screening_id:
+                Participant.objects.filter(screening_id=screening_id).delete()
+                IneligibleIndividual.objects.filter(screening_id=screening_id).delete()
+            if pk and isinstance(participant, TptIndividual):
+                obj = participant
             else:
+                if participant and not isinstance(participant, TptIndividual):
+                    participant.delete()
                 obj = TptIndividual(study_id=study_id, date_enroll=timezone.localdate())
             populate_fields(obj)
             obj.save()
@@ -1362,12 +1408,14 @@ def registration(request, pk=None):
         else:
             TptIndividual.objects.filter(study_id=study_id).delete()
             IneligibleIndividual.objects.filter(study_id=study_id).delete()
-            if pk:
-                obj, created = Participant.objects.get_or_create(
-                    pk=pk,
-                    defaults={"study_id": study_id, "age": age, "date_enroll": timezone.localdate()}
-                )
+            if screening_id:
+                TptIndividual.objects.filter(screening_id=screening_id).delete()
+                IneligibleIndividual.objects.filter(screening_id=screening_id).delete()
+            if pk and isinstance(participant, Participant):
+                obj = participant
             else:
+                if participant and not isinstance(participant, Participant):
+                    participant.delete()
                 obj = Participant(study_id=study_id, date_enroll=timezone.localdate())
             populate_fields(obj)
             obj.save()
@@ -1390,12 +1438,13 @@ def registration(request, pk=None):
         from django.urls import reverse
         return redirect(reverse("questions:home"))
 
-    # GET: Prepopulate site location based on login profile details
-    profile = request.user.profile
-    target_tbu = participant.tb_unit if participant and participant.tb_unit else profile.tb_unit
-    target_dist = participant.district if participant and participant.district else profile.district
-    target_state = participant.state if participant and participant.state else profile.state
-    campaign_period = get_campaign_period_for_site(tb_unit=target_tbu, district=target_dist, state=target_state)
+    # GET: Prepopulate site location using authoritative operational location resolver
+    resolved_st, resolved_dist, resolved_tu = resolve_operational_location(
+        participant=participant,
+        user=request.user,
+        session=request.session
+    )
+    campaign_period = get_campaign_period_for_site(tb_unit=resolved_tu, district=resolved_dist, state=resolved_st)
     prefill_id = request.GET.get("prefill_id", "").strip()
     nikshay_id_param = request.GET.get("nikshay_id", "").strip()
     
@@ -1414,6 +1463,9 @@ def registration(request, pk=None):
             nikshay_val = nikshay_id_param
 
         participant_data = {
+            "consent": getattr(participant, "consent", "") or ("No" if getattr(participant, "classification", "") == "Excluded" and "consent" in (getattr(participant, "classification_reason", "") or "").lower() else ""),
+            "classification": getattr(participant, "classification", "") or "",
+            "classification_reason": getattr(participant, "classification_reason", "") or "",
             "nikshay_id": nikshay_val or "",
             "first_name": participant.first_name,
             "last_name": participant.last_name,
@@ -1433,9 +1485,9 @@ def registration(request, pk=None):
             "recently_changed_address": getattr(participant, "recently_changed_address", "No") or "No",
             "previous_address": getattr(participant, "previous_address", "") or "",
             "address": participant.address,
-            "state": participant.state,
-            "district": participant.district,
-            "tb_unit": participant.tb_unit,
+            "state": resolved_st if (getattr(participant, "state", "").upper() == "GLOBAL" or not getattr(participant, "state", "")) else participant.state,
+            "district": resolved_dist if (getattr(participant, "district", "").upper() == "ALL DISTRICTS" or not getattr(participant, "district", "")) else participant.district,
+            "tb_unit": resolved_tu if (getattr(participant, "tb_unit", "").upper() in ["ALL TB UNITS", "GLOBAL"] or not getattr(participant, "tb_unit", "")) else participant.tb_unit,
             "facility": participant.facility,
             "village": participant.village,
             "pincode": participant.pincode,
@@ -1691,9 +1743,9 @@ def registration(request, pk=None):
 
     context = {
         "site": {
-            "state": profile.state if not participant else participant.state,
-            "district": profile.district if not participant else participant.district,
-            "tb_unit": profile.tb_unit if not participant else participant.tb_unit,
+            "state": resolved_st,
+            "district": resolved_dist,
+            "tb_unit": resolved_tu,
             "campaign_period": campaign_period,
         },
         "eptb_form": eptb_form,
@@ -2012,11 +2064,16 @@ def reconcile_save_api(request):
     participant.questionnaire_answers = json.dumps(qa)
     participant.nikshay_id = nikshay_id
     participant.synced = True
-    participant.created_by = request.user
-    profile = request.user.profile
-    participant.state = profile.state
-    participant.district = profile.district
-    participant.tb_unit = profile.tb_unit
+    if not getattr(participant, "created_by", None):
+        participant.created_by = request.user
+    rec_st, rec_dist, rec_tu = resolve_operational_location(
+        participant=participant,
+        user=request.user,
+        session=request.session
+    )
+    participant.state = rec_st
+    participant.district = rec_dist
+    participant.tb_unit = rec_tu
     if not getattr(participant, "screening_id", None):
         participant.screening_id = participant.study_id
         
@@ -3032,11 +3089,16 @@ def reconcile(request, pk):
             
         participant.nikshay_id = nikshay_id
         participant.synced = True
-        participant.created_by = request.user
-        profile = request.user.profile
-        participant.state = profile.state
-        participant.district = profile.district
-        participant.tb_unit = profile.tb_unit
+        if not getattr(participant, "created_by", None):
+            participant.created_by = request.user
+        doc_st, doc_dist, doc_tu = resolve_operational_location(
+            participant=participant,
+            user=request.user,
+            session=request.session
+        )
+        participant.state = doc_st
+        participant.district = doc_dist
+        participant.tb_unit = doc_tu
         if not getattr(participant, "screening_id", None):
             participant.screening_id = participant.study_id
             
@@ -5399,7 +5461,29 @@ def data_export_view(request):
                     return {}
             return {}
 
+        def _is_clinical_data_blanked(p):
+            cls = str(getattr(p, "classification", "") or "").strip().lower()
+            if cls in ["not eligible", "excluded", "ineligible"]:
+                return True
+            if p.__class__.__name__ == "IneligibleIndividual":
+                return True
+            if getattr(p, "eligible", None) is False:
+                return True
+            return False
+
+        def _is_not_eligible(p):
+            cls = str(getattr(p, "classification", "") or "").strip().lower()
+            if cls in ["not eligible", "ineligible"]:
+                return True
+            if p.__class__.__name__ == "IneligibleIndividual":
+                return True
+            if getattr(p, "eligible", None) is False:
+                return True
+            return False
+
         def _get_cxr_done(p):
+            if _is_clinical_data_blanked(p):
+                return ""
             details = _parse_ptb_details(p)
             cxr_det = details.get("cxr_details") or {}
             done = cxr_det.get("cxr_done") or ("Yes" if details.get("cxr_status") not in ["", "Not Done", None] else "")
@@ -5408,6 +5492,8 @@ def data_export_view(request):
             return "Yes" if getattr(p, "cxr_record_file", None) else "No"
 
         def _get_cxr_result(p):
+            if _is_clinical_data_blanked(p):
+                return ""
             details = _parse_ptb_details(p)
             cxr_det = details.get("cxr_details") or {}
             res = cxr_det.get("cxr_result") or details.get("cxr_status") or ""
@@ -5416,6 +5502,8 @@ def data_export_view(request):
             return res
 
         def _get_cxr_suggestive(p):
+            if _is_clinical_data_blanked(p):
+                return ""
             details = _parse_ptb_details(p)
             cxr_det = details.get("cxr_details") or {}
             res = str(cxr_det.get("cxr_result") or details.get("cxr_status") or getattr(p, "cxr_result", "") or "").lower()
@@ -5427,48 +5515,42 @@ def data_export_view(request):
             return "No"
 
         def _get_cxr_facility(p):
+            if _is_clinical_data_blanked(p):
+                return ""
             details = _parse_ptb_details(p)
             cxr_det = details.get("cxr_details") or {}
             return cxr_det.get("cxr_facility", "")
 
         def _get_cxr_date(p):
+            if _is_clinical_data_blanked(p):
+                return ""
             details = _parse_ptb_details(p)
             cxr_det = details.get("cxr_details") or {}
             return cxr_det.get("cxr_date", "")
 
-        def _is_ineligible(p):
-            cls = str(getattr(p, "classification", "") or "").strip().lower()
-            if cls in ["not eligible", "excluded", "ineligible"]:
-                return True
-            if p.__class__.__name__ == "IneligibleIndividual":
-                return True
-            if getattr(p, "eligible", None) is False:
-                return True
-            return False
-
         def _is_bcg_campaign_eligible(p):
-            if _is_ineligible(p):
+            if _is_not_eligible(p):
                 return False
             val = getattr(p, "eligible_bcg_campaign", False)
             return val in [True, "Yes", "true", "True", 1]
 
         def _get_eligible_bcg_campaign(p):
-            if _is_ineligible(p):
+            if _is_not_eligible(p):
                 return "No"
             return "Yes" if _is_bcg_campaign_eligible(p) else "No"
 
         def _get_bcg_eligibility_criteria(p):
-            if _is_ineligible(p) or not _is_bcg_campaign_eligible(p):
+            if _is_not_eligible(p) or not _is_bcg_campaign_eligible(p):
                 return ""
             return getattr(p, "bcg_eligibility_criteria", "") or ""
 
         def _get_bcg_status(p):
-            if _is_ineligible(p):
+            if _is_clinical_data_blanked(p):
                 return ""
             return getattr(p, "bcg_status", "") or "No"
 
         def _get_ineligible_blank(p, val):
-            if _is_ineligible(p):
+            if _is_clinical_data_blanked(p):
                 return ""
             return val
 
@@ -5582,24 +5664,26 @@ def data_export_view(request):
             ("Eligible for BCG Vaccine during Campaign Period", lambda p: _get_eligible_bcg_campaign(p)),
             ("Campaign Completion Date", lambda p: _get_ineligible_blank(p, p.campaign_completion_date)),
             ("Under which eligibility criteria was the BCG vaccine administered to the participant?", lambda p: _get_bcg_eligibility_criteria(p)),
-            ("TPT Undergone", lambda p: getattr(p, "tpt_undergone", "")),
-            ("TPT History", lambda p: getattr(p, "tpt_history", "")),
-            ("TPT Risk Factor", lambda p: getattr(p, "tpt_risk_factor", "")),
-            ("TPT Start Date", lambda p: getattr(p, "tpt_start_date", None)),
-            ("TPT End Date", lambda p: getattr(p, "tpt_end_date", None)),
-            ("TPT Duration Months", lambda p: getattr(p, "tpt_duration_months", None)),
-            ("TPT Regimen", lambda p: getattr(p, "tpt_regimen", "")),
-            ("TPT Status", lambda p: getattr(p, "tpt_status", "")),
-            ("TPT Contact Known", lambda p: getattr(p, "tpt_contact_known", "")),
+            ("Informed Consent", lambda p: getattr(p, "consent", "") or ("No" if getattr(p, "classification", "") == "Excluded" and "consent" in (getattr(p, "classification_reason", "") or "").lower() else "")),
+            ("Exclusion Status", lambda p: "Excluded from Study" if getattr(p, "classification", "") == "Excluded" else ""),
+            ("TPT Undergone", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_undergone", "")),
+            ("TPT History", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_history", "")),
+            ("TPT Risk Factor", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_risk_factor", "")),
+            ("TPT Start Date", lambda p: None if _is_clinical_data_blanked(p) else getattr(p, "tpt_start_date", None)),
+            ("TPT End Date", lambda p: None if _is_clinical_data_blanked(p) else getattr(p, "tpt_end_date", None)),
+            ("TPT Duration Months", lambda p: None if _is_clinical_data_blanked(p) else getattr(p, "tpt_duration_months", None)),
+            ("TPT Regimen", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_regimen", "")),
+            ("TPT Status", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_status", "")),
+            ("TPT Contact Known", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_contact_known", "")),
 
             # 5. Step 5: PTB Screening
-            ("PTB Screened", lambda p: getattr(p, "ptb_screened", False)),
-            ("Symptoms", lambda p: p.symptoms),
+            ("PTB Screened", lambda p: "" if _is_clinical_data_blanked(p) else ("Yes" if getattr(p, "ptb_screened", False) else "No")),
+            ("Symptoms", lambda p: "" if _is_clinical_data_blanked(p) else p.symptoms),
             ("HIV Status", lambda p: p.hiv_status),
 
             # 6. Step 6: EPTB Screening
-            ("EPTB Screened", lambda p: _get_eptb_screened(p)),
-            ("EPTB Symptoms", lambda p: _get_eptb_symptoms(p)),
+            ("EPTB Screened", lambda p: "" if _is_clinical_data_blanked(p) else _get_eptb_screened(p)),
+            ("EPTB Symptoms", lambda p: "" if _is_clinical_data_blanked(p) else _get_eptb_symptoms(p)),
 
             # 7. Step 7: Diagnosis (CXR & PTB/EPTB Tests)
             ("Chest X-Ray (CXR) Done?", lambda p: _get_cxr_done(p)),
@@ -5607,11 +5691,11 @@ def data_export_view(request):
             ("CXR Suggestive of TB", lambda p: _get_cxr_suggestive(p)),
             ("CXR Site / Facility", lambda p: _get_cxr_facility(p)),
             ("CXR Date", lambda p: _get_cxr_date(p)),
-            ("PTB Test Registered", lambda p: getattr(p, "ptb_test_registered", False)),
-            ("PTB Test Type", lambda p: p.ptb_test_type),
-            ("PTB Test Result", lambda p: p.ptb_test_result),
-            ("PTB Test Date", lambda p: p.ptb_test_date),
-            ("PTB Test Facility", lambda p: p.ptb_test_facility),
+            ("PTB Test Registered", lambda p: "" if _is_clinical_data_blanked(p) else ("Yes" if getattr(p, "ptb_test_registered", False) else "No")),
+            ("PTB Test Type", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_type),
+            ("PTB Test Result", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_result),
+            ("PTB Test Date", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_date),
+            ("PTB Test Facility", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_facility),
 
             # 8. Step 8: BCG Vaccine Verification
             ("BCG Status", lambda p: _get_bcg_status(p)),

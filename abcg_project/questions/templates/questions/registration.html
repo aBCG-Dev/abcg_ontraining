@@ -1181,6 +1181,43 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Informed Consent Question (Immediately after Eligibility Check) -->
+                    <div id="consent_section" class="mt-4 border-top pt-3 d-none">
+                        <span class="summary-label fw-bold d-block text-muted mb-2 text-uppercase">Informed Consent *</span>
+                        <div class="p-3 border rounded bg-light" id="consentBoxContainer" style="border-radius: var(--radius); border-color: var(--line);">
+                            <label class="form-label fw-semibold text-dark small mb-3 d-block">
+                                Did the participant provide informed consent to participate in the study? *
+                            </label>
+                            <div class="d-flex flex-wrap gap-4 align-items-center">
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input consent-radio" type="radio" name="consent" id="consentYes" value="Yes" style="cursor: pointer; width: 1.2rem; height: 1.2rem;">
+                                    <label class="form-check-label text-dark fw-semibold ps-2" for="consentYes" style="cursor: pointer; font-size: 0.95rem;">
+                                        <i class="bi bi-check-circle-fill text-success me-1"></i> Yes
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input consent-radio" type="radio" name="consent" id="consentNo" value="No" style="cursor: pointer; width: 1.2rem; height: 1.2rem;">
+                                    <label class="form-check-label text-dark fw-semibold ps-2" for="consentNo" style="cursor: pointer; font-size: 0.95rem;">
+                                        <i class="bi bi-x-circle-fill text-danger me-1"></i> No
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="consentError" class="text-danger small mt-2 d-none fw-semibold">
+                                <i class="bi bi-exclamation-circle me-1"></i> Please select whether the participant provided informed consent (Yes or No).
+                            </div>
+                        </div>
+
+                        <!-- Exclusion Notice when Consent is No -->
+                        <div id="consentExcludedNotice" class="alert alert-warning mt-3 border-0 d-none d-flex align-items-center"
+                            style="border-radius: var(--radius); background-color: #fffbeb; color: #92400e; border-left: 4px solid #f59e0b !important;">
+                            <i class="bi bi-exclamation-triangle-fill me-3 fs-4 text-warning flex-shrink-0"></i>
+                            <div>
+                                <strong class="d-block text-dark">Participant Excluded from Study:</strong>
+                                Informed consent was not provided. Further data collection is stopped. Click Next or Save below to record the exclusion.
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Step 5 Panel: PTB Screening -->
@@ -2620,16 +2657,53 @@
         const eligibleBcgCampaignSelect = document.getElementById("eligibleBcgCampaign");
         const bcgCriteriaSection = document.getElementById("bcg_eligibility_criteria_section");
         const bcgCriteriaCbs = document.querySelectorAll(".bcg-elig-cb");
+        const consentSection = document.getElementById("consent_section");
+        const consentRadios = document.querySelectorAll('input[name="consent"]');
+        const consentExcludedNotice = document.getElementById("consentExcludedNotice");
+        const consentError = document.getElementById("consentError");
+        const consentBoxContainer = document.getElementById("consentBoxContainer");
+
+        function handleConsentChange() {
+            const selectedConsent = document.querySelector('input[name="consent"]:checked');
+            if (consentError) consentError.classList.add("d-none");
+            if (consentBoxContainer) consentBoxContainer.classList.remove("border-danger");
+
+            if (selectedConsent && selectedConsent.value === "No") {
+                if (consentExcludedNotice) consentExcludedNotice.classList.remove("d-none");
+                if (currentStep === 4) {
+                    nextBtn.innerHTML = 'Save & Exclude from Study &rarr;';
+                    nextBtn.classList.remove("btn-primary");
+                    nextBtn.classList.add("btn-danger");
+                }
+            } else {
+                if (consentExcludedNotice) consentExcludedNotice.classList.add("d-none");
+                if (currentStep === 4) {
+                    nextBtn.innerHTML = 'Next &rarr;';
+                    nextBtn.classList.remove("btn-danger");
+                    nextBtn.classList.add("btn-primary");
+                }
+            }
+        }
+
+        consentRadios.forEach(radio => {
+            radio.addEventListener("change", handleConsentChange);
+        });
 
         function updateBcgCampaignVisibility() {
             if (bcgCriteriaSection) {
                 if (eligibleBcgCampaignSelect && eligibleBcgCampaignSelect.value === "Yes") {
                     bcgCriteriaSection.classList.remove("d-none");
+                    if (consentSection) {
+                        consentSection.classList.remove("d-none");
+                    }
                     if (typeof updateAgeBcgCriteria === 'function') {
                         updateAgeBcgCriteria();
                     }
                 } else {
                     bcgCriteriaSection.classList.add("d-none");
+                    if (consentSection) {
+                        consentSection.classList.add("d-none");
+                    }
                     if (bcgCriteriaCbs) {
                         bcgCriteriaCbs.forEach(cb => {
                             cb.checked = false;
@@ -2673,13 +2747,31 @@
         const jurisdictionData = {{ jurisdiction_data_json|default:"{}"|safe }};
 
         function populatePhis() {
-            const state = (stateInput?.value || "").trim();
-            const district = (districtInput?.value || "").trim();
-            const tbu = (tbUnitInput?.value || "").trim();
+            let state = (stateInput?.value || "").trim();
+            let district = (districtInput?.value || "").trim();
+            let tbu = (tbUnitInput?.value || "").trim();
             const publicPhiHidden = document.getElementById("publicPhiHidden");
             const publicPhiReadonly = document.getElementById("publicPhiReadonly");
             const warningDiv = document.getElementById("publicPhiWarning");
             
+            // If DOM values hold GLOBAL scope or empty, resolve from draftData if available
+            if (!state || state.toUpperCase() === "GLOBAL" || !district || district.toUpperCase() === "ALL DISTRICTS" || !tbu || tbu.toUpperCase() === "ALL TB UNITS") {
+                if (typeof draftData !== 'undefined' && draftData) {
+                    if (draftData.state && draftData.state.toUpperCase() !== "GLOBAL") {
+                        state = draftData.state;
+                        if (stateInput) stateInput.value = state;
+                    }
+                    if (draftData.district && draftData.district.toUpperCase() !== "ALL DISTRICTS") {
+                        district = draftData.district;
+                        if (districtInput) districtInput.value = district;
+                    }
+                    if (draftData.tb_unit && draftData.tb_unit.toUpperCase() !== "ALL TB UNITS") {
+                        tbu = draftData.tb_unit;
+                        if (tbUnitInput) tbUnitInput.value = tbu;
+                    }
+                }
+            }
+
             console.log("populatePhis debug:", { state, district, tbu });
             publicPhiSelect.innerHTML = '<option value="">Select Public PHI</option>';
             
@@ -2728,7 +2820,7 @@
                 }
             } else {
                 console.warn("No match in jurisdictionData for state, district, tbu:", { state, district, tbu });
-                if (state || district || tbu) {
+                if (state && district && tbu && state.toUpperCase() !== "GLOBAL" && district.toUpperCase() !== "ALL DISTRICTS" && tbu.toUpperCase() !== "ALL TB UNITS") {
                     if (!warningDiv) {
                         const newWarning = document.createElement("div");
                         newWarning.id = "publicPhiWarning";
@@ -3226,6 +3318,23 @@
                 submitBtn.classList.add("d-none");
             }
             
+            if (currentStep === 4) {
+                const consentNo = document.getElementById("consentNo");
+                if (consentNo && consentNo.checked) {
+                    nextBtn.innerHTML = 'Save & Exclude from Study &rarr;';
+                    nextBtn.classList.remove("btn-primary");
+                    nextBtn.classList.add("btn-danger");
+                } else {
+                    nextBtn.innerHTML = 'Next &rarr;';
+                    nextBtn.classList.remove("btn-danger");
+                    nextBtn.classList.add("btn-primary");
+                }
+            } else {
+                nextBtn.classList.remove("btn-danger");
+                nextBtn.classList.add("btn-primary");
+                nextBtn.innerHTML = 'Next &rarr;';
+            }
+            
             // Prefill BCG Vaccine Verification inputs from Step 1 Personal Details
             if (currentStep === 8) {
                 const firstNameVal = document.getElementById("firstName")?.value || "";
@@ -3350,6 +3459,26 @@
                 const eligible = isBcgCampaignSelected && (checkedBcgCriteria.length > 0);
 
                 if (eligible) {
+                    // Consent Question Validation (Mandatory, with no default selection)
+                    const selectedConsent = document.querySelector('input[name="consent"]:checked');
+                    const consentError = document.getElementById("consentError");
+                    const consentBoxContainer = document.getElementById("consentBoxContainer");
+
+                    if (!selectedConsent) {
+                        if (consentError) consentError.classList.remove("d-none");
+                        if (consentBoxContainer) consentBoxContainer.classList.add("border-danger");
+                        document.getElementById("consent_section")?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return;
+                    } else {
+                        if (consentError) consentError.classList.add("d-none");
+                        if (consentBoxContainer) consentBoxContainer.classList.remove("border-danger");
+                    }
+
+                    if (selectedConsent.value === "No") {
+                        showParticipantResultModal('excluded');
+                        return;
+                    }
+
                     const tptUndergoneVal = tptUndergoneSelect ? tptUndergoneSelect.value : "No";
                     if (tptUndergoneVal === "Yes") {
                         showParticipantResultModal('tpt_eligible');
@@ -4433,9 +4562,9 @@
                 recently_changed_address: 'recentlyChangedAddress',
                 previous_address: 'previousAddress',
                 address: 'address',
-                state: 'state',
-                district: 'district',
-                tb_unit: 'tbUnit',
+                state: 'stateInput',
+                district: 'districtInput',
+                tb_unit: 'tbUnitInput',
                 facility: 'facility',
                 village: 'village',
                 pincode: 'pincode',
@@ -4852,6 +4981,20 @@
             }
             updateTptVisibility();
             calculateTptDuration();
+            
+            // Consent radio restoration from draftData
+            if (draftData.consent) {
+                const rad = document.querySelector(`input[name="consent"][value="${draftData.consent}"]`);
+                if (rad) {
+                    rad.checked = true;
+                }
+            } else if (draftData.classification === "Excluded") {
+                const rad = document.querySelector(`input[name="consent"][value="No"]`);
+                if (rad) {
+                    rad.checked = true;
+                }
+            }
+            if (typeof handleConsentChange === 'function') handleConsentChange();
             
             if (typeof updateGovernmentIdVisibility === 'function') updateGovernmentIdVisibility();
             if (typeof updateRecentlyChangedPhoneVisibility === 'function') updateRecentlyChangedPhoneVisibility();
@@ -5627,6 +5770,30 @@
                     modalInstance.hide();
                     currentStep = 5;
                     updateStepUI();
+                };
+            } else if (state === 'excluded') {
+                iconContainer.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; background-color: #fef2f2; border: 1.5px solid #fecaca; color: #dc2626;">
+                        <i class="bi bi-x-circle-fill fs-4"></i>
+                    </div>
+                `;
+                titleEl.textContent = 'Excluded from Study';
+                
+                analysisTypeEl.style.display = 'block';
+                analysisTypeEl.textContent = 'INFORMED CONSENT DECLINED';
+                analysisTypeEl.style.color = '#dc2626';
+                
+                descEl.style.display = 'block';
+                descEl.textContent = 'Participant declined informed consent. Further data collection is stopped.';
+                
+                actionBtn.textContent = 'Confirm & Save Exclusion';
+                actionBtn.style.backgroundColor = '#dc2626';
+                actionBtn.style.borderColor = '#dc2626';
+                
+                actionBtn.onclick = function () {
+                    modalInstance.hide();
+                    formSubmissionConfirmed = true;
+                    form.submit();
                 };
             }
             

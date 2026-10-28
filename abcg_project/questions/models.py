@@ -247,6 +247,7 @@ class Participant(models.Model):
     bcg_facility = models.CharField(max_length=250, blank=True, null=True)
 
     # Classification
+    consent = models.CharField(max_length=10, blank=True, null=True, verbose_name="Informed Consent")
     classification = models.CharField(max_length=25, choices=CLASSIFICATION_CHOICES, default="Pending")
     classification_reason = models.TextField(blank=True, default="")
     
@@ -489,6 +490,7 @@ class TptIndividual(models.Model):
     bcg_facility = models.CharField(max_length=250, blank=True, null=True)
 
     # Classification
+    consent = models.CharField(max_length=10, blank=True, null=True, verbose_name="Informed Consent")
     classification = models.CharField(max_length=25, default="TPT+BCG")
     classification_reason = models.TextField(blank=True, default="")
     
@@ -645,6 +647,7 @@ class IneligibleIndividual(models.Model):
     bcg_facility = models.CharField(max_length=250, blank=True, null=True)
 
     # Classification
+    consent = models.CharField(max_length=10, blank=True, null=True, verbose_name="Informed Consent")
     classification = models.CharField(max_length=25, default="Not Eligible")
     classification_reason = models.TextField(blank=True, default="")
     

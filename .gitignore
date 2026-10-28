@@ -20,6 +20,7 @@ scratch/
 *.log
 *.backup*
 *backup*/
+*.safety_backup*
 media_backup*/
 */media_backup*/
 

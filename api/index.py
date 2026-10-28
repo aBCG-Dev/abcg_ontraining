@@ -35,3 +35,19 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 from django.core.wsgi import get_wsgi_application
 app = get_wsgi_application()
+
+# Automatically apply database migrations and ensure columns on remote database (Neon / PostgreSQL)
+try:
+    from django.db import connection
+    if connection.vendor == "postgresql":
+        with connection.cursor() as cursor:
+            cursor.execute('ALTER TABLE "questions_ineligibleindividual" ADD COLUMN IF NOT EXISTS "consent" varchar(10) NULL;')
+            cursor.execute('ALTER TABLE "questions_participant" ADD COLUMN IF NOT EXISTS "consent" varchar(10) NULL;')
+            cursor.execute('ALTER TABLE "questions_tptindividual" ADD COLUMN IF NOT EXISTS "consent" varchar(10) NULL;')
+
+    from django.core.management import call_command
+    call_command("migrate", interactive=False, verbosity=0)
+except Exception as _e:
+    pass
+
+

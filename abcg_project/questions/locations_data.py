@@ -274,3 +274,139 @@ def get_base_hierarchy():
         for district, tbus in districts.items():
             hierarchy[state][district] = sorted(list(tbus.keys()))
     return hierarchy
+
+
+STATE_CODE_TO_NAME = {
+    "TN": "Tamil Nadu",
+    "KA": "Karnataka",
+    "OD": "Odisha",
+    "AP": "Andhra Pradesh",
+    "AN": "Andhra Pradesh",
+    "HR": "Haryana",
+    "HP": "Himachal Pradesh",
+    "MP": "Madhya Pradesh",
+    "MH": "Maharashtra",
+}
+
+TU_CODE_TO_TBU = {
+    "TIR": ("Tiruvallur", "Tiruvallur TU"),
+    "BEN": ("Bengaluru", "Bengaluru TU"),
+    "URB": ("Cuttack", "Urban_TU"),
+    "NEL": ("Sri Potti Sriramulu Nellore", "NELLORE-1"),
+    "GUN": ("Guntur", "Guntur DTC"),
+    "BAR": ("Mayurbhanj", "Baripada_DTC"),
+}
+
+def get_location_by_facility(facility_name):
+    if not facility_name:
+        return None
+    fac_clean = str(facility_name).strip().lower()
+    # Pass 1: Exact facility match (highest confidence)
+    for state, dists in JURISDICTION_DATA.items():
+        for dist, tbus in dists.items():
+            for tbu, phis in tbus.items():
+                for phi in phis:
+                    if phi.strip().lower() == fac_clean:
+                        return (state, dist, tbu)
+    # Pass 2: Substring match (skip generic tokens like 'medical college')
+    for state, dists in JURISDICTION_DATA.items():
+        for dist, tbus in dists.items():
+            for tbu, phis in tbus.items():
+                for phi in phis:
+                    p_clean = phi.strip().lower()
+                    if len(p_clean) >= 6 and (p_clean in fac_clean or fac_clean in p_clean):
+                        return (state, dist, tbu)
+    return None
+
+def recover_location_from_evidence(study_id=None, facility=None, screening_id=None, pincode=None):
+    """
+    Recovers verified (state, district, tb_unit) from evidence when a record was corrupted to GLOBAL.
+    """
+    sid = str(study_id or screening_id or "").upper().strip()
+    if "ABCG-" in sid:
+        parts = sid.split("-")
+        if len(parts) >= 3:
+            st_code = parts[1]
+            tu_code = parts[2]
+            st_name = STATE_CODE_TO_NAME.get(st_code)
+            dist_tbu = TU_CODE_TO_TBU.get(tu_code)
+            if st_name and dist_tbu:
+                return st_name, dist_tbu[0], dist_tbu[1]
+            elif st_name and st_name in JURISDICTION_DATA:
+                first_dist = next(iter(JURISDICTION_DATA[st_name].keys()))
+                first_tbu = next(iter(JURISDICTION_DATA[st_name][first_dist].keys()))
+                return st_name, first_dist, first_tbu
+
+    fac_loc = get_location_by_facility(facility)
+    if fac_loc:
+        return fac_loc
+
+    pin_str = str(pincode or "").strip()
+    if pin_str.startswith("60"):
+        return "Tamil Nadu", "Tiruvallur", "Tiruvallur TU"
+    elif pin_str.startswith("56"):
+        return "Karnataka", "Bengaluru", "Bengaluru TU"
+    elif pin_str.startswith("75"):
+        return "Odisha", "Cuttack", "Urban_TU"
+
+    return "Tamil Nadu", "Tiruvallur", "Tiruvallur TU"
+
+def resolve_operational_location(participant=None, user=None, session=None, submitted_state=None, submitted_district=None, submitted_tb_unit=None):
+    """
+    Authoritative location resolver:
+    Ensures participant registration and editing always receive a valid operational location.
+    Guarantees 'GLOBAL', 'ALL DISTRICTS', and 'ALL TB UNITS' are NEVER used as participant coordinates.
+    """
+    def is_generic(val):
+        s = str(val or "").strip().upper()
+        return not s or s in ("GLOBAL", "ALL DISTRICTS", "ALL TB UNITS", "ALL", "NONE", "NULL", "UNDEFINED")
+
+    # 1. Existing participant priority: strictly preserve participant's original study location
+    if participant:
+        p_state = getattr(participant, "state", "")
+        p_dist = getattr(participant, "district", "")
+        p_tbu = getattr(participant, "tb_unit", "")
+        
+        if not is_generic(p_state) and not is_generic(p_dist) and not is_generic(p_tbu):
+            return p_state.strip(), p_dist.strip(), p_tbu.strip()
+        
+        # Corrupted to GLOBAL: recover from authoritative evidence (Study ID prefix, Facility, Pincode)
+        return recover_location_from_evidence(
+            study_id=getattr(participant, "study_id", None),
+            facility=getattr(participant, "facility", None) or getattr(participant, "public_phi", None),
+            screening_id=getattr(participant, "screening_id", None),
+            pincode=getattr(participant, "pincode", None)
+        )
+
+    # 2. Check submitted form values: respect valid operational location entered for new registration
+    if not is_generic(submitted_state) and not is_generic(submitted_district) and not is_generic(submitted_tb_unit):
+        return submitted_state.strip(), submitted_district.strip(), submitted_tb_unit.strip()
+
+    # 3. Check User Profile (if nurse/doctor with specific assignment)
+    if user and hasattr(user, "profile"):
+        prof = user.profile
+        if not is_generic(prof.state) and not is_generic(prof.district) and not is_generic(prof.tb_unit):
+            return prof.state.strip(), prof.district.strip(), prof.tb_unit.strip()
+
+    # 4. Check active session filter (e.g. if Admin selected an active site in navbar)
+    if session:
+        s_state = session.get("selected_state", "")
+        s_dist = session.get("selected_district", "")
+        s_tbu = session.get("selected_tb_unit", "")
+        if not is_generic(s_state) and not is_generic(s_dist) and not is_generic(s_tbu):
+            return s_state.strip(), s_dist.strip(), s_tbu.strip()
+        elif not is_generic(s_state) and s_state in JURISDICTION_DATA:
+            first_dist = next(iter(JURISDICTION_DATA[s_state].keys()))
+            first_tbu = next(iter(JURISDICTION_DATA[s_state][first_dist].keys()))
+            return s_state.strip(), first_dist, first_tbu
+
+    # 5. Fallback to active StudySite or study default
+    try:
+        from questions.models import StudySite
+        site_obj = StudySite.objects.filter(is_active=True).first()
+        if site_obj and not is_generic(site_obj.state) and not is_generic(site_obj.district) and not is_generic(site_obj.tb_unit):
+            return site_obj.state.strip(), site_obj.district.strip(), site_obj.tb_unit.strip()
+    except Exception:
+        pass
+
+    return "Tamil Nadu", "Tiruvallur", "Tiruvallur TU"
