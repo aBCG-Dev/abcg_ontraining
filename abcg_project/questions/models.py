@@ -903,11 +903,12 @@ class DailyOpdCount(models.Model):
     and gender (Male, Female, Transgender/Other).
     """
     STANDARD_AGE_GROUPS = [
-        ("0-14", "0–14 years"),
-        ("15-29", "15–29 years"),
-        ("30-44", "30–44 years"),
-        ("45-59", "45–59 years"),
-        ("60+", "60+ years"),
+        ("18-24", "18–24"),
+        ("25-34", "25–34"),
+        ("35-44", "35–44"),
+        ("45-54", "45–54"),
+        ("55-64", "55–64"),
+        ("65+", "65+"),
     ]
 
     date = models.DateField(default=timezone.localdate, db_index=True)

@@ -6663,11 +6663,12 @@ def export_opd_excel_view(request):
 
     headers = [
         "S.No", "Date", "State", "District", "TB Unit", "Facility / PHI",
-        "0-14 Male", "0-14 Female", "0-14 Total",
-        "15-29 Male", "15-29 Female", "15-29 Total",
-        "30-44 Male", "30-44 Female", "30-44 Total",
-        "45-59 Male", "45-59 Female", "45-59 Total",
-        "60+ Male", "60+ Female", "60+ Total",
+        "18-24 Male", "18-24 Female", "18-24 Total",
+        "25-34 Male", "25-34 Female", "25-34 Total",
+        "35-44 Male", "35-44 Female", "35-44 Total",
+        "45-54 Male", "45-54 Female", "45-54 Total",
+        "55-64 Male", "55-64 Female", "55-64 Total",
+        "65+ Male", "65+ Female", "65+ Total",
         "Total Male", "Total Female", "Total Transgender/Other", "Grand Total OPD",
         "Remarks", "Entered By", "Submitted At"
     ]
@@ -6680,11 +6681,12 @@ def export_opd_excel_view(request):
             f = int(c.get("female", 0) or 0)
             return m, f, (m + f + int(c.get("other", 0) or 0))
 
-        m14, f14, t14 = get_g("0-14")
-        m29, f29, t29 = get_g("15-29")
-        m44, f44, t44 = get_g("30-44")
-        m59, f59, t59 = get_g("45-59")
-        m60, f60, t60 = get_g("60+")
+        m18, f18, t18 = get_g("18-24")
+        m25, f25, t25 = get_g("25-34")
+        m35, f35, t35 = get_g("35-44")
+        m45, f45, t45 = get_g("45-54")
+        m55, f55, t55 = get_g("55-64")
+        m65, f65, t65 = get_g("65+")
 
         return [
             idx,
@@ -6693,11 +6695,12 @@ def export_opd_excel_view(request):
             r.district,
             r.tb_unit,
             r.facility or "General",
-            m14, f14, t14,
-            m29, f29, t29,
-            m44, f44, t44,
-            m59, f59, t59,
-            m60, f60, t60,
+            m18, f18, t18,
+            m25, f25, t25,
+            m35, f35, t35,
+            m45, f45, t45,
+            m55, f55, t55,
+            m65, f65, t65,
             r.total_male,
             r.total_female,
             r.total_other,
@@ -6864,4 +6867,4 @@ def export_opd_excel_view(request):
     )
     response["Content-Disposition"] = f'attachment; filename="aBCG_Daily_OPD_Surveillance_{timestamp_str}.xlsx"'
     return response
-
+

@@ -2984,50 +2984,54 @@ class DailyOpdCountTestCase(TestCase):
             facility="District Hospital",
             date=timezone.localdate(),
             breakdown={
-                "0-14": {"male": 5, "female": 10, "other": 1},
-                "15-29": {"male": 15, "female": 20, "other": 0},
-                "30-44": {"male": 25, "female": 30, "other": 0},
-                "45-59": {"male": 12, "female": 18, "other": 0},
-                "60+": {"male": 8, "female": 7, "other": 0},
+                "18-24": {"male": 5, "female": 10, "other": 1},
+                "25-34": {"male": 15, "female": 20, "other": 0},
+                "35-44": {"male": 25, "female": 30, "other": 0},
+                "45-54": {"male": 12, "female": 18, "other": 0},
+                "55-64": {"male": 6, "female": 4, "other": 0},
+                "65+": {"male": 8, "female": 7, "other": 0},
             },
             entered_by=self.nurse_user
         )
-        self.assertEqual(opd.total_male, 65)
-        self.assertEqual(opd.total_female, 85)
+        self.assertEqual(opd.total_male, 71)
+        self.assertEqual(opd.total_female, 89)
         self.assertEqual(opd.total_other, 1)
-        self.assertEqual(opd.grand_total, 151)
-        self.assertEqual(opd.breakdown["0-14"]["total"], 16)
-        self.assertEqual(opd.breakdown["60+"]["total"], 15)
+        self.assertEqual(opd.grand_total, 161)
+        self.assertEqual(opd.breakdown["18-24"]["total"], 16)
+        self.assertEqual(opd.breakdown["65+"]["total"], 15)
 
     def test_daily_opd_get_nurse_login(self):
         self.client.login(username=self.username, password=self.password)
         response = self.client.get(reverse("questions:daily_opd"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Daily Outpatient Department (OPD) Attendance")
+        self.assertContains(response, "Daily OPD")
         self.assertContains(response, "Tiruvallur TU")
-        self.assertContains(response, "0–14 years")
-        self.assertContains(response, "60+ years")
+        self.assertContains(response, "18–24")
+        self.assertContains(response, "65+")
 
     def test_daily_opd_post_nurse_submission(self):
         self.client.login(username=self.username, password=self.password)
         payload = {
             "date": timezone.localdate().isoformat(),
             "facility": "Primary Health Centre",
-            "0-14_male": "10",
-            "0-14_female": "12",
-            "0-14_other": "0",
-            "15-29_male": "20",
-            "15-29_female": "25",
-            "15-29_other": "0",
-            "30-44_male": "15",
-            "30-44_female": "18",
-            "30-44_other": "0",
-            "45-59_male": "8",
-            "45-59_female": "9",
-            "45-59_other": "0",
-            "60+_male": "14",
-            "60+_female": "16",
-            "60+_other": "1",
+            "18-24_male": "10",
+            "18-24_female": "12",
+            "18-24_other": "0",
+            "25-34_male": "20",
+            "25-34_female": "25",
+            "25-34_other": "0",
+            "35-44_male": "15",
+            "35-44_female": "18",
+            "35-44_other": "0",
+            "45-54_male": "8",
+            "45-54_female": "9",
+            "45-54_other": "0",
+            "55-64_male": "6",
+            "55-64_female": "5",
+            "55-64_other": "0",
+            "65+_male": "14",
+            "65+_female": "16",
+            "65+_other": "1",
             "remarks": "Normal clinic flow today."
         }
         response = self.client.post(reverse("questions:daily_opd"), payload)
@@ -3035,10 +3039,10 @@ class DailyOpdCountTestCase(TestCase):
 
         opd = DailyOpdCount.objects.filter(tb_unit="Tiruvallur TU", facility="Primary Health Centre").first()
         self.assertIsNotNone(opd)
-        self.assertEqual(opd.total_male, 67)
-        self.assertEqual(opd.total_female, 80)
+        self.assertEqual(opd.total_male, 73)
+        self.assertEqual(opd.total_female, 85)
         self.assertEqual(opd.total_other, 1)
-        self.assertEqual(opd.grand_total, 148)
+        self.assertEqual(opd.grand_total, 159)
         self.assertEqual(opd.remarks, "Normal clinic flow today.")
 
     def test_nurse_home_shows_opd_status(self):
@@ -3046,7 +3050,7 @@ class DailyOpdCountTestCase(TestCase):
             tb_unit="Tiruvallur TU",
             facility="Tiruvallur TU PHI",
             date=timezone.localdate(),
-            breakdown={"0-14": {"male": 50, "female": 50, "other": 0}},
+            breakdown={"18-24": {"male": 50, "female": 50, "other": 0}},
             entered_by=self.nurse_user
         )
         self.client.login(username=self.username, password=self.password)
@@ -3061,7 +3065,7 @@ class DailyOpdCountTestCase(TestCase):
             tb_unit="Tiruvallur TU",
             facility="Tiruvallur PHI",
             date=timezone.localdate(),
-            breakdown={"60+": {"male": 10, "female": 12, "other": 0}},
+            breakdown={"65+": {"male": 10, "female": 12, "other": 0}},
             entered_by=self.nurse_user
         )
         self.client.login(username="admin_test", password="adminpassword")
@@ -3078,7 +3082,7 @@ class DailyOpdCountTestCase(TestCase):
             tb_unit="Tiruvallur TU",
             facility="Tiruvallur PHI",
             date=timezone.localdate(),
-            breakdown={"0-14": {"male": 5, "female": 5, "other": 0}},
+            breakdown={"18-24": {"male": 5, "female": 5, "other": 0}},
             entered_by=self.nurse_user
         )
         self.client.login(username="admin_test", password="adminpassword")
@@ -3086,7 +3090,7 @@ class DailyOpdCountTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/csv", response["Content-Type"])
         content = response.content.decode("utf-8-sig")
-        self.assertIn("0-14 Male", content)
+        self.assertIn("18-24 Male", content)
         self.assertIn("Tiruvallur TU", content)
 
 

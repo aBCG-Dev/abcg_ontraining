@@ -177,4 +177,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # 10. Central Sync Backend Integration
 CENTRAL_BACKEND_URL = "http://127.0.0.1:8001"  # Default on-premise backend URL
 CENTRAL_BACKEND_USER = "admin"
-CENTRAL_BACKEND_PASSWORD = "adminpassword"
+CENTRAL_BACKEND_PASSWORD = "adminpassword"
+
+
+LOGIN_URL = "/"
