@@ -335,29 +335,39 @@ def registration(request, pk=None):
             return redirect("questions:home")
 
     participant = None
-    cohort_param = request.GET.get("cohort")
-    if pk:
+    cohort_param = request.GET.get("cohort") or request.POST.get("cohort")
+    target_pk = pk or request.POST.get("participant_id")
+    if target_pk:
         if cohort_param == "tpt":
-            participant = get_object_or_404(TptIndividual, pk=pk)
+            participant = get_object_or_404(TptIndividual, pk=target_pk) if request.method == "GET" else TptIndividual.objects.filter(pk=target_pk).first()
         elif cohort_param == "ineligible":
-            participant = get_object_or_404(IneligibleIndividual, pk=pk)
+            participant = get_object_or_404(IneligibleIndividual, pk=target_pk) if request.method == "GET" else IneligibleIndividual.objects.filter(pk=target_pk).first()
         else:
             try:
-                participant = Participant.objects.get(pk=pk)
+                participant = Participant.objects.get(pk=target_pk)
             except Participant.DoesNotExist:
                 try:
-                    participant = TptIndividual.objects.get(pk=pk)
+                    participant = TptIndividual.objects.get(pk=target_pk)
                 except TptIndividual.DoesNotExist:
-                    participant = get_object_or_404(IneligibleIndividual, pk=pk)
+                    participant = get_object_or_404(IneligibleIndividual, pk=target_pk) if request.method == "GET" else IneligibleIndividual.objects.filter(pk=target_pk).first()
+
+    if not participant and request.method == "POST":
+        post_study_id = request.POST.get("participant_study_id") or request.POST.get("study_id")
+        if post_study_id:
+            participant = (
+                Participant.objects.filter(study_id=post_study_id).first() or
+                TptIndividual.objects.filter(study_id=post_study_id).first() or
+                IneligibleIndividual.objects.filter(study_id=post_study_id).first()
+            )
 
     if request.method == "POST":
         is_tpt_bcg = False
-        nikshay_id = request.POST.get("nikshay_id", "").strip()
-        first_name = request.POST.get("first_name", "").strip()
-        last_name = request.POST.get("last_name", "").strip()
-        father_husband_name = request.POST.get("father_husband_name", "").strip()
+        nikshay_id = request.POST.get("nikshay_id", "").strip() or (getattr(participant, "nikshay_id", "") if participant else "")
+        first_name = request.POST.get("first_name", "").strip() or (getattr(participant, "first_name", "") if participant else "")
+        last_name = request.POST.get("last_name", "").strip() or (getattr(participant, "last_name", "") if participant else "")
+        father_husband_name = request.POST.get("father_husband_name", "").strip() or (getattr(participant, "father_husband_name", "") if participant else "")
         age_str = request.POST.get("age", "").strip()
-        age = int(age_str) if age_str else 0
+        age = int(age_str) if age_str else (getattr(participant, "age", 0) if participant else 0)
         
         dob_str = request.POST.get("dob", "").strip()
         dob = None
@@ -366,13 +376,15 @@ def registration(request, pk=None):
                 dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
             except ValueError:
                 pass
+        if not dob and participant and getattr(participant, "dob", None):
+            dob = participant.dob
                 
-        gender = request.POST.get("gender")
-        primary_phone = request.POST.get("primary_phone", "").strip()
-        secondary_phone = request.POST.get("secondary_phone", "").strip()
-        secondary_phone_1 = request.POST.get("secondary_phone_1", "").strip()
-        secondary_phone_2 = request.POST.get("secondary_phone_2", "").strip()
-        secondary_phone_3 = request.POST.get("secondary_phone_3", "").strip()
+        gender = request.POST.get("gender") or (getattr(participant, "gender", "") if participant else "")
+        primary_phone = request.POST.get("primary_phone", "").strip() or (getattr(participant, "contact_number", "") if participant else "")
+        secondary_phone = request.POST.get("secondary_phone", "").strip() or (getattr(participant, "secondary_phone", "") if participant else "")
+        secondary_phone_1 = request.POST.get("secondary_phone_1", "").strip() or (getattr(participant, "secondary_phone_1", "") if participant else "")
+        secondary_phone_2 = request.POST.get("secondary_phone_2", "").strip() or (getattr(participant, "secondary_phone_2", "") if participant else "")
+        secondary_phone_3 = request.POST.get("secondary_phone_3", "").strip() or (getattr(participant, "secondary_phone_3", "") if participant else "")
         
         # Additional Verification & Tracking Parameters
         has_government_id = request.POST.get("has_government_id", "No").strip()
@@ -383,21 +395,21 @@ def registration(request, pk=None):
         previous_address = request.POST.get("previous_address", "").strip() if recently_changed_address == "Yes" else ""
 
         # Residence & Location Parameters
-        address = request.POST.get("address", "").strip()
+        address = request.POST.get("address", "").strip() or (getattr(participant, "address", "") if participant else "")
         state = request.POST.get("state", "").strip()
         district = request.POST.get("district", "").strip()
         tb_unit = request.POST.get("tb_unit", "").strip()
         
         sector = request.POST.get("sector", "Public Sector").strip()
-        case_finding_type = request.POST.get("case_finding_type", "").strip()
-        private_facility = request.POST.get("private_facility", "").strip()
-        public_phi = request.POST.get("public_phi", "").strip()
-        facility = public_phi if sector == "Public Sector" else private_facility
+        case_finding_type = request.POST.get("case_finding_type", "").strip() or (getattr(participant, "case_finding_type", "") if participant else "")
+        private_facility = request.POST.get("private_facility", "").strip() or (getattr(participant, "private_facility", "") if participant else "")
+        public_phi = request.POST.get("public_phi", "").strip() or (getattr(participant, "public_phi", "") if participant else "")
+        facility = (public_phi if sector == "Public Sector" else private_facility) or (getattr(participant, "facility", "Local Clinic") if participant else "Local Clinic")
         
-        taluka_block = request.POST.get("taluka_block", "").strip()
-        landmark = request.POST.get("landmark", "").strip()
-        village = request.POST.get("village", "").strip()
-        pincode = request.POST.get("pincode", "").strip()
+        taluka_block = request.POST.get("taluka_block", "").strip() or (getattr(participant, "taluka_block", "") if participant else "")
+        landmark = request.POST.get("landmark", "").strip() or (getattr(participant, "landmark", "") if participant else "")
+        village = request.POST.get("village", "").strip() or (getattr(participant, "village", "") if participant else "")
+        pincode = request.POST.get("pincode", "").strip() or (getattr(participant, "pincode", "") if participant else "")
         demographic_area = request.POST.get("demographic_area", "Unknown")
         marital_status = request.POST.get("marital_status", "Unknown")
         occupation = request.POST.get("occupation", "Unknown").strip()
@@ -1238,6 +1250,9 @@ def registration(request, pk=None):
         def populate_fields(obj):
             if not getattr(obj, "created_by", None):
                 obj.created_by = getattr(participant, "created_by", None) or request.user
+            obj.date_enroll = original_date_enroll
+            if hasattr(participant, "campaign_completion_date") and participant.campaign_completion_date:
+                obj.campaign_completion_date = participant.campaign_completion_date
             obj.consent = consent
             obj.nikshay_id = nikshay_id
             obj.first_name = first_name
@@ -1356,10 +1371,16 @@ def registration(request, pk=None):
             obj.bcg_has_record = bcg_has_record
             if bcg_scar_file:
                 obj.bcg_scar_file = bcg_scar_file
+            elif participant and getattr(participant, "bcg_scar_file", None):
+                obj.bcg_scar_file = participant.bcg_scar_file
             if bcg_record_file:
                 obj.bcg_record_file = bcg_record_file
+            elif participant and getattr(participant, "bcg_record_file", None):
+                obj.bcg_record_file = participant.bcg_record_file
             if cxr_record_file:
                 obj.cxr_record_file = cxr_record_file
+            elif participant and getattr(participant, "cxr_record_file", None):
+                obj.cxr_record_file = participant.cxr_record_file
             
             # Legacy fields
             obj.bcg_vaccination_date = bcg_vaccination_date
@@ -1375,18 +1396,50 @@ def registration(request, pk=None):
             obj.classification = classification
             obj.classification_reason = classification_reason
 
+        # Determine and strictly preserve the original enrollment date
+        original_date_enroll = None
+        if participant and getattr(participant, "date_enroll", None):
+            original_date_enroll = participant.date_enroll
+        elif target_pk:
+            for model_cls in (Participant, TptIndividual, IneligibleIndividual):
+                existing_rec = model_cls.objects.filter(pk=target_pk).first()
+                if existing_rec and getattr(existing_rec, "date_enroll", None):
+                    original_date_enroll = existing_rec.date_enroll
+                    break
+
+        if not original_date_enroll and existing_dup_rec and getattr(existing_dup_rec, "date_enroll", None):
+            original_date_enroll = existing_dup_rec.date_enroll
+
+        if not original_date_enroll and request.POST.get("original_date_enroll"):
+            try:
+                original_date_enroll = datetime.strptime(request.POST.get("original_date_enroll").strip(), "%Y-%m-%d").date()
+            except ValueError:
+                pass
+
+        if not original_date_enroll and request.POST.get("date_enroll"):
+            try:
+                original_date_enroll = datetime.strptime(request.POST.get("date_enroll").strip(), "%Y-%m-%d").date()
+            except ValueError:
+                pass
+
+        # If completely new registration (never existed in DB), set enrollment date to today
+        if not original_date_enroll:
+            original_date_enroll = timezone.localdate()
+
         if not eligible:
             Participant.objects.filter(study_id=study_id).delete()
             TptIndividual.objects.filter(study_id=study_id).delete()
             if screening_id:
                 Participant.objects.filter(screening_id=screening_id).delete()
                 TptIndividual.objects.filter(screening_id=screening_id).delete()
-            if pk and isinstance(participant, IneligibleIndividual):
+            if (pk or target_pk) and isinstance(participant, IneligibleIndividual):
+                obj = participant
+            elif participant and isinstance(participant, IneligibleIndividual):
                 obj = participant
             else:
                 if participant and not isinstance(participant, IneligibleIndividual):
                     participant.delete()
-                obj = IneligibleIndividual(study_id=study_id, date_enroll=timezone.localdate())
+                obj = IneligibleIndividual(study_id=study_id, date_enroll=original_date_enroll)
             populate_fields(obj)
             obj.save()
             sync_nikshay_record(obj, nikshay_id, user=request.user)
@@ -1396,12 +1449,14 @@ def registration(request, pk=None):
             if screening_id:
                 Participant.objects.filter(screening_id=screening_id).delete()
                 IneligibleIndividual.objects.filter(screening_id=screening_id).delete()
-            if pk and isinstance(participant, TptIndividual):
+            if (pk or target_pk) and isinstance(participant, TptIndividual):
+                obj = participant
+            elif participant and isinstance(participant, TptIndividual):
                 obj = participant
             else:
                 if participant and not isinstance(participant, TptIndividual):
                     participant.delete()
-                obj = TptIndividual(study_id=study_id, date_enroll=timezone.localdate())
+                obj = TptIndividual(study_id=study_id, date_enroll=original_date_enroll)
             populate_fields(obj)
             obj.save()
             sync_nikshay_record(obj, nikshay_id, user=request.user)
@@ -1411,12 +1466,14 @@ def registration(request, pk=None):
             if screening_id:
                 TptIndividual.objects.filter(screening_id=screening_id).delete()
                 IneligibleIndividual.objects.filter(screening_id=screening_id).delete()
-            if pk and isinstance(participant, Participant):
+            if (pk or target_pk) and isinstance(participant, Participant):
+                obj = participant
+            elif participant and isinstance(participant, Participant):
                 obj = participant
             else:
                 if participant and not isinstance(participant, Participant):
                     participant.delete()
-                obj = Participant(study_id=study_id, date_enroll=timezone.localdate())
+                obj = Participant(study_id=study_id, date_enroll=original_date_enroll)
             populate_fields(obj)
             obj.save()
             sync_nikshay_record(obj, nikshay_id, user=request.user)
@@ -1463,6 +1520,8 @@ def registration(request, pk=None):
             nikshay_val = nikshay_id_param
 
         participant_data = {
+            "date_enroll": participant.date_enroll.strftime("%Y-%m-%d") if getattr(participant, "date_enroll", None) else "",
+            "updated_at": participant.updated_at.strftime("%Y-%m-%d %H:%M:%S") if getattr(participant, "updated_at", None) else "",
             "consent": getattr(participant, "consent", "") or ("No" if getattr(participant, "classification", "") == "Excluded" and "consent" in (getattr(participant, "classification_reason", "") or "").lower() else ""),
             "classification": getattr(participant, "classification", "") or "",
             "classification_reason": getattr(participant, "classification_reason", "") or "",
@@ -5605,6 +5664,7 @@ def data_export_view(request):
             ("Screening ID", lambda p: p.screening_id),
             ("Nikshay ID", lambda p: p.nikshay_id),
             ("Date of Enrollment", lambda p: p.date_enroll),
+            ("Last Updated Date", lambda p: p.updated_at.strftime("%Y-%m-%d %H:%M:%S") if getattr(p, "updated_at", None) else (p.created_at.strftime("%Y-%m-%d %H:%M:%S") if getattr(p, "created_at", None) else "")),
 
             # 1. Step 1: Site Location & Sector
             ("State", lambda p: p.state),

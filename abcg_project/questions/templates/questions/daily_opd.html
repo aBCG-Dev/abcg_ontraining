@@ -10,9 +10,11 @@
         max-width: 1100px;
         margin: 0 auto;
     }
+
     .tabular-nums {
         font-variant-numeric: tabular-nums;
     }
+
     .matrix-cell-input {
         min-height: 48px;
         height: 48px;
@@ -23,35 +25,46 @@
         border: 1.5px solid #cbd5e1;
         color: #0f172a;
         transition: border-color 0.15s, box-shadow 0.15s;
+
+
+
     }
+
     .matrix-cell-input::placeholder {
         color: #94a3b8;
         font-weight: 500;
     }
+
     .matrix-cell-input:focus {
         border-color: #2563eb !important;
         box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.2) !important;
         outline: none;
         background-color: #ffffff !important;
     }
+
     .matrix-cell-input.is-warning {
         border-color: #f59e0b !important;
         background-color: #fffbeb !important;
         color: #92400e !important;
     }
+
     .opd-matrix-table tbody tr {
         min-height: 52px;
         transition: background-color 0.12s;
     }
+
     .opd-matrix-table tbody tr:hover td {
         background-color: #f8fafc;
     }
+
     .row-eligible-65 {
         background-color: #f0f7ff !important;
     }
+
     .row-eligible-65 td {
         background-color: #f0f7ff !important;
     }
+
     .sticky-table-header th {
         position: sticky;
         top: 0;
@@ -61,15 +74,18 @@
         padding-top: 10px;
         padding-bottom: 10px;
     }
+
     .plain-row-total {
         font-size: 1.05rem;
         font-weight: 700;
         color: #475569;
     }
+
     .grand-summary-bar {
         background: #ffffff;
         border-top: 2px solid #e2e8f0;
     }
+
     .grand-total-display {
         background: #0f4c81;
         color: #ffffff;
@@ -77,6 +93,7 @@
         padding: 6px 16px;
         min-width: 140px;
     }
+
     .mobile-stepper-btn {
         width: 44px;
         height: 48px;
@@ -100,36 +117,41 @@
             <span class="text-muted small">/</span>
             <h1 class="h6 fw-bold text-dark mb-0">Daily OPD Register</h1>
             {% if existing_entry %}
-                <span id="opdStatusBadge" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill small fw-semibold">
-                    Submitted
-                </span>
+            <span id="opdStatusBadge"
+                class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill small fw-semibold">
+                Submitted
+            </span>
             {% else %}
-                <span id="opdStatusBadge" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-0.5 rounded-pill small fw-semibold">
-                    Not submitted
-                </span>
+            <span id="opdStatusBadge"
+                class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-0.5 rounded-pill small fw-semibold">
+                Not submitted
+            </span>
             {% endif %}
         </div>
 
         <div class="d-flex align-items-center gap-2 ms-auto">
-            <span id="unsavedChangesPill" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5 d-none small">
+            <span id="unsavedChangesPill"
+                class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5 d-none small">
                 Unsaved
             </span>
             {% if user|has_any_group:"Super Admin,Admin,Nodal Officer,Doctor" %}
-                <a href="{% url 'questions:export_opd_data' %}?format=excel" class="btn btn-sm btn-outline-success py-0.5 px-2" style="font-size: 0.78rem;" title="Export Excel">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Excel
-                </a>
+            <a href="{% url 'questions:export_opd_data' %}?format=excel"
+                class="btn btn-sm btn-outline-success py-0.5 px-2" style="font-size: 0.78rem;" title="Export Excel">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
             {% endif %}
         </div>
     </div>
 
     <!-- Django Message Notifications -->
     {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show py-2 px-3 mb-2 rounded-3 small" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show py-2 px-3 mb-2 rounded-3 small"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
     {% endif %}
 
     <!-- Main Card -->
@@ -143,34 +165,26 @@
                 <div class="col-12 col-lg-6">
                     <div class="d-flex align-items-center justify-content-between gap-1.5 flex-wrap">
                         <div class="d-flex align-items-center gap-1.5 flex-grow-1">
-                            <label for="opd_date" class="form-label text-muted fw-bold small mb-0 text-nowrap">Date:</label>
+                            <label for="opd_date"
+                                class="form-label text-muted fw-bold small mb-0 text-nowrap">Date:</label>
                             <div class="input-group input-group-sm flex-grow-1" style="max-width: 260px;">
-                                <button type="button" class="btn btn-outline-secondary px-2" onclick="navigateDateDelta(-1)" title="Previous Day" aria-label="Previous Day">
+                                <button type="button" class="btn btn-outline-secondary px-2"
+                                    onclick="navigateDateDelta(-1)" title="Previous Day" aria-label="Previous Day">
                                     <i class="bi bi-chevron-left"></i>
                                 </button>
-                                <input type="date" 
-                                       class="form-control fw-bold text-dark text-center" 
-                                       id="opd_date" 
-                                       name="date" 
-                                       form="dailyOpdForm" 
-                                       value="{{ target_date_str }}" 
-                                       max="{{ today_str }}" 
-                                       required 
-                                       onchange="handleDateChange(this.value)">
-                                <button type="button" 
-                                        class="btn btn-outline-secondary px-2" 
-                                        id="nextDayBtn" 
-                                        onclick="navigateDateDelta(1)" 
-                                        title="Next Day" 
-                                        aria-label="Next Day" 
-                                        {% if target_date_str == today_str %}disabled{% endif %}>
+                                <input type="date" class="form-control fw-bold text-dark text-center" id="opd_date"
+                                    name="date" form="dailyOpdForm" value="{{ target_date_str }}" max="{{ today_str }}"
+                                    required onchange="handleDateChange(this.value)">
+                                <button type="button" class="btn btn-outline-secondary px-2" id="nextDayBtn" onclick="navigateDateDelta(1)" title="Next Day" aria-label="Next Day" {% if target_date_str == today_str %}disabled{% endif %}>
                                     <i class="bi bi-chevron-right"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="btn-group btn-group-sm ms-auto">
-                            <button type="button" class="btn btn-outline-primary px-2" onclick="setQuickDate('today')">Today</button>
-                            <button type="button" class="btn btn-outline-secondary px-2" onclick="setQuickDate('yesterday')">Yesterday</button>
+                            <button type="button" class="btn btn-outline-primary px-2"
+                                onclick="setQuickDate('today')">Today</button>
+                            <button type="button" class="btn btn-outline-secondary px-2"
+                                onclick="setQuickDate('yesterday')">Yesterday</button>
                         </div>
                     </div>
                 </div>
@@ -179,25 +193,35 @@
                 <div class="col-12 col-lg-6">
                     <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
                         <div class="d-flex align-items-center gap-1.5 flex-grow-1" style="min-width: 200px;">
-                            <label for="opd_facility" class="form-label text-muted fw-bold small mb-0 text-nowrap">Facility:</label>
-                            <select class="form-select form-select-sm fw-semibold flex-grow-1" id="opd_facility" name="facility" form="dailyOpdForm" required onchange="handleFacilityChange(this.value)">
-                                <option value="" disabled {% if not selected_facility %}selected{% endif %}>Select Facility...</option>
+                            <label for="opd_facility"
+                                class="form-label text-muted fw-bold small mb-0 text-nowrap">Facility:</label>
+                            <select class="form-select form-select-sm fw-semibold flex-grow-1" id="opd_facility"
+                                name="facility" form="dailyOpdForm" required
+                                onchange="handleFacilityChange(this.value)">
+                                <option value="" disabled {% if not selected_facility %}selected{% endif %}>Select
+                                    Facility...</option>
                                 {% for fac in facility_options %}
-                                    <option value="{{ fac }}" {% if fac == selected_facility %}selected{% endif %}>{{ fac }}</option>
+                                <option value="{{ fac }}" {% if fac == selected_facility %}selected{% endif %}>{{ fac }}
+                                </option>
                                 {% endfor %}
                                 <option value="__custom__">+ Enter Custom...</option>
                             </select>
                         </div>
                         <div class="d-flex align-items-center gap-2 ms-auto">
-                            <span class="badge bg-light text-secondary border px-2 py-1 small fw-normal d-none d-md-inline-block" title="{{ site.state }} - {{ site.district }}">
+                            <span
+                                class="badge bg-light text-secondary border px-2 py-1 small fw-normal d-none d-md-inline-block"
+                                title="{{ site.state }} - {{ site.district }}">
                                 {{ site.tb_unit }}
                             </span>
-                            <button type="button" class="btn btn-link btn-sm text-decoration-none text-secondary p-0" onclick="prefillZeros()" title="Fill empty cells with 0">Fill 0s</button>
+                            <button type="button" class="btn btn-link btn-sm text-decoration-none text-secondary p-0"
+                                onclick="prefillZeros()" title="Fill empty cells with 0">Fill 0s</button>
                             <span class="text-muted small">|</span>
-                            <button type="button" class="btn btn-link btn-sm text-decoration-none text-danger p-0" onclick="confirmClearAll()">Clear</button>
+                            <button type="button" class="btn btn-link btn-sm text-decoration-none text-danger p-0"
+                                onclick="confirmClearAll()">Clear</button>
                         </div>
                     </div>
-                    <input type="text" class="form-control form-control-sm mt-1 d-none" id="custom_facility_input" name="custom_facility" form="dailyOpdForm" placeholder="Enter facility name...">
+                    <input type="text" class="form-control form-control-sm mt-1 d-none" id="custom_facility_input"
+                        name="custom_facility" form="dailyOpdForm" placeholder="Enter facility name...">
                 </div>
 
             </div>
@@ -206,21 +230,27 @@
         <div class="card-body p-2 p-md-3">
 
             {% if existing_entry %}
-                <div class="alert alert-info py-1.5 px-2.5 border-0 bg-info-subtle text-info-emphasis d-flex align-items-center gap-2 mb-2 rounded-2" style="font-size: 0.8rem;">
-                    <i class="bi bi-info-circle-fill text-info"></i>
-                    <span>Editing submission from <strong>{{ existing_entry.updated_at|date:"d M Y, h:i A" }}</strong> by <strong>@{{ existing_entry.entered_by.username|default:"nurse" }}</strong>.</span>
-                </div>
+            <div class="alert alert-info py-1.5 px-2.5 border-0 bg-info-subtle text-info-emphasis d-flex align-items-center gap-2 mb-2 rounded-2"
+                style="font-size: 0.8rem;">
+                <i class="bi bi-info-circle-fill text-info"></i>
+                <span>Editing submission from <strong>{{ existing_entry.updated_at|date:"d M Y, h:i A" }}</strong> by
+                    <strong>@{{ existing_entry.entered_by.username|default:"nurse" }}</strong>.</span>
+            </div>
             {% endif %}
 
-            <div id="draftRestoredBanner" class="alert alert-warning py-1.5 px-2.5 border-0 bg-warning-subtle text-warning-emphasis d-none align-items-center justify-content-between gap-2 mb-2 rounded-2 small">
+            <div id="draftRestoredBanner"
+                class="alert alert-warning py-1.5 px-2.5 border-0 bg-warning-subtle text-warning-emphasis d-none align-items-center justify-content-between gap-2 mb-2 rounded-2 small">
                 <span>Restored unsubmitted draft from local storage.</span>
-                <button type="button" class="btn btn-sm btn-link text-warning-emphasis text-decoration-none p-0 fw-semibold" onclick="discardDraft()">Discard</button>
+                <button type="button"
+                    class="btn btn-sm btn-link text-warning-emphasis text-decoration-none p-0 fw-semibold"
+                    onclick="discardDraft()">Discard</button>
             </div>
 
             <form method="post" id="dailyOpdForm" novalidate onsubmit="return handleFormSubmit(event)">
                 {% csrf_token %}
 
-                <div id="inlineValidationNotice" class="alert alert-danger py-1.5 px-2.5 border-0 d-none align-items-center gap-2 mb-2 rounded-2 small">
+                <div id="inlineValidationNotice"
+                    class="alert alert-danger py-1.5 px-2.5 border-0 d-none align-items-center gap-2 mb-2 rounded-2 small">
                     <i class="bi bi-exclamation-octagon-fill text-danger"></i>
                     <span id="inlineValidationMsg">Please correct inputs before saving.</span>
                 </div>
@@ -244,85 +274,72 @@
                             </thead>
                             <tbody class="bg-white">
                                 {% for row in age_groups_matrix %}
-                                <tr data-group="{{ row.code }}" class="{% if row.code == '65+' %}row-eligible-65{% endif %}" id="row_{{ row.code }}">
+                                <tr data-group="{{ row.code }}"
+                                    class="{% if row.code == '65+' %}row-eligible-65{% endif %}"
+                                    id="row_{{ row.code }}">
                                     <!-- Age group label: Minimal, no extra subtext -->
                                     <td class="px-3 py-2">
                                         <div class="d-flex align-items-center justify-content-between">
                                             <strong class="text-dark fs-6">{{ row.label }}</strong>
                                             {% if row.code == '65+' %}
-                                                <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5" style="font-size: 0.65rem;">
-                                                    65+
-                                                </span>
+                                            <span
+                                                class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5"
+                                                style="font-size: 0.65rem;">
+                                                65+
+                                            </span>
                                             {% endif %}
                                         </div>
                                     </td>
 
                                     <!-- Male Input Cell -->
                                     <td class="p-1.5 text-center">
-                                        <input type="text" 
-                                               inputmode="numeric"
-                                               pattern="[0-9]*"
-                                               class="form-control matrix-cell-input tabular-nums male-input" 
-                                               name="{{ row.code }}_male" 
-                                               id="{{ row.code }}_male" 
-                                               data-group="{{ row.code }}"
-                                               data-gender="male"
-                                               data-row-idx="{{ forloop.counter0 }}"
-                                               data-col-idx="0"
-                                               placeholder="0" 
-                                               value="{{ row.male }}" 
-                                               aria-label="{{ row.label }} Male"
-                                               oninput="handleCellInput(this)" 
-                                               onkeydown="handleGridKeydown(event, this)"
-                                               onfocus="this.select()">
-                                        <div class="cell-warning-msg small text-warning fw-semibold d-none" id="warn_{{ row.code }}_male" style="font-size: 0.68rem;">High (&gt;500)</div>
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                            class="form-control matrix-cell-input tabular-nums male-input"
+                                            name="{{ row.code }}_male" id="{{ row.code }}_male"
+                                            data-group="{{ row.code }}" data-gender="male"
+                                            data-row-idx="{{ forloop.counter0 }}" data-col-idx="0" placeholder="0"
+                                            value="{{ row.male }}" aria-label="{{ row.label }} Male"
+                                            oninput="handleCellInput(this)" onkeydown="handleGridKeydown(event, this)"
+                                            onfocus="this.select()">
+                                        <div class="cell-warning-msg small text-warning fw-semibold d-none"
+                                            id="warn_{{ row.code }}_male" style="font-size: 0.68rem;">High (&gt;500)
+                                        </div>
                                     </td>
 
                                     <!-- Female Input Cell -->
                                     <td class="p-1.5 text-center">
-                                        <input type="text" 
-                                               inputmode="numeric"
-                                               pattern="[0-9]*"
-                                               class="form-control matrix-cell-input tabular-nums female-input" 
-                                               name="{{ row.code }}_female" 
-                                               id="{{ row.code }}_female" 
-                                               data-group="{{ row.code }}"
-                                               data-gender="female"
-                                               data-row-idx="{{ forloop.counter0 }}"
-                                               data-col-idx="1"
-                                               placeholder="0" 
-                                               value="{{ row.female }}" 
-                                               aria-label="{{ row.label }} Female"
-                                               oninput="handleCellInput(this)" 
-                                               onkeydown="handleGridKeydown(event, this)"
-                                               onfocus="this.select()">
-                                        <div class="cell-warning-msg small text-warning fw-semibold d-none" id="warn_{{ row.code }}_female" style="font-size: 0.68rem;">High (&gt;500)</div>
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                            class="form-control matrix-cell-input tabular-nums female-input"
+                                            name="{{ row.code }}_female" id="{{ row.code }}_female"
+                                            data-group="{{ row.code }}" data-gender="female"
+                                            data-row-idx="{{ forloop.counter0 }}" data-col-idx="1" placeholder="0"
+                                            value="{{ row.female }}" aria-label="{{ row.label }} Female"
+                                            oninput="handleCellInput(this)" onkeydown="handleGridKeydown(event, this)"
+                                            onfocus="this.select()">
+                                        <div class="cell-warning-msg small text-warning fw-semibold d-none"
+                                            id="warn_{{ row.code }}_female" style="font-size: 0.68rem;">High (&gt;500)
+                                        </div>
                                     </td>
 
                                     <!-- Transgender Input Cell -->
                                     <td class="p-1.5 text-center">
-                                        <input type="text" 
-                                               inputmode="numeric"
-                                               pattern="[0-9]*"
-                                               class="form-control matrix-cell-input tabular-nums other-input text-secondary" 
-                                               name="{{ row.code }}_other" 
-                                               id="{{ row.code }}_other" 
-                                               data-group="{{ row.code }}"
-                                               data-gender="other"
-                                               data-row-idx="{{ forloop.counter0 }}"
-                                               data-col-idx="2"
-                                               placeholder="0" 
-                                               value="{{ row.other }}" 
-                                               aria-label="{{ row.label }} Transgender"
-                                               oninput="handleCellInput(this)" 
-                                               onkeydown="handleGridKeydown(event, this)"
-                                               onfocus="this.select()">
-                                        <div class="cell-warning-msg small text-warning fw-semibold d-none" id="warn_{{ row.code }}_other" style="font-size: 0.68rem;">High (&gt;500)</div>
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                            class="form-control matrix-cell-input tabular-nums other-input text-secondary"
+                                            name="{{ row.code }}_other" id="{{ row.code }}_other"
+                                            data-group="{{ row.code }}" data-gender="other"
+                                            data-row-idx="{{ forloop.counter0 }}" data-col-idx="2" placeholder="0"
+                                            value="{{ row.other }}" aria-label="{{ row.label }} Transgender"
+                                            oninput="handleCellInput(this)" onkeydown="handleGridKeydown(event, this)"
+                                            onfocus="this.select()">
+                                        <div class="cell-warning-msg small text-warning fw-semibold d-none"
+                                            id="warn_{{ row.code }}_other" style="font-size: 0.68rem;">High (&gt;500)
+                                        </div>
                                     </td>
 
                                     <!-- Row Total -->
                                     <td class="px-2 py-2 text-center bg-light">
-                                        <span class="plain-row-total tabular-nums" id="row_total_{{ row.code }}">{{ row.row_total }}</span>
+                                        <span class="plain-row-total tabular-nums" id="row_total_{{ row.code }}">{{
+                                            row.row_total }}</span>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -338,7 +355,8 @@
                     <div class="d-flex flex-column gap-2 mb-2">
                         {% for row in age_groups_matrix %}
                         <div class="card border rounded-2 shadow-2xs">
-                            <div class="card-header bg-white py-1.5 px-2.5 d-flex align-items-center justify-content-between border-bottom">
+                            <div
+                                class="card-header bg-white py-1.5 px-2.5 d-flex align-items-center justify-content-between border-bottom">
                                 <strong class="text-dark fs-6">{{ row.label }}</strong>
                                 <span class="badge bg-light text-dark border px-2 py-0.5 tabular-nums fw-bold small">
                                     Total: <span id="mobile_subtotal_{{ row.code }}">{{ row.row_total }}</span>
@@ -350,56 +368,58 @@
                                 <div class="d-flex align-items-center justify-content-between gap-1">
                                     <span class="fw-semibold text-primary small" style="min-width: 90px;">Male</span>
                                     <div class="d-flex align-items-center gap-1 flex-grow-1 justify-content-end">
-                                        <button type="button" class="btn btn-outline-secondary mobile-stepper-btn" onclick="stepMobileValue('{{ row.code }}', 'male', -1)" aria-label="Decrease Male">&minus;</button>
-                                        <input type="text" 
-                                               inputmode="numeric" 
-                                               pattern="[0-9]*" 
-                                               class="form-control matrix-cell-input tabular-nums text-center fw-bold" 
-                                               style="max-width: 80px;" 
-                                               id="mobile_{{ row.code }}_male" 
-                                               placeholder="0" 
-                                               value="{{ row.male }}" 
-                                               oninput="syncFromMobile(this, '{{ row.code }}', 'male')" 
-                                               onfocus="this.select()">
-                                        <button type="button" class="btn btn-outline-primary mobile-stepper-btn" onclick="stepMobileValue('{{ row.code }}', 'male', 1)" aria-label="Increase Male">&plus;</button>
+                                        <button type="button" class="btn btn-outline-secondary mobile-stepper-btn"
+                                            onclick="stepMobileValue('{{ row.code }}', 'male', -1)"
+                                            aria-label="Decrease Male">&minus;</button>
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                            class="form-control matrix-cell-input tabular-nums text-center fw-bold"
+                                            style="max-width: 80px;" id="mobile_{{ row.code }}_male" placeholder="0"
+                                            value="{{ row.male }}"
+                                            oninput="syncFromMobile(this, '{{ row.code }}', 'male')"
+                                            onfocus="this.select()">
+                                        <button type="button" class="btn btn-outline-primary mobile-stepper-btn"
+                                            onclick="stepMobileValue('{{ row.code }}', 'male', 1)"
+                                            aria-label="Increase Male">&plus;</button>
                                     </div>
                                 </div>
 
                                 <!-- Female -->
                                 <div class="d-flex align-items-center justify-content-between gap-1 pt-1 border-top">
-                                    <span class="fw-semibold small" style="color: #db2777; min-width: 90px;">Female</span>
+                                    <span class="fw-semibold small"
+                                        style="color: #db2777; min-width: 90px;">Female</span>
                                     <div class="d-flex align-items-center gap-1 flex-grow-1 justify-content-end">
-                                        <button type="button" class="btn btn-outline-secondary mobile-stepper-btn" onclick="stepMobileValue('{{ row.code }}', 'female', -1)" aria-label="Decrease Female">&minus;</button>
-                                        <input type="text" 
-                                               inputmode="numeric" 
-                                               pattern="[0-9]*" 
-                                               class="form-control matrix-cell-input tabular-nums text-center fw-bold" 
-                                               style="max-width: 80px;" 
-                                               id="mobile_{{ row.code }}_female" 
-                                               placeholder="0" 
-                                               value="{{ row.female }}" 
-                                               oninput="syncFromMobile(this, '{{ row.code }}', 'female')" 
-                                               onfocus="this.select()">
-                                        <button type="button" class="btn btn-outline-danger mobile-stepper-btn" onclick="stepMobileValue('{{ row.code }}', 'female', 1)" aria-label="Increase Female">&plus;</button>
+                                        <button type="button" class="btn btn-outline-secondary mobile-stepper-btn"
+                                            onclick="stepMobileValue('{{ row.code }}', 'female', -1)"
+                                            aria-label="Decrease Female">&minus;</button>
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                            class="form-control matrix-cell-input tabular-nums text-center fw-bold"
+                                            style="max-width: 80px;" id="mobile_{{ row.code }}_female" placeholder="0"
+                                            value="{{ row.female }}"
+                                            oninput="syncFromMobile(this, '{{ row.code }}', 'female')"
+                                            onfocus="this.select()">
+                                        <button type="button" class="btn btn-outline-danger mobile-stepper-btn"
+                                            onclick="stepMobileValue('{{ row.code }}', 'female', 1)"
+                                            aria-label="Increase Female">&plus;</button>
                                     </div>
                                 </div>
 
                                 <!-- Transgender -->
                                 <div class="d-flex align-items-center justify-content-between gap-1 pt-1 border-top">
-                                    <span class="fw-semibold text-secondary small" style="min-width: 90px;">Transgender</span>
+                                    <span class="fw-semibold text-secondary small"
+                                        style="min-width: 90px;">Transgender</span>
                                     <div class="d-flex align-items-center gap-1 flex-grow-1 justify-content-end">
-                                        <button type="button" class="btn btn-outline-secondary mobile-stepper-btn" onclick="stepMobileValue('{{ row.code }}', 'other', -1)" aria-label="Decrease Transgender">&minus;</button>
-                                        <input type="text" 
-                                               inputmode="numeric" 
-                                               pattern="[0-9]*" 
-                                               class="form-control matrix-cell-input tabular-nums text-center fw-bold text-secondary" 
-                                               style="max-width: 80px;" 
-                                               id="mobile_{{ row.code }}_other" 
-                                               placeholder="0" 
-                                               value="{{ row.other }}" 
-                                               oninput="syncFromMobile(this, '{{ row.code }}', 'other')" 
-                                               onfocus="this.select()">
-                                        <button type="button" class="btn btn-outline-secondary mobile-stepper-btn" onclick="stepMobileValue('{{ row.code }}', 'other', 1)" aria-label="Increase Transgender">&plus;</button>
+                                        <button type="button" class="btn btn-outline-secondary mobile-stepper-btn"
+                                            onclick="stepMobileValue('{{ row.code }}', 'other', -1)"
+                                            aria-label="Decrease Transgender">&minus;</button>
+                                        <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                            class="form-control matrix-cell-input tabular-nums text-center fw-bold text-secondary"
+                                            style="max-width: 80px;" id="mobile_{{ row.code }}_other" placeholder="0"
+                                            value="{{ row.other }}"
+                                            oninput="syncFromMobile(this, '{{ row.code }}', 'other')"
+                                            onfocus="this.select()">
+                                        <button type="button" class="btn btn-outline-secondary mobile-stepper-btn"
+                                            onclick="stepMobileValue('{{ row.code }}', 'other', 1)"
+                                            aria-label="Increase Transgender">&plus;</button>
                                     </div>
                                 </div>
                             </div>
@@ -409,37 +429,39 @@
                 </div>
 
                 <!-- Grand Total Summary Bar -->
-                <div class="grand-summary-bar rounded-2 p-2.5 mt-2.5 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div
+                    class="grand-summary-bar rounded-2 p-2.5 mt-2.5 d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div class="d-flex align-items-center gap-3 gap-md-4 flex-wrap">
                         <div>
                             <div class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">MALE</div>
-                            <div class="fs-4 fw-bold text-primary tabular-nums" id="col_total_male">{{ col_total_male }}</div>
+                            <div class="fs-4 fw-bold text-primary tabular-nums" id="col_total_male">{{ col_total_male }}
+                            </div>
                         </div>
                         <div class="border-start ps-3 ps-md-4">
                             <div class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">FEMALE</div>
-                            <div class="fs-4 fw-bold tabular-nums" style="color: #db2777;" id="col_total_female">{{ col_total_female }}</div>
+                            <div class="fs-4 fw-bold tabular-nums" style="color: #db2777;" id="col_total_female">{{
+                                col_total_female }}</div>
                         </div>
                         <div class="border-start ps-3 ps-md-4">
                             <div class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">TRANSGENDER</div>
-                            <div class="fs-4 fw-bold text-secondary tabular-nums" id="col_total_other">{{ col_total_other }}</div>
+                            <div class="fs-4 fw-bold text-secondary tabular-nums" id="col_total_other">{{
+                                col_total_other }}</div>
                         </div>
                     </div>
 
                     <div class="grand-total-display text-center shadow-sm">
-                        <div class="text-uppercase fw-semibold" style="font-size: 0.65rem; opacity: 0.9;">GRAND TOTAL</div>
-                        <div class="fs-3 fw-bolder lh-1 tabular-nums mt-0.5" id="grand_total_badge" aria-live="polite">{{ grand_total }}</div>
+                        <div class="text-uppercase fw-semibold" style="font-size: 0.65rem; opacity: 0.9;">GRAND TOTAL
+                        </div>
+                        <div class="fs-3 fw-bolder lh-1 tabular-nums mt-0.5" id="grand_total_badge" aria-live="polite">
+                            {{ grand_total }}</div>
                     </div>
                 </div>
 
                 <!-- Remarks (Optional) -->
                 <div class="mt-2.5 mb-2">
-                    <input type="text" 
-                           class="form-control form-control-sm" 
-                           id="opd_remarks" 
-                           name="remarks" 
-                           placeholder="Operational remarks / clinic notes (optional)" 
-                           value="{{ remarks }}" 
-                           oninput="markDirty()">
+                    <input type="text" class="form-control form-control-sm" id="opd_remarks" name="remarks"
+                        placeholder="Operational remarks / clinic notes (optional)" value="{{ remarks }}"
+                        oninput="markDirty()">
                 </div>
 
                 <!-- Action Footer -->
@@ -447,12 +469,13 @@
                     <span class="text-muted small">@{{ request.user.username }}</span>
 
                     <div class="d-flex align-items-center gap-2">
-                        <a href="{% url 'questions:home' %}" class="btn btn-outline-secondary border-0 btn-sm text-muted">Back</a>
-                        <button type="submit" 
-                                id="saveOpdBtn" 
-                                class="btn btn-primary px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5 shadow-sm" 
-                                style="background-color: #0f4c81; border: none; min-width: 160px; justify-content: center;">
-                            <span id="saveBtnSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <a href="{% url 'questions:home' %}"
+                            class="btn btn-outline-secondary border-0 btn-sm text-muted">Back</a>
+                        <button type="submit" id="saveOpdBtn"
+                            class="btn btn-primary px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5 shadow-sm"
+                            style="background-color: #0f4c81; border: none; min-width: 160px; justify-content: center;">
+                            <span id="saveBtnSpinner" class="spinner-border spinner-border-sm d-none" role="status"
+                                aria-hidden="true"></span>
                             <i class="bi bi-check2-circle" id="saveBtnIcon"></i>
                             <span id="saveBtnText">{% if existing_entry %}Update OPD{% else %}Save Daily OPD{% endif %}</span>
                         </button>
@@ -465,14 +488,13 @@
 
     <!-- Recent Submissions Collapsible -->
     <div class="card border-0 shadow-sm bg-white rounded-3 mb-3">
-        <div class="card-header bg-white border-bottom py-2 px-3 d-flex justify-content-between align-items-center cursor-pointer" 
-             data-bs-toggle="collapse" 
-             data-bs-target="#recentSubmissionsCollapse" 
-             style="cursor: pointer;">
+        <div class="card-header bg-white border-bottom py-2 px-3 d-flex justify-content-between align-items-center cursor-pointer"
+            data-bs-toggle="collapse" data-bs-target="#recentSubmissionsCollapse" style="cursor: pointer;">
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-clock-history text-primary"></i>
                 <span class="fw-bold small text-dark">Recent OPD Submissions</span>
-                <span class="badge bg-light text-secondary border px-1.5 py-0.5 rounded-pill small">{{ history_records|length }}</span>
+                <span class="badge bg-light text-secondary border px-1.5 py-0.5 rounded-pill small">{{
+                    history_records|length }}</span>
             </div>
             <i class="bi bi-chevron-down text-muted small" id="recentCollapseChevron"></i>
         </div>
@@ -480,48 +502,51 @@
         <div class="collapse" id="recentSubmissionsCollapse">
             <div class="card-body p-0">
                 {% if history_records %}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="font-size: 0.82rem;">
-                            <thead class="table-light text-muted small text-uppercase">
-                                <tr>
-                                    <th class="ps-3">Date</th>
-                                    <th>TB Unit</th>
-                                    <th>Facility</th>
-                                    <th class="text-center">Male</th>
-                                    <th class="text-center">Female</th>
-                                    <th class="text-center">Transgender</th>
-                                    <th class="text-center fw-bold">Total</th>
-                                    <th>By</th>
-                                    <th class="text-end pe-3">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for rec in history_records %}
-                                    <tr {% if rec.date == target_date %}class="table-primary-subtle"{% endif %}>
-                                        <td class="ps-3 fw-bold">{{ rec.date|date:"d-M-Y" }}</td>
-                                        <td>{{ rec.tb_unit }}</td>
-                                        <td><span class="badge bg-light text-dark border">{{ rec.facility|default:"General" }}</span></td>
-                                        <td class="text-center text-primary fw-semibold tabular-nums">{{ rec.total_male }}</td>
-                                        <td class="text-center fw-semibold tabular-nums" style="color: #db2777;">{{ rec.total_female }}</td>
-                                        <td class="text-center text-secondary tabular-nums">{{ rec.total_other }}</td>
-                                        <td class="text-center">
-                                            <span class="badge bg-primary px-2 py-0.5 tabular-nums">{{ rec.grand_total }}</span>
-                                        </td>
-                                        <td class="small text-muted">{{ rec.entered_by.username|default:"System" }}</td>
-                                        <td class="text-end pe-3">
-                                            <a href="?date={{ rec.date|date:'Y-m-d' }}&facility={{ rec.facility }}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">
-                                                Edit
-                                            </a>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.82rem;">
+                        <thead class="table-light text-muted small text-uppercase">
+                            <tr>
+                                <th class="ps-3">Date</th>
+                                <th>TB Unit</th>
+                                <th>Facility</th>
+                                <th class="text-center">Male</th>
+                                <th class="text-center">Female</th>
+                                <th class="text-center">Transgender</th>
+                                <th class="text-center fw-bold">Total</th>
+                                <th>By</th>
+                                <th class="text-end pe-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in history_records %}
+                            <tr {% if rec.date == target_date %}class="table-primary-subtle" {% endif %}>
+                                <td class="ps-3 fw-bold">{{ rec.date|date:"d-M-Y" }}</td>
+                                <td>{{ rec.tb_unit }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ rec.facility|default:"General"
+                                        }}</span></td>
+                                <td class="text-center text-primary fw-semibold tabular-nums">{{ rec.total_male }}</td>
+                                <td class="text-center fw-semibold tabular-nums" style="color: #db2777;">{{
+                                    rec.total_female }}</td>
+                                <td class="text-center text-secondary tabular-nums">{{ rec.total_other }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary px-2 py-0.5 tabular-nums">{{ rec.grand_total }}</span>
+                                </td>
+                                <td class="small text-muted">{{ rec.entered_by.username|default:"System" }}</td>
+                                <td class="text-end pe-3">
+                                    <a href="?date={{ rec.date|date:'Y-m-d' }}&facility={{ rec.facility }}"
+                                        class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">
+                                        Edit
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
-                    <div class="text-center py-3 text-muted small">
-                        No past OPD submissions recorded yet for this site.
-                    </div>
+                <div class="text-center py-3 text-muted small">
+                    No past OPD submissions recorded yet for this site.
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -571,7 +596,7 @@
     const SITE_TB_UNIT = "{{ site.tb_unit|escapejs }}";
     const TARGET_DATE = "{{ target_date_str }}";
     const TODAY_STR = "{{ today_str }}";
-    const IS_EXISTING = {% if existing_entry %}true{% else %}false{% endif %};
+    const IS_EXISTING = {% if existing_entry %}true{% else %} false{% endif %};
     const DRAFT_KEY = `daily_opd_draft_${SITE_TB_UNIT}_${TARGET_DATE}`;
 
     let isDirty = false;
@@ -778,7 +803,7 @@
                 };
             });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draftData));
-        } catch (e) {}
+        } catch (e) { }
     }
 
     function checkRestoreDraft() {
@@ -810,13 +835,13 @@
                 const banner = document.getElementById('draftRestoredBanner');
                 if (banner) banner.classList.remove('d-none');
             }
-        } catch (e) {}
+        } catch (e) { }
     }
 
     function discardDraft() {
         try {
             localStorage.removeItem(DRAFT_KEY);
-        } catch (e) {}
+        } catch (e) { }
         window.location.reload();
     }
 
@@ -955,7 +980,7 @@
         isDirty = false;
         try {
             localStorage.removeItem(DRAFT_KEY);
-        } catch (err) {}
+        } catch (err) { }
 
         return true;
     }

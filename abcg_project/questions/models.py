@@ -257,6 +257,7 @@ class Participant(models.Model):
     sync_verified_at = models.DateTimeField(null=True, blank=True)
     sync_error_message = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_participants")
 
     def __str__(self):
@@ -500,6 +501,7 @@ class TptIndividual(models.Model):
     sync_verified_at = models.DateTimeField(null=True, blank=True)
     sync_error_message = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_tpt_individuals")
 
     def __str__(self):
@@ -657,6 +659,7 @@ class IneligibleIndividual(models.Model):
     sync_verified_at = models.DateTimeField(null=True, blank=True)
     sync_error_message = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_ineligible_individuals")
 
     def __str__(self):
