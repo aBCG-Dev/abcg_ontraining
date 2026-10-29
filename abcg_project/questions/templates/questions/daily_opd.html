@@ -92,13 +92,13 @@
 <div class="container-fluid py-2 px-md-3 opd-shell">
 
     <!-- Top Compact Header: Very minimal content as requested -->
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <div class="d-flex align-items-center gap-2">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-1 mb-2">
+        <div class="d-flex align-items-center gap-1.5 flex-wrap">
             <a href="{% url 'questions:home' %}" class="text-decoration-none text-muted small me-1">
-                <i class="bi bi-chevron-left me-0.5"></i>Dashboard
+                <i class="bi bi-chevron-left"></i>Dashboard
             </a>
             <span class="text-muted small">/</span>
-            <h1 class="h5 fw-bold text-dark mb-0">Daily OPD Attendance Register</h1>
+            <h1 class="h6 fw-bold text-dark mb-0">Daily OPD Register</h1>
             {% if existing_entry %}
                 <span id="opdStatusBadge" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill small fw-semibold">
                     Submitted
@@ -110,7 +110,7 @@
             {% endif %}
         </div>
 
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 ms-auto">
             <span id="unsavedChangesPill" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5 d-none small">
                 Unsaved
             </span>
@@ -135,68 +135,69 @@
     <!-- Main Card -->
     <div class="card border-0 shadow-sm bg-white mb-3 rounded-3">
 
-        <!-- Context Bar: Date & Facility (Editable), State/District & TB Unit (Compact chips) -->
+        <!-- Context Bar: Responsive Date & Facility Layout -->
         <div class="card-header bg-white border-bottom p-2.5 p-md-3">
             <div class="row g-2 align-items-center">
 
-                <!-- Reporting Date -->
-                <div class="col-12 col-md-5">
-                    <div class="d-flex align-items-center gap-1">
-                        <label for="opd_date" class="form-label text-muted fw-bold small mb-0 text-nowrap" style="min-width: 45px;">Date:</label>
-                        <div class="input-group input-group-sm">
-                            <button type="button" class="btn btn-outline-secondary" onclick="navigateDateDelta(-1)" title="Previous Day">
-                                <i class="bi bi-chevron-left"></i>
-                            </button>
-                            <input type="date" 
-                                   class="form-control fw-bold text-dark text-center" 
-                                   id="opd_date" 
-                                   name="date" 
-                                   form="dailyOpdForm" 
-                                   value="{{ target_date_str }}" 
-                                   max="{{ today_str }}" 
-                                   required 
-                                   onchange="handleDateChange(this.value)">
-                            <button type="button" 
-                                    class="btn btn-outline-secondary" 
-                                    id="nextDayBtn" 
-                                    onclick="navigateDateDelta(1)" 
-                                    title="Next Day" 
-                                    {% if target_date_str == today_str %}disabled{% endif %}>
-                                <i class="bi bi-chevron-right"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-primary" onclick="setQuickDate('today')">Today</button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="setQuickDate('yesterday')">Yesterday</button>
+                <!-- Date Controls -->
+                <div class="col-12 col-lg-6">
+                    <div class="d-flex align-items-center justify-content-between gap-1.5 flex-wrap">
+                        <div class="d-flex align-items-center gap-1.5 flex-grow-1">
+                            <label for="opd_date" class="form-label text-muted fw-bold small mb-0 text-nowrap">Date:</label>
+                            <div class="input-group input-group-sm flex-grow-1" style="max-width: 260px;">
+                                <button type="button" class="btn btn-outline-secondary px-2" onclick="navigateDateDelta(-1)" title="Previous Day" aria-label="Previous Day">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <input type="date" 
+                                       class="form-control fw-bold text-dark text-center" 
+                                       id="opd_date" 
+                                       name="date" 
+                                       form="dailyOpdForm" 
+                                       value="{{ target_date_str }}" 
+                                       max="{{ today_str }}" 
+                                       required 
+                                       onchange="handleDateChange(this.value)">
+                                <button type="button" 
+                                        class="btn btn-outline-secondary px-2" 
+                                        id="nextDayBtn" 
+                                        onclick="navigateDateDelta(1)" 
+                                        title="Next Day" 
+                                        aria-label="Next Day" 
+                                        {% if target_date_str == today_str %}disabled{% endif %}>
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="btn-group btn-group-sm ms-auto">
+                            <button type="button" class="btn btn-outline-primary px-2" onclick="setQuickDate('today')">Today</button>
+                            <button type="button" class="btn btn-outline-secondary px-2" onclick="setQuickDate('yesterday')">Yesterday</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Facility Selection -->
-                <div class="col-12 col-md-4">
-                    <div class="d-flex align-items-center gap-1">
-                        <label for="opd_facility" class="form-label text-muted fw-bold small mb-0 text-nowrap" style="min-width: 50px;">Facility:</label>
-                        <select class="form-select form-select-sm fw-semibold" id="opd_facility" name="facility" form="dailyOpdForm" required onchange="handleFacilityChange(this.value)">
-                            <option value="" disabled {% if not selected_facility %}selected{% endif %}>Select Facility...</option>
-                            {% for fac in facility_options %}
-                                <option value="{{ fac }}" {% if fac == selected_facility %}selected{% endif %}>{{ fac }}</option>
-                            {% endfor %}
-                            <option value="__custom__">+ Enter Custom...</option>
-                        </select>
-                    </div>
-                    <input type="text" class="form-control form-control-sm mt-1 d-none" id="custom_facility_input" name="custom_facility" form="dailyOpdForm" placeholder="Enter facility name...">
-                </div>
-
-                <!-- Jurisdiction tags + Fill Zeros / Clear -->
-                <div class="col-12 col-md-3 text-md-end">
-                    <div class="d-flex align-items-center justify-content-between justify-content-md-end gap-2">
-                        <span class="badge bg-light text-secondary border px-2 py-1 small fw-normal" title="{{ site.state }} - {{ site.district }}">
-                            {{ site.tb_unit }}
-                        </span>
-                        <div class="d-flex align-items-center gap-1">
+                <!-- Facility Selection & Site Tools -->
+                <div class="col-12 col-lg-6">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                        <div class="d-flex align-items-center gap-1.5 flex-grow-1" style="min-width: 200px;">
+                            <label for="opd_facility" class="form-label text-muted fw-bold small mb-0 text-nowrap">Facility:</label>
+                            <select class="form-select form-select-sm fw-semibold flex-grow-1" id="opd_facility" name="facility" form="dailyOpdForm" required onchange="handleFacilityChange(this.value)">
+                                <option value="" disabled {% if not selected_facility %}selected{% endif %}>Select Facility...</option>
+                                {% for fac in facility_options %}
+                                    <option value="{{ fac }}" {% if fac == selected_facility %}selected{% endif %}>{{ fac }}</option>
+                                {% endfor %}
+                                <option value="__custom__">+ Enter Custom...</option>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 ms-auto">
+                            <span class="badge bg-light text-secondary border px-2 py-1 small fw-normal d-none d-md-inline-block" title="{{ site.state }} - {{ site.district }}">
+                                {{ site.tb_unit }}
+                            </span>
                             <button type="button" class="btn btn-link btn-sm text-decoration-none text-secondary p-0" onclick="prefillZeros()" title="Fill empty cells with 0">Fill 0s</button>
                             <span class="text-muted small">|</span>
                             <button type="button" class="btn btn-link btn-sm text-decoration-none text-danger p-0" onclick="confirmClearAll()">Clear</button>
                         </div>
                     </div>
+                    <input type="text" class="form-control form-control-sm mt-1 d-none" id="custom_facility_input" name="custom_facility" form="dailyOpdForm" placeholder="Enter facility name...">
                 </div>
 
             </div>
