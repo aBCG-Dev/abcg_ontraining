@@ -1243,22 +1243,49 @@
                         Select active symptoms below.
                     </div>
 
+                    {% if has_symptom_conflict %}
+                    <div class="alert alert-warning py-2 px-3 small border-0 d-flex align-items-center mb-3" id="symptomConflictNotice" style="border-radius: var(--radius); background-color: #fff3cd; color: #856404;">
+                        <i class="bi bi-exclamation-triangle-fill me-2 fs-5 text-warning"></i>
+                        <span><strong>Notice:</strong> This participant's historical record contained conflicting symptom selections (both <em>Asymptomatic</em> and clinical symptoms: <code>{{ conflict_original_symptoms }}</code>). Asymptomatic has been deselected to preserve documented clinical symptoms.</span>
+                    </div>
+                    {% endif %}
+
                     <span class="summary-label fw-bold d-block text-muted mb-3 text-uppercase">Symptoms *</span>
+
                     <div class="row g-2 mb-4">
+
                         {% for sym in symptoms_list %}
+
                         <div class="col-md-6">
-                            <div class="form-check p-2.5 border rounded h-100 {% if sym.code == 'asymptomatic' %}bg-light{% endif %}" style="border-radius: var(--radius);">
+
+                            <div class="form-check p-2.5 border rounded h-100 {% if participant %}{% if sym.name in participant_symptoms or sym.name == participant.symptoms %}bg-light{% endif %}{% else %}{% if sym.code == 'asymptomatic' %}bg-light{% endif %}{% endif %}" style="border-radius: var(--radius);">
+
                                 <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" 
+
                                     id="{% if sym.code == 'asymptomatic' %}symAsymp{% elif sym.code == 'others' %}symOthers{% else %}sym_{{ sym.code }}{% endif %}" 
+
                                     value="{{ sym.name }}"
-                                    {% if sym.code == 'asymptomatic' %}checked{% endif %}>
-                                <label class="form-check-label text-dark small ps-2 {% if sym.code == 'asymptomatic' %}fw-semibold{% endif %}" 
+
+                                    {% if participant %}
+                                        {% if sym.name in participant_symptoms or sym.name == participant.symptoms %}checked{% endif %}
+                                    {% else %}
+                                        {% if sym.code == 'asymptomatic' %}checked{% endif %}
+                                    {% endif %}>
+
+                                <label class="form-check-label text-dark small ps-2 {% if participant %}{% if sym.name in participant_symptoms or sym.name == participant.symptoms %}fw-semibold{% endif %}{% else %}{% if sym.code == 'asymptomatic' %}fw-semibold{% endif %}{% endif %}" 
+
                                     for="{% if sym.code == 'asymptomatic' %}symAsymp{% elif sym.code == 'others' %}symOthers{% else %}sym_{{ sym.code }}{% endif %}">
+
                                     {{ sym.name }}
+
                                 </label>
+
                             </div>
+
                         </div>
+
                         {% endfor %}
+
                     </div>
 
                     <!-- Others description input -->
@@ -3543,8 +3570,7 @@
         ];
 
         function isParticipantSymptomatic() {
-            const symAsymp = document.getElementById("symAsymp");
-            const hasPtbSymptoms = symAsymp ? !symAsymp.checked : false;
+            const hasPtbSymptoms = document.querySelectorAll('.symptom-cb:not(#symAsymp):checked').length > 0;
 
             const eptbTriggers = document.querySelectorAll(".eptb-main-trigger");
             let hasEptbSymptoms = false;
@@ -4069,8 +4095,7 @@
         }
 
         function updateStep7TestingCards() {
-            const symAsymp = document.getElementById("symAsymp");
-            const hasPtbSymptoms = symAsymp ? !symAsymp.checked : false;
+            const hasPtbSymptoms = document.querySelectorAll('.symptom-cb:not(#symAsymp):checked').length > 0;
             const activeEptbSites = typeof getActiveEptbSites === "function" ? getActiveEptbSites() : [];
             const hasEptbSymptoms = activeEptbSites.length > 0;
 
@@ -4151,24 +4176,115 @@
         }
 
         cbs.forEach(cb => {
+
             cb.addEventListener("change", function() {
+
                 if (cb === symAsymp && symAsymp.checked) {
+
+                    // Rule 1: When Asymptomatic is selected, automatically deselect every other PTB symptom immediately
                     cbs.forEach(otherCb => {
+
                         if (otherCb !== symAsymp) {
+
                             otherCb.checked = false;
-                            otherCb.closest(".form-check").classList.remove("bg-light");
+
+                            const fCheck = otherCb.closest(".form-check");
+
+                            if (fCheck) {
+
+                                fCheck.classList.remove("bg-light");
+
+                                const lbl = fCheck.querySelector("label");
+
+                                if (lbl) lbl.classList.remove("fw-semibold");
+
+                            }
+
                         }
+
                     });
-                    symAsymp.closest(".form-check").classList.add("bg-light");
+
+                    const asympCheck = symAsymp.closest(".form-check");
+
+                    if (asympCheck) {
+
+                        asympCheck.classList.add("bg-light");
+
+                        const lbl = asympCheck.querySelector("label");
+
+                        if (lbl) lbl.classList.add("fw-semibold");
+
+                    }
+
+                    if (otherSymptomInput) {
+
+                        otherSymptomInput.classList.add("d-none");
+
+                        if (otherSymptomText) {
+
+                            otherSymptomText.removeAttribute("required");
+
+                            otherSymptomText.value = "";
+
+                        }
+
+                    }
+
                 } else if (cb !== symAsymp && cb.checked) {
-                    symAsymp.checked = false;
-                    symAsymp.closest(".form-check").classList.remove("bg-light");
-                    cb.closest(".form-check").classList.add("bg-light");
+
+                    // Rule 2: When another symptom is selected, automatically deselect Asymptomatic immediately
+                    if (symAsymp) {
+
+                        symAsymp.checked = false;
+
+                        const asympCheck = symAsymp.closest(".form-check");
+
+                        if (asympCheck) {
+
+                            asympCheck.classList.remove("bg-light");
+
+                            const lbl = asympCheck.querySelector("label");
+
+                            if (lbl) lbl.classList.remove("fw-semibold");
+
+                        }
+
+                    }
+
+                    const fCheck = cb.closest(".form-check");
+
+                    if (fCheck) {
+
+                        fCheck.classList.add("bg-light");
+
+                        const lbl = fCheck.querySelector("label");
+
+                        if (lbl) lbl.classList.add("fw-semibold");
+
+                    }
+
                 } else if (!cb.checked) {
-                    cb.closest(".form-check").classList.remove("bg-light");
+
+                    // Rule 3: When all symptoms are deselected, allow empty selection (do not auto-select Asymptomatic)
+                    const fCheck = cb.closest(".form-check");
+
+                    if (fCheck) {
+
+                        fCheck.classList.remove("bg-light");
+
+                        const lbl = fCheck.querySelector("label");
+
+                        if (lbl) lbl.classList.remove("fw-semibold");
+
+                    }
+
                 }
+
                 updatePTBFieldsUI();
+
             });
+
+        });
         });
 
 
@@ -4481,6 +4597,13 @@
         form.addEventListener("submit", function (e) {
             if (formSubmissionConfirmed) return;
 
+            // Strict PTB symptom mutual-exclusion pre-submit safeguard
+            const symAsympEl = document.getElementById("symAsymp");
+            const otherActiveSymptoms = document.querySelectorAll(".symptom-cb:not(#symAsymp):checked");
+            if (symAsympEl && symAsympEl.checked && otherActiveSymptoms.length > 0) {
+                symAsympEl.checked = false;
+            }
+
             e.preventDefault();
 
             if (!validateCurrentStep()) {
@@ -4697,25 +4820,93 @@
                 }
             }
 
-            // Set symptoms checkboxes
+            // Set symptoms checkboxes with strict mutual exclusion
             if (draftData.symptoms && Array.isArray(draftData.symptoms)) {
-                draftData.symptoms.forEach(sym => {
-                    const cb = document.querySelector(`input[name="symptoms"][value="${sym}"]`);
-                    if (cb) {
-                        cb.checked = true;
-                    } else if (sym.startsWith("Others")) {
-                        const match = sym.match(/Others \((.*)\)/);
-                        const otherVal = match ? match[1] : "";
-                        const othersCb = document.getElementById("symOthers");
-                        if (othersCb) {
-                            othersCb.checked = true;
-                        }
-                        const otherText = document.getElementById("otherSymptomText");
-                        if (otherText) {
-                            otherText.value = otherVal;
-                        }
+                // Clear all symptom checkboxes first
+                cbs.forEach(cb => {
+                    cb.checked = false;
+                    const fCheck = cb.closest(".form-check");
+                    if (fCheck) {
+                        fCheck.classList.remove("bg-light");
+                        const lbl = fCheck.querySelector("label");
+                        if (lbl) lbl.classList.remove("fw-semibold");
                     }
                 });
+
+                const rawSymptoms = draftData.symptoms;
+                const hasAsymp = rawSymptoms.some(s => String(s).toLowerCase() === "asymptomatic");
+                const hasOthers = rawSymptoms.some(s => String(s).toLowerCase() !== "asymptomatic");
+
+                if (hasAsymp && hasOthers) {
+                    console.warn("Conflicting symptoms in saved record (both Asymptomatic and active symptoms). Applying recovery rule: selecting clinical symptoms only.");
+                    rawSymptoms.filter(s => String(s).toLowerCase() !== "asymptomatic").forEach(sym => {
+                        const cb = document.querySelector(`input[name="symptoms"][value="${sym}"]`);
+                        if (cb) {
+                            cb.checked = true;
+                            const fCheck = cb.closest(".form-check");
+                            if (fCheck) {
+                                fCheck.classList.add("bg-light");
+                                const lbl = fCheck.querySelector("label");
+                                if (lbl) lbl.classList.add("fw-semibold");
+                            }
+                        } else if (String(sym).startsWith("Others")) {
+                            const match = sym.match(/Others \((.*)\)/);
+                            const otherVal = match ? match[1] : "";
+                            const othersCb = document.getElementById("symOthers");
+                            if (othersCb) {
+                                othersCb.checked = true;
+                                const fCheck = othersCb.closest(".form-check");
+                                if (fCheck) {
+                                    fCheck.classList.add("bg-light");
+                                    fCheck.querySelector("label")?.classList.add("fw-semibold");
+                                }
+                            }
+                            const otherText = document.getElementById("otherSymptomText");
+                            if (otherText) {
+                                otherText.value = otherVal;
+                            }
+                        }
+                    });
+                } else if (hasAsymp) {
+                    if (symAsymp) {
+                        symAsymp.checked = true;
+                        const fCheck = symAsymp.closest(".form-check");
+                        if (fCheck) {
+                            fCheck.classList.add("bg-light");
+                            const lbl = fCheck.querySelector("label");
+                            if (lbl) lbl.classList.add("fw-semibold");
+                        }
+                    }
+                } else if (hasOthers) {
+                    rawSymptoms.forEach(sym => {
+                        const cb = document.querySelector(`input[name="symptoms"][value="${sym}"]`);
+                        if (cb) {
+                            cb.checked = true;
+                            const fCheck = cb.closest(".form-check");
+                            if (fCheck) {
+                                fCheck.classList.add("bg-light");
+                                const lbl = fCheck.querySelector("label");
+                                if (lbl) lbl.classList.add("fw-semibold");
+                            }
+                        } else if (String(sym).startsWith("Others")) {
+                            const match = sym.match(/Others \((.*)\)/);
+                            const otherVal = match ? match[1] : "";
+                            const othersCb = document.getElementById("symOthers");
+                            if (othersCb) {
+                                othersCb.checked = true;
+                                const fCheck = othersCb.closest(".form-check");
+                                if (fCheck) {
+                                    fCheck.classList.add("bg-light");
+                                    fCheck.querySelector("label")?.classList.add("fw-semibold");
+                                }
+                            }
+                            const otherText = document.getElementById("otherSymptomText");
+                            if (otherText) {
+                                otherText.value = otherVal;
+                            }
+                        }
+                    });
+                }
             }
 
             // Set BCG campaign eligibility criteria checkboxes

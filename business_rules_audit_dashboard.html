@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aBCG Study - Business Rules Implementation Audit & Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <!-- Mermaid JS for Flowcharts -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        navy: {
+                            800: '#0f2942',
+                            900: '#0a1d30',
+                            950: '#071524',
+                        },
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        code,
+        pre {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid #2563eb;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        .code-container {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-navy-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div
+                        class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-lg shadow-sm">
+                        aBCG
+                    </div>
+                    <div>
+                        <h1 class="text-base font-bold tracking-tight">Business Rules Implementation Audit</h1>
+                        <p class="text-xs text-blue-200">aBCG Adult BCG Vaccine Effectiveness Study · Local Verification
+                            Dashboard</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span
+                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+                        Read-Only Inspection
+                    </span>
+                    <span class="text-xs text-slate-400 hidden sm:inline">29 Oct 2026</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="bg-navy-950 border-t border-navy-800">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav class="flex space-x-6 overflow-x-auto text-sm text-slate-300" id="tabNav">
+                    <button onclick="switchTab('overview')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition active"
+                        data-tab="overview">Overview</button>
+                    <button onclick="switchTab('matrix')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition"
+                        data-tab="matrix">Rules Matrix</button>
+                    <button onclick="switchTab('classification')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition"
+                        data-tab="classification">Classification Cards</button>
+                    <button onclick="switchTab('flowchart')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition"
+                        data-tab="flowchart">Decision Flowchart</button>
+                    <button onclick="switchTab('priority')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition"
+                        data-tab="priority">Priority Order</button>
+                    <button onclick="switchTab('consent')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition"
+                        data-tab="consent">Consent & Eligibility</button>
+                    <button onclick="switchTab('investigations')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition"
+                        data-tab="investigations">Investigation Matrix</button>
+                    <button onclick="switchTab('duration')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition"
+                        data-tab="duration">Duration Rules</button>
+                    <button onclick="switchTab('dashboard-excel')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-white transition"
+                        data-tab="dashboard-excel">Dashboard vs Excel</button>
+                    <button onclick="switchTab('problems')"
+                        class="tab-btn py-3 px-1 border-b-2 border-transparent hover:text-rose-400 transition text-rose-300 font-semibold"
+                        data-tab="problems">Potential Problems (6)</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+        <!-- TAB: OVERVIEW -->
+        <div id="tab-overview" class="tab-content space-y-6">
+            <!-- Summary Stats Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Discovered</p>
+                    <p class="text-3xl font-extrabold text-slate-900 mt-2">22</p>
+                    <span class="text-xs text-slate-500 mt-1 block">Business Rules</span>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm bg-emerald-50/30">
+                    <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Fully Implemented</p>
+                    <p class="text-3xl font-extrabold text-emerald-600 mt-2">17</p>
+                    <span class="text-xs text-emerald-700 mt-1 block">Active in Codebase</span>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-amber-200 shadow-sm bg-amber-50/30">
+                    <p class="text-xs font-semibold text-amber-700 uppercase tracking-wider">Partially Implemented</p>
+                    <p class="text-3xl font-extrabold text-amber-600 mt-2">4</p>
+                    <span class="text-xs text-amber-700 mt-1 block">Incomplete / Mocked</span>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Not Found</p>
+                    <p class="text-3xl font-extrabold text-slate-400 mt-2">1</p>
+                    <span class="text-xs text-slate-500 mt-1 block">"Pending BCG" status</span>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm bg-rose-50/40">
+                    <p class="text-xs font-semibold text-rose-700 uppercase tracking-wider">Potential Problems</p>
+                    <p class="text-3xl font-extrabold text-rose-600 mt-2">6</p>
+                    <span class="text-xs text-rose-700 mt-1 block">Logic / Priority Risks</span>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-blue-200 shadow-sm bg-blue-50/30">
+                    <p class="text-xs font-semibold text-blue-700 uppercase tracking-wider">Needs Protocol Conf.</p>
+                    <p class="text-3xl font-extrabold text-blue-600 mt-2">3</p>
+                    <span class="text-xs text-blue-700 mt-1 block">Policy Questions</span>
+                </div>
+            </div>
+
+            <!-- Executive Summary Card -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-blue-600 mr-2"></i>
+                        Codebase Inspection Executive Summary
+                    </h2>
+                    <span
+                        class="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded font-mono">abcg_project/questions/views.py</span>
+                </div>
+                <p class="text-sm text-slate-600 leading-relaxed">
+                    The entire business logic of the aBCG study intake, eligibility screening, clinical classification,
+                    and record persistence is implemented centrally within
+                    <code class="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs">registration</code> view in
+                    <code
+                        class="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs">abcg_project/questions/views.py</code>
+                    (lines 335 to 1530).
+                    Data models <code
+                        class="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs">Participant</code>, <code
+                        class="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs">TptIndividual</code>, and <code
+                        class="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs">IneligibleIndividual</code> in
+                    <code class="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs">questions/models.py</code> act
+                    as the multi-table persistence layer.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <h3
+                            class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center text-emerald-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 mr-1.5"></i>
+                            Key Architectural Strengths Verified
+                        </h3>
+                        <ul class="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
+                            <li><strong>Multi-cohort routing:</strong> Eligible individuals, TPT participants, and
+                                ineligibles are stored in appropriate isolated tables.</li>
+                            <li><strong>Consent enforcement:</strong> Frontend immediately blocks data collection and
+                                backend cleans clinical fields when consent is "No".</li>
+                            <li><strong>Audit logging:</strong> Every run of the eligibility engine prints an audit
+                                trace with the assigned status and detailed reasons.</li>
+                            <li><strong>Non-destructive location resolution:</strong> <code
+                                    class="text-blue-700">resolve_operational_location()</code> preserves participant
+                                geography and prevents generic 'GLOBAL' overwrites.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <h3
+                            class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center text-rose-800">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 mr-1.5"></i>
+                            Key Priority & Logic Risks Identified
+                        </h3>
+                        <ul class="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
+                            <li><strong>Premature duration exclusion:</strong> Check #6 (&gt;30d pending) executes
+                                <em>before</em> Check #7 (<code class="text-rose-700">Case</code>). A confirmed NAAT+
+                                case with a pending CXR after 30 days is classified as <code
+                                    class="text-rose-700">Excluded</code>.</li>
+                            <li><strong>Premature TPT+BCG override:</strong> Check #4 (<code
+                                    class="text-amber-700">TPT+BCG</code>) executes before Check #7 (<code
+                                    class="text-rose-700">Case</code>). TPT recipients who develop active TB are
+                                classified as TPT+BCG instead of Case.</li>
+                            <li><strong>Incomplete BCG suppresses Case:</strong> Check #3 (<code
+                                    class="text-amber-700">Pending BCG</code>) executes before Check #7 (<code
+                                    class="text-rose-700">Case</code>).</li>
+                            <li><strong>Asymptomatics cannot be Controls without NAAT:</strong> Untested asymptomatic
+                                participants remain indefinitely in <code class="text-amber-700">Pending</code>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: RULES MATRIX -->
+        <div id="tab-matrix" class="tab-content hidden space-y-4">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Complete Implemented Business Rules Matrix</h2>
+                        <p class="text-xs text-slate-500">Every business rule discovered in the actual code, mapped to
+                            source files, conditions, and findings.</p>
+                    </div>
+                    <input type="text" id="ruleSearch" placeholder="Search rules..." onkeyup="filterRuleTable()"
+                        class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs w-64 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="min-w-full divide-y divide-slate-200 text-xs" id="ruleTable">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="px-3 py-2.5 text-left">Business Rule</th>
+                                <th class="px-3 py-2.5 text-left">Status</th>
+                                <th class="px-3 py-2.5 text-left">Actual Conditions</th>
+                                <th class="px-3 py-2.5 text-left">Result</th>
+                                <th class="px-3 py-2.5 text-left">File & Line</th>
+                                <th class="px-3 py-2.5 text-left">Dashboard / Excel</th>
+                                <th class="px-3 py-2.5 text-left">Finding & Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 bg-white" id="ruleTableBody">
+                            <!-- Rows generated below -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: CLASSIFICATION CARDS -->
+        <div id="tab-classification" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- CASE CARD -->
+                <div class="bg-white rounded-xl border border-rose-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-rose-50 px-5 py-3 border-b border-rose-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-rose-600"></span>
+                            <h3 class="font-bold text-slate-900">CASE</h3>
+                        </div>
+                        <span
+                            class="px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-100 text-rose-800">Implemented</span>
+                    </div>
+                    <div class="p-5 space-y-3 flex-grow text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Actual
+                                Conditions</span>
+                            <p class="text-slate-700 mt-0.5 font-mono bg-slate-50 p-2 rounded border border-slate-100">
+                                mctb == "POSITIVE" ||<br>
+                                cxr == "SUGGESTIVE_OF_TB" ||<br>
+                                eptb_status == "POSITIVE"
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Assigned
+                                Result</span>
+                            <p class="text-slate-900 font-medium">classification = "Case"</p>
+                            <p class="text-slate-500 text-[11px] mt-0.5">Reasons: "MCTB Positive and Normal CXR", "MCTB
+                                Positive and CXR suggestive of TB", "Chest X-Ray suggestive of TB", or "EPTB
+                                Investigation Positive".</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Source
+                                Location</span>
+                            <p class="text-blue-600 font-mono">questions/views.py#L1088-L1101</p>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded border border-amber-200 text-amber-900">
+                            <strong>Potential Conflict:</strong> Check #7 is preceded by Check #3 (incomplete BCG
+                            details), Check #4 (TPT+BCG), and Check #6 (&gt;30d pending). If any of those match, a true
+                            positive Case is diverted to Pending, TPT+BCG, or Excluded!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTROL CARD -->
+                <div class="bg-white rounded-xl border border-emerald-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-emerald-50 px-5 py-3 border-b border-emerald-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
+                            <h3 class="font-bold text-slate-900">CONTROL</h3>
+                        </div>
+                        <span
+                            class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800">Implemented</span>
+                    </div>
+                    <div class="p-5 space-y-3 flex-grow text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Actual
+                                Conditions</span>
+                            <p class="text-slate-700 mt-0.5 font-mono bg-slate-50 p-2 rounded border border-slate-100">
+                                cxr == "NORMAL" &amp;&amp;<br>
+                                mctb == "NEGATIVE" &amp;&amp;<br>
+                                (eptb_symptoms == "NO" || eptb_status == "NEGATIVE")
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Assigned
+                                Result</span>
+                            <p class="text-slate-900 font-medium">classification = "Control"</p>
+                            <p class="text-slate-500 text-[11px] mt-0.5">Reason: "Normal CXR, Negative NAAT, and
+                                Negative EPTB status"</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Source
+                                Location</span>
+                            <p class="text-blue-600 font-mono">questions/views.py#L1103-L1104</p>
+                        </div>
+                        <div class="bg-blue-50 p-2.5 rounded border border-blue-200 text-blue-900">
+                            <strong>Protocol Question:</strong> Requires <code
+                                class="font-mono">mctb == "NEGATIVE"</code>. Untested asymptomatic participants (<code
+                                class="font-mono">undergone_testing == "No"</code>) receive <code
+                                class="font-mono">mctb = "PENDING"</code> and therefore cannot become Controls.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PENDING CARD -->
+                <div class="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-amber-50 px-5 py-3 border-b border-amber-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-amber-600"></span>
+                            <h3 class="font-bold text-slate-900">PENDING</h3>
+                        </div>
+                        <span
+                            class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">Implemented</span>
+                    </div>
+                    <div class="p-5 space-y-3 flex-grow text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Actual
+                                Conditions</span>
+                            <p class="text-slate-700 mt-0.5 font-mono bg-slate-50 p-2 rounded border border-slate-100">
+                                Default state (L1055) OR<br>
+                                !bcg_complete (L1077) OR<br>
+                                Investigations incomplete (L1106)
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Assigned
+                                Result</span>
+                            <p class="text-slate-900 font-medium">classification = "Pending"</p>
+                            <p class="text-slate-500 text-[11px] mt-0.5">Detailed pending reason specifies exactly which
+                                investigation is missing (NAAT, CXR, or EPTB site).</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Source
+                                Location</span>
+                            <p class="text-blue-600 font-mono">questions/views.py#L1055, L1077, L1106-L1128</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-700">
+                            <strong>Behavior:</strong> Acts as the baseline catch-all state for any eligible participant
+                            with incomplete diagnostic tests or missing BCG vaccination records.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EXCLUDED CARD -->
+                <div class="bg-white rounded-xl border border-slate-300 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-slate-100 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-slate-600"></span>
+                            <h3 class="font-bold text-slate-900">EXCLUDED</h3>
+                        </div>
+                        <span
+                            class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200 text-slate-800">Implemented</span>
+                    </div>
+                    <div class="p-5 space-y-3 flex-grow text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Actual
+                                Conditions</span>
+                            <p class="text-slate-700 mt-0.5 font-mono bg-slate-50 p-2 rounded border border-slate-100">
+                                1. consent_declined (consent == "No")<br>
+                                2. cxr == "ABNORMAL_NON_TB" &amp;&amp; mctb == "NEGATIVE"<br>
+                                3. created_at &gt; 30d &amp;&amp; any investigation pending
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Assigned
+                                Result</span>
+                            <p class="text-slate-900 font-medium">classification = "Excluded"</p>
+                            <p class="text-slate-500 text-[11px] mt-0.5">Reasons: Consent not provided; Abnormal non-TB
+                                CXR with NAAT negative; or Pending investigation beyond 1 month.</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Source
+                                Location</span>
+                            <p class="text-blue-600 font-mono">questions/views.py#L1061-L1075, L1082-L1087</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-700">
+                            <strong>Note:</strong> When consent is declined, clinical questions are blanked on backend,
+                            and Excel export blanks all clinical columns.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NOT ELIGIBLE CARD -->
+                <div class="bg-white rounded-xl border border-purple-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-purple-50 px-5 py-3 border-b border-purple-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-purple-600"></span>
+                            <h3 class="font-bold text-slate-900">NOT ELIGIBLE</h3>
+                        </div>
+                        <span
+                            class="px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800">Implemented</span>
+                    </div>
+                    <div class="p-5 space-y-3 flex-grow text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Actual
+                                Conditions</span>
+                            <p class="text-slate-700 mt-0.5 font-mono bg-slate-50 p-2 rounded border border-slate-100">
+                                !has_hrg || !eligible_bcg_campaign<br>
+                                (evaluated at line 623: eligible = has_hrg &amp;&amp; eligible_bcg_campaign)
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Assigned
+                                Result</span>
+                            <p class="text-slate-900 font-medium">classification = "Not Eligible"</p>
+                            <p class="text-slate-500 text-[11px] mt-0.5">Saved to <code
+                                    class="font-mono text-purple-700">IneligibleIndividual</code> table with Study ID =
+                                SCR-YYMMDD-XXXX.</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Source
+                                Location</span>
+                            <p class="text-blue-600 font-mono">questions/views.py#L623, L1058-L1060, L1429-L1445</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-700">
+                            <strong>Execution:</strong> Ineligible records are deleted from Participant/TptIndividual
+                            tables to prevent contamination of eligible cohorts.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TPT + BCG CARD -->
+                <div class="bg-white rounded-xl border border-teal-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-teal-50 px-5 py-3 border-b border-teal-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-teal-600"></span>
+                            <h3 class="font-bold text-slate-900">TPT + BCG</h3>
+                        </div>
+                        <span
+                            class="px-2 py-0.5 rounded text-[11px] font-semibold bg-teal-100 text-teal-800">Implemented</span>
+                    </div>
+                    <div class="p-5 space-y-3 flex-grow text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Actual
+                                Conditions</span>
+                            <p class="text-slate-700 mt-0.5 font-mono bg-slate-50 p-2 rounded border border-slate-100">
+                                has_hrg &amp;&amp; eligible_bcg_campaign &amp;&amp;<br>
+                                tpt_undergone == "Yes" &amp;&amp;<br>
+                                bcg_status.startswith("Yes") &amp;&amp;<br>
+                                !consent_declined
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Assigned
+                                Result</span>
+                            <p class="text-slate-900 font-medium">classification = "TPT+BCG"</p>
+                            <p class="text-slate-500 text-[11px] mt-0.5">Saved to <code
+                                    class="font-mono text-teal-700">TptIndividual</code> table as exploratory cohort.
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Source
+                                Location</span>
+                            <p class="text-blue-600 font-mono">questions/views.py#L1053, L1080-L1081, L1446-L1463</p>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded border border-amber-200 text-amber-900">
+                            <strong>Potential Conflict:</strong> Check #4 executes before Check #7 (Case). If a TPT+BCG
+                            participant has positive NAAT, they are saved as TPT+BCG instead of Case!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PENDING BCG (DISCOVERED STATUS) -->
+                <div
+                    class="bg-white rounded-xl border border-dashed border-slate-300 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-slate-400"></span>
+                            <h3 class="font-bold text-slate-700">Pending BCG</h3>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200 text-slate-700">Not A
+                            Separate Status</span>
+                    </div>
+                    <div class="p-5 space-y-3 flex-grow text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Actual Code
+                                Behavior</span>
+                            <p class="text-slate-700 mt-0.5 font-mono bg-slate-50 p-2 rounded border border-slate-100">
+                                elif !bcg_complete:<br>
+                                &nbsp;&nbsp;classification = "Pending"<br>
+                                &nbsp;&nbsp;classification_reason = "One or more required BCG verification or vaccine
+                                details are incomplete."
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Assigned
+                                Result</span>
+                            <p class="text-slate-900 font-medium">classification = "Pending" (NOT "Pending BCG")</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Source
+                                Location</span>
+                            <p class="text-blue-600 font-mono">questions/views.py#L1076-L1078</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-600">
+                            <strong>Audit Finding:</strong> There is no status string <code
+                                class="font-mono">"Pending BCG"</code> in <code
+                                class="font-mono">Participant.CLASSIFICATION_CHOICES</code> or the database. Incomplete
+                            BCG records are stored under generic <code class="font-mono">"Pending"</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADJUDICATION (DISCOVERED IN ADMIN/DASHBOARD) -->
+                <div
+                    class="bg-white rounded-xl border border-dashed border-indigo-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-indigo-50 px-5 py-3 border-b border-indigo-100 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
+                            <h3 class="font-bold text-slate-800">Adjudication Pending</h3>
+                        </div>
+                        <span
+                            class="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-800">Dashboard
+                            Filter Only</span>
+                    </div>
+                    <div class="p-5 space-y-3 flex-grow text-xs">
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Actual Code
+                                Behavior</span>
+                            <p class="text-slate-700 mt-0.5 font-mono bg-slate-50 p-2 rounded border border-slate-100">
+                                filter(classification="Adjudication Pending")<br>
+                                filter(classification="Needs Correction")
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Assigned
+                                Result</span>
+                            <p class="text-slate-900 font-medium">Never assigned by registration view</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-semibold uppercase text-[10px] block">Source
+                                Location</span>
+                            <p class="text-blue-600 font-mono">questions/views.py#L4424, L4750</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-600">
+                            <strong>Audit Finding:</strong> Queried by central adjudication and supervisor dashboard
+                            tabs, but intake engine never sets these values. Adjudication queue falls back to mock data.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB: DECISION FLOWCHART -->
+        <div id="tab-flowchart" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="border-b border-slate-100 pb-4 mb-4">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center">
+                        <i data-lucide="git-branch" class="w-5 h-5 text-blue-600 mr-2"></i>
+                        Actual Implemented Classification Sequence Flowchart
+                    </h2>
+                    <p class="text-xs text-slate-500">Generated directly from <code
+                            class="font-mono bg-slate-100 px-1 py-0.5 rounded">views.py#L1055-L1105</code>. Displays the
+                        true order in which conditions are evaluated.</p>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 overflow-x-auto flex justify-center">
+                    <pre class="mermaid text-xs">
+flowchart TD
+    START([Participant Intake Form Submitted]) --> CHECK_ELIG{Check 1: Eligible?<br/>has_hrg && eligible_bcg_campaign}
+    
+    CHECK_ELIG -- No --> NOT_ELIG[Status: NOT ELIGIBLE<br/>Save to IneligibleIndividual]
+    CHECK_ELIG -- Yes --> CHECK_CONSENT{Check 2: Consent Declined?<br/>consent == 'No'}
+    
+    CHECK_CONSENT -- Yes --> EXCL_CONSENT[Status: EXCLUDED<br/>Reason: Informed consent not provided<br/>Blank clinical data, save to Participant]
+    CHECK_CONSENT -- No --> CHECK_BCG{Check 3: BCG Complete?<br/>bcg_status=='No' OR<br/>bcg_status=='Yes' with date, batch, facility}
+    
+    CHECK_BCG -- No --> PEND_BCG[Status: PENDING<br/>Reason: BCG verification or vaccine details incomplete]
+    CHECK_BCG -- Yes --> CHECK_TPT{Check 4: TPT+BCG Cohort?<br/>tpt_undergone=='Yes' &&<br/>bcg_status.startswith('Yes')}
+    
+    CHECK_TPT -- Yes --> STATUS_TPT[Status: TPT+BCG<br/>Save to TptIndividual]
+    CHECK_TPT -- No --> CHECK_CXR_EXCL{Check 5: Abnormal Non-TB CXR?<br/>cxr == 'ABNORMAL_NON_TB' &&<br/>mctb == 'NEGATIVE'}
+    
+    CHECK_CXR_EXCL -- Yes --> EXCL_NON_TB[Status: EXCLUDED<br/>Reason: Abnormal CXR not suggestive of TB with NAAT Negative]
+    CHECK_CXR_EXCL -- No --> CHECK_30D{Check 6: Overdue Investigation?<br/>created_at > 30 days &&<br/>any test PENDING}
+    
+    CHECK_30D -- Yes --> EXCL_OVERDUE[Status: EXCLUDED<br/>Reason: Pending investigation beyond one month]
+    CHECK_30D -- No --> CHECK_CASE{Check 7: Case Criteria Met?<br/>mctb == 'POSITIVE' OR<br/>cxr == 'SUGGESTIVE_OF_TB' OR<br/>eptb_status == 'POSITIVE'}
+    
+    CHECK_CASE -- Yes --> STATUS_CASE[Status: CASE<br/>Save to Participant]
+    CHECK_CASE -- No --> CHECK_CONTROL{Check 8: Control Criteria Met?<br/>cxr == 'NORMAL' &&<br/>mctb == 'NEGATIVE' &&<br/>EPTB Negative/None}
+    
+    CHECK_CONTROL -- Yes --> STATUS_CONTROL[Status: CONTROL<br/>Save to Participant]
+    CHECK_CONTROL -- No --> DEFAULT_PENDING[Status: PENDING<br/>Reason: Detailed breakdown of missing NAAT/CXR/EPTB tests]
+
+    style NOT_ELIG fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#581c87
+    style EXCL_CONSENT fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b
+    style EXCL_NON_TB fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b
+    style EXCL_OVERDUE fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b
+    style PEND_BCG fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#92400e
+    style STATUS_TPT fill:#ccfbf1,stroke:#0d9488,stroke-width:2px,color:#115e59
+    style STATUS_CASE fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#9f1239
+    style STATUS_CONTROL fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#065f46
+    style DEFAULT_PENDING fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#92400e
+                    </pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: PRIORITY ORDER -->
+        <div id="tab-priority" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <h2 class="text-lg font-bold text-slate-900">Actual Classification Execution Priority Sequence</h2>
+                    <p class="text-xs text-slate-500">The code evaluates conditions using a single monolithic <code
+                            class="font-mono bg-slate-100 px-1 py-0.5 rounded">if / elif / ... / else</code> chain in
+                        <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">questions/views.py</code> lines 1058 to
+                        1105.</p>
+                </div>
+
+                <div class="space-y-3">
+                    <!-- Step 1 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                        <span
+                            class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-slate-900">Check 1: Overall Eligibility Gate (<code
+                                        class="text-purple-700">if not eligible:</code>)</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-semibold text-[10px]">Priority
+                                    1</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">If participant lacks target HRG or was not eligible for BCG
+                                during campaign period. First matching branch; terminates evaluation immediately.</p>
+                            <span class="text-[11px] text-purple-700 font-semibold block mt-1">Output: classification =
+                                "Not Eligible" &rarr; IneligibleIndividual table</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                        <span
+                            class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-slate-900">Check 2: Consent Refusal Gate (<code
+                                        class="text-rose-700">elif consent_declined:</code>)</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-semibold text-[10px]">Priority
+                                    2</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">If <code class="font-mono">consent == "No"</code>. Clears all
+                                PTB/EPTB/BCG fields and halts clinical processing.</p>
+                            <span class="text-[11px] text-rose-700 font-semibold block mt-1">Output: classification =
+                                "Excluded" &rarr; Participant table</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-amber-200 bg-amber-50/50">
+                        <span
+                            class="w-6 h-6 rounded-full bg-amber-700 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-amber-950">Check 3: BCG Verification Completeness Gate (<code
+                                        class="text-amber-800">elif not bcg_complete:</code>)</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-semibold text-[10px]">Priority
+                                    3 (POTENTIAL ISSUE)</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">If <code class="font-mono">bcg_status</code> starts with
+                                "Yes" but vaccination date, batch number, or facility is missing. Evaluated
+                                <em>before</em> Case check!</p>
+                            <span class="text-[11px] text-amber-800 font-semibold block mt-1">Output: classification =
+                                "Pending" &rarr; diverts positive TB Cases to Pending if BCG batch is missing</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-teal-200 bg-teal-50/50">
+                        <span
+                            class="w-6 h-6 rounded-full bg-teal-700 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-teal-950">Check 4: TPT + BCG Exploratory Cohort (<code
+                                        class="text-teal-800">elif is_tpt_bcg:</code>)</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-teal-200 text-teal-900 font-semibold text-[10px]">Priority
+                                    4 (POTENTIAL ISSUE)</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">If <code class="font-mono">tpt_undergone == "Yes"</code> and
+                                <code class="font-mono">bcg_status.startswith("Yes")</code>. Evaluated <em>before</em>
+                                Case check!</p>
+                            <span class="text-[11px] text-teal-800 font-semibold block mt-1">Output: classification =
+                                "TPT+BCG" &rarr; diverts active TB cases with past TPT to TptIndividual table</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 5 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                        <span
+                            class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">5</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-slate-900">Check 5: Non-TB Abnormal CXR Exclusion (<code
+                                        class="text-slate-700">elif cxr == "ABNORMAL_NON_TB" and mctb == "NEGATIVE":</code>)</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-slate-200 text-slate-800 font-semibold text-[10px]">Priority
+                                    5</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">If CXR shows abnormalities not suggestive of TB and sputum
+                                NAAT is negative.</p>
+                            <span class="text-[11px] text-slate-800 font-semibold block mt-1">Output: classification =
+                                "Excluded"</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 6 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-rose-200 bg-rose-50/50">
+                        <span
+                            class="w-6 h-6 rounded-full bg-rose-700 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">6</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-rose-950">Check 6: Overdue Investigation Exclusion (<code
+                                        class="text-rose-800">elif (now - created_at).days &gt; 30 and any_pending:</code>)</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-rose-200 text-rose-900 font-semibold text-[10px]">Priority
+                                    6 (HIGH RISK DEFECT)</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">If more than 30 calendar days elapsed since registration and
+                                any test (MCTB, CXR, or EPTB) is pending. Evaluated <em>before</em> Case check!</p>
+                            <span class="text-[11px] text-rose-800 font-semibold block mt-1">Output: classification =
+                                "Excluded" &rarr; Excludes confirmed NAAT+ cases if CXR is still pending after
+                                30d</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 7 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-rose-200 bg-rose-50/30">
+                        <span
+                            class="w-6 h-6 rounded-full bg-rose-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">7</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-rose-950">Check 7: Case Classification (<code
+                                        class="text-rose-800">elif mctb == "POSITIVE" or cxr == "SUGGESTIVE_OF_TB" or eptb_status == "POSITIVE":</code>)</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-rose-200 text-rose-900 font-semibold text-[10px]">Priority
+                                    7</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">Matches positive microbiological, radiological, or
+                                extrapulmonary TB evidence.</p>
+                            <span class="text-[11px] text-rose-700 font-semibold block mt-1">Output: classification =
+                                "Case"</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 8 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/30">
+                        <span
+                            class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">8</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-emerald-950">Check 8: Control Classification (<code
+                                        class="text-emerald-800">elif cxr == "NORMAL" and mctb == "NEGATIVE" and eptb_neg:</code>)</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-semibold text-[10px]">Priority
+                                    8</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">Normal CXR, negative NAAT, and negative/no EPTB symptoms.</p>
+                            <span class="text-[11px] text-emerald-700 font-semibold block mt-1">Output: classification =
+                                "Control"</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 9 -->
+                    <div class="flex items-start space-x-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                        <span
+                            class="w-6 h-6 rounded-full bg-slate-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">9</span>
+                        <div class="text-xs flex-grow">
+                            <div class="flex items-center justify-between">
+                                <strong class="text-slate-900">Default: Fallback Pending State</strong>
+                                <span
+                                    class="px-2 py-0.5 rounded bg-slate-200 text-slate-800 font-semibold text-[10px]">Priority
+                                    9 (Fallback)</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">If none of checks 1-8 matched. Lines 1106-1128 populate
+                                specific reasons.</p>
+                            <span class="text-[11px] text-amber-700 font-semibold block mt-1">Output: classification =
+                                "Pending"</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: CONSENT & ELIGIBILITY -->
+        <div id="tab-consent" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Consent Rules -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center">
+                        <i data-lucide="file-signature" class="w-4 h-4 text-blue-600 mr-2"></i>
+                        Informed Consent Business Rules
+                    </h3>
+                    <div class="space-y-3 text-xs">
+                        <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                            <strong class="text-slate-900 block mb-1">Consent = "Yes"</strong>
+                            <p class="text-slate-600">Frontend allows wizard to proceed to Step 5 (PTB Screening).
+                                Backend proceeds with clinical assessment.</p>
+                        </div>
+                        <div class="p-3 bg-rose-50 rounded border border-rose-200">
+                            <strong class="text-rose-900 block mb-1">Consent = "No"</strong>
+                            <p class="text-rose-800">Frontend displays "Excluded from Study: Informed consent not
+                                provided" modal and halts data collection immediately upon confirmation. Backend sets
+                                <code class="font-mono">classification="Excluded"</code>, clears all clinical fields,
+                                and saves to <code class="font-mono">Participant</code>.</p>
+                        </div>
+                        <div class="p-3 bg-amber-50 rounded border border-amber-200">
+                            <strong class="text-amber-900 block mb-1">Consent Missing / Empty</strong>
+                            <p class="text-amber-800">Frontend JavaScript marks the input as required and prevents
+                                stepping forward. On the backend, if an API or direct POST has empty consent, <code
+                                    class="font-mono">consent_declined</code> evaluates to <code
+                                    class="font-mono">False</code> and evaluation proceeds.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Eligibility Rules -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center">
+                        <i data-lucide="check-square" class="w-4 h-4 text-blue-600 mr-2"></i>
+                        High-Risk Group (HRG) Eligibility Rules
+                    </h3>
+                    <div class="space-y-2 text-xs">
+                        <p class="text-slate-600 mb-2">Participant must satisfy both: <strong>has_hrg</strong> (any of
+                            the 6 target HRGs) AND <strong>eligible_bcg_campaign</strong> (answered 'Yes' and selected
+                            at least one criteria).</p>
+                        <ul
+                            class="space-y-1.5 list-disc list-inside text-slate-700 bg-slate-50 p-3 rounded border border-slate-200">
+                            <li><strong>Elderly:</strong> Age &gt;= 60 or checked in risk factors.</li>
+                            <li><strong>Malnourished:</strong> BMI &lt; 18 kg/m² or checked in risk factors.</li>
+                            <li><strong>Close Contact:</strong> Household/close contact of index TB patient since 2021.
+                            </li>
+                            <li><strong>Diabetes:</strong> Self-reported diabetes mellitus during campaign.</li>
+                            <li><strong>Past TB:</strong> History of TB disease episode in past 5 years (2019-2024).
+                            </li>
+                            <li><strong>Smoker:</strong> History of tobacco smoking (current or past).</li>
+                        </ul>
+                        <div class="p-2.5 bg-purple-50 rounded border border-purple-200 text-purple-900 mt-2">
+                            <strong>Ineligible Handling:</strong> If either condition fails, the participant is
+                            immediately saved as <code class="font-mono">IneligibleIndividual</code> and deleted from
+                            <code class="font-mono">Participant</code> to keep the study cohort clean.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: INVESTIGATIONS MATRIX -->
+        <div id="tab-investigations" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="border-b border-slate-100 pb-3 mb-4">
+                    <h2 class="text-lg font-bold text-slate-900">Diagnostic Investigation Combinations & Assigned
+                        Outcomes</h2>
+                    <p class="text-xs text-slate-500">Every combination of NAAT, CXR, and EPTB results traced against
+                        the actual code in <code
+                            class="font-mono bg-slate-100 px-1 py-0.5 rounded">views.py#L1082-L1105</code>.</p>
+                </div>
+
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="min-w-full divide-y divide-slate-200 text-xs">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="px-3 py-2 text-left">NAAT (MCTB)</th>
+                                <th class="px-3 py-2 text-left">Chest X-Ray (CXR)</th>
+                                <th class="px-3 py-2 text-left">EPTB Status</th>
+                                <th class="px-3 py-2 text-left">Assigned Status</th>
+                                <th class="px-3 py-2 text-left">Actual Classification Reason</th>
+                                <th class="px-3 py-2 text-left">Code Match Rule</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 bg-white">
+                            <tr class="bg-rose-50/40">
+                                <td class="px-3 py-2 font-mono font-semibold text-rose-700">POSITIVE</td>
+                                <td class="px-3 py-2 font-mono text-rose-700">SUGGESTIVE_OF_TB</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-rose-700">Case</td>
+                                <td class="px-3 py-2">MCTB Positive and CXR suggestive of TB</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1090</td>
+                            </tr>
+                            <tr class="bg-rose-50/40">
+                                <td class="px-3 py-2 font-mono font-semibold text-rose-700">POSITIVE</td>
+                                <td class="px-3 py-2 font-mono text-emerald-700">NORMAL</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-rose-700">Case</td>
+                                <td class="px-3 py-2">MCTB Positive and Normal CXR</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1092</td>
+                            </tr>
+                            <tr class="bg-rose-50/40">
+                                <td class="px-3 py-2 font-mono font-semibold text-rose-700">POSITIVE</td>
+                                <td class="px-3 py-2 font-mono text-slate-600">ABNORMAL_NON_TB</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-rose-700">Case</td>
+                                <td class="px-3 py-2">MCTB Positive</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1094</td>
+                            </tr>
+                            <tr class="bg-rose-50/40">
+                                <td class="px-3 py-2 font-mono font-semibold text-rose-700">POSITIVE</td>
+                                <td class="px-3 py-2 font-mono text-amber-600">PENDING / NOT_DONE</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-rose-700">Case</td>
+                                <td class="px-3 py-2">MCTB Positive</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1094</td>
+                            </tr>
+                            <tr class="bg-rose-50/20">
+                                <td class="px-3 py-2 font-mono text-emerald-700">NEGATIVE</td>
+                                <td class="px-3 py-2 font-mono font-semibold text-rose-700">SUGGESTIVE_OF_TB</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-rose-700">Case</td>
+                                <td class="px-3 py-2">CXR suggestive of TB with MCTB Negative</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1096</td>
+                            </tr>
+                            <tr class="bg-slate-50">
+                                <td class="px-3 py-2 font-mono text-emerald-700">NEGATIVE</td>
+                                <td class="px-3 py-2 font-mono text-slate-700">ABNORMAL_NON_TB</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-slate-700">Excluded</td>
+                                <td class="px-3 py-2">Abnormal CXR not suggestive of TB with NAAT Negative</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1083</td>
+                            </tr>
+                            <tr class="bg-emerald-50/40">
+                                <td class="px-3 py-2 font-mono font-semibold text-emerald-700">NEGATIVE</td>
+                                <td class="px-3 py-2 font-mono font-semibold text-emerald-700">NORMAL</td>
+                                <td class="px-3 py-2 font-mono text-emerald-700">NEGATIVE / NONE</td>
+                                <td class="px-3 py-2 font-bold text-emerald-700">Control</td>
+                                <td class="px-3 py-2">Normal CXR, Negative NAAT, and Negative EPTB status</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1103</td>
+                            </tr>
+                            <tr class="bg-rose-50/20">
+                                <td class="px-3 py-2 font-mono text-emerald-700">NEGATIVE</td>
+                                <td class="px-3 py-2 font-mono text-emerald-700">NORMAL</td>
+                                <td class="px-3 py-2 font-mono font-semibold text-rose-700">POSITIVE</td>
+                                <td class="px-3 py-2 font-bold text-rose-700">Case</td>
+                                <td class="px-3 py-2">EPTB Investigation Positive</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1101</td>
+                            </tr>
+                            <tr class="bg-amber-50/30">
+                                <td class="px-3 py-2 font-mono text-emerald-700">NEGATIVE</td>
+                                <td class="px-3 py-2 font-mono text-emerald-700">NORMAL</td>
+                                <td class="px-3 py-2 font-mono text-amber-700">PENDING</td>
+                                <td class="px-3 py-2 font-bold text-amber-700">Pending</td>
+                                <td class="px-3 py-2">EPTB is pending because investigation results are not recorded
+                                </td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1122</td>
+                            </tr>
+                            <tr class="bg-rose-50/20">
+                                <td class="px-3 py-2 font-mono text-amber-600">PENDING</td>
+                                <td class="px-3 py-2 font-mono font-semibold text-rose-700">SUGGESTIVE_OF_TB</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-rose-700">Case</td>
+                                <td class="px-3 py-2">Chest X-Ray suggestive of TB</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1098</td>
+                            </tr>
+                            <tr class="bg-amber-50/30">
+                                <td class="px-3 py-2 font-mono text-amber-600">PENDING</td>
+                                <td class="px-3 py-2 font-mono text-slate-700">ABNORMAL_NON_TB</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-amber-700">Pending</td>
+                                <td class="px-3 py-2">NAAT (MCTB) is pending...</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1108</td>
+                            </tr>
+                            <tr class="bg-amber-50/30">
+                                <td class="px-3 py-2 font-mono text-amber-600">PENDING</td>
+                                <td class="px-3 py-2 font-mono text-emerald-700">NORMAL</td>
+                                <td class="px-3 py-2 text-emerald-700">NEGATIVE / NONE</td>
+                                <td class="px-3 py-2 font-bold text-amber-700">Pending</td>
+                                <td class="px-3 py-2">NAAT (MCTB) is pending because clinical testing has not been
+                                    undergone / blank</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1108</td>
+                            </tr>
+                            <tr class="bg-amber-50/30">
+                                <td class="px-3 py-2 font-mono text-amber-600">PENDING</td>
+                                <td class="px-3 py-2 font-mono text-amber-600">PENDING / NOT_DONE</td>
+                                <td class="px-3 py-2 text-slate-500">Any</td>
+                                <td class="px-3 py-2 font-bold text-amber-700">Pending</td>
+                                <td class="px-3 py-2">NAAT (MCTB) is pending...; Chest X-Ray has not been performed</td>
+                                <td class="px-3 py-2 font-mono text-slate-500">views.py:1114</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: DURATION RULES -->
+        <div id="tab-duration" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <h2 class="text-lg font-bold text-slate-900">Time-Based Investigation Exclusion Rule</h2>
+                    <p class="text-xs text-slate-500">Verified from <code
+                            class="font-mono bg-slate-100 px-1 py-0.5 rounded">abcg_project/questions/views.py</code>
+                        lines 1085-1087.</p>
+                </div>
+
+                <div class="code-container">
+                    <span class="text-slate-400 text-xs">// abcg_project/questions/views.py#L1085-L1087</span><br>
+                    <span class="text-purple-400">elif</span> participant <span class="text-purple-400">and</span>
+                    participant.created_at <span class="text-purple-400">and</span> (timezone.now() -
+                    participant.created_at).days &gt; <span class="text-amber-300">30</span> <span
+                        class="text-purple-400">and</span> (mctb == <span class="text-emerald-300">"PENDING"</span>
+                    <span class="text-purple-400">or</span> cxr == <span class="text-emerald-300">"PENDING"</span> <span
+                        class="text-purple-400">or</span> eptb_status == <span
+                        class="text-emerald-300">"PENDING"</span>):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;classification = <span class="text-emerald-300">"Excluded"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;classification_reason = <span class="text-emerald-300">"Pending
+                        investigation beyond one month"</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                        <strong class="text-slate-900 block">Actual Code Specification:</strong>
+                        <ul class="space-y-1 list-disc list-inside text-slate-700">
+                            <li><strong>Date field used:</strong> <code
+                                    class="font-mono text-blue-700">participant.created_at</code> (record timestamp, NOT
+                                date_enroll).</li>
+                            <li><strong>Calculation:</strong> <code
+                                    class="font-mono">(timezone.now() - participant.created_at).days &gt; 30</code></li>
+                            <li><strong>Actual threshold:</strong> Strictly <strong>30 calendar days</strong>.</li>
+                            <li><strong>Missing date behavior:</strong> If <code
+                                    class="font-mono">participant.created_at</code> is null (e.g. brand-new registration
+                                before save), condition is safely skipped.</li>
+                        </ul>
+                    </div>
+                    <div class="p-4 bg-rose-50 rounded-lg border border-rose-200 space-y-2">
+                        <strong class="text-rose-900 block">High Risk Evaluation Conflict:</strong>
+                        <p class="text-rose-800">
+                            Because this condition is evaluated at <strong>Check #6</strong>, <em>before</em> the
+                            <strong>Case Check #7</strong>:
+                            If a participant has <code class="font-mono">mctb == "POSITIVE"</code> (confirmed TB!), but
+                            their Chest X-Ray or EPTB was left as PENDING, and more than 30 days have elapsed since
+                            initial intake, the code marks them as <strong>Excluded</strong> instead of
+                            <strong>Case</strong>!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: DASHBOARD VS EXCEL -->
+        <div id="tab-dashboard-excel" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <h2 class="text-lg font-bold text-slate-900">Dashboard Aggregation vs Database vs Excel Export
+                        Tracing</h2>
+                    <p class="text-xs text-slate-500">Tracing classification across <code
+                            class="font-mono">views.py#home</code>, <code
+                            class="font-mono">views.py#dashboard_home</code>, and <code
+                            class="font-mono">views.py#data_export_view</code>.</p>
+                </div>
+
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="min-w-full divide-y divide-slate-200 text-xs">
+                        <thead class="bg-slate-50 text-slate-700 font-semibold">
+                            <tr>
+                                <th class="px-3 py-2.5 text-left">Category / Metric</th>
+                                <th class="px-3 py-2.5 text-left">Database Table & Field</th>
+                                <th class="px-3 py-2.5 text-left">Dashboard View Query</th>
+                                <th class="px-3 py-2.5 text-left">Excel Export Mapping</th>
+                                <th class="px-3 py-2.5 text-left">Consistency Finding</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 bg-white">
+                            <tr>
+                                <td class="px-3 py-2 font-semibold">Case</td>
+                                <td class="px-3 py-2 font-mono">Participant.classification == 'Case'</td>
+                                <td class="px-3 py-2 font-mono">filter(classification="Case").count()</td>
+                                <td class="px-3 py-2 font-mono">lambda p: p.classification</td>
+                                <td class="px-3 py-2 text-emerald-600 font-semibold">Consistent</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 py-2 font-semibold">Control</td>
+                                <td class="px-3 py-2 font-mono">Participant.classification == 'Control'</td>
+                                <td class="px-3 py-2 font-mono">filter(classification="Control").count()</td>
+                                <td class="px-3 py-2 font-mono">lambda p: p.classification</td>
+                                <td class="px-3 py-2 text-emerald-600 font-semibold">Consistent</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 py-2 font-semibold">Pending</td>
+                                <td class="px-3 py-2 font-mono">Participant.classification == 'Pending'</td>
+                                <td class="px-3 py-2 font-mono">filter(classification="Pending").count()</td>
+                                <td class="px-3 py-2 font-mono">lambda p: p.classification</td>
+                                <td class="px-3 py-2 text-emerald-600 font-semibold">Consistent</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 py-2 font-semibold">Excluded</td>
+                                <td class="px-3 py-2 font-mono">Participant.classification == 'Excluded'</td>
+                                <td class="px-3 py-2 font-mono">Included in total_screened count</td>
+                                <td class="px-3 py-2 font-mono">Clinical fields blanked via _is_clinical_data_blanked
+                                </td>
+                                <td class="px-3 py-2 text-emerald-600 font-semibold">Consistent</td>
+                            </tr>
+                            <tr class="bg-amber-50/30">
+                                <td class="px-3 py-2 font-semibold">TPT + BCG</td>
+                                <td class="px-3 py-2 font-mono">TptIndividual.classification == 'TPT+BCG'</td>
+                                <td class="px-3 py-2 font-mono">Excluded from confirmed_cases & study_controls</td>
+                                <td class="px-3 py-2 font-mono">Included in all_records list</td>
+                                <td class="px-3 py-2 text-amber-700 font-semibold">Partial: Excluded from "Enrolled" KPI
+                                </td>
+                            </tr>
+                            <tr class="bg-amber-50/30">
+                                <td class="px-3 py-2 font-semibold">Total Enrolled KPI</td>
+                                <td class="px-3 py-2 font-mono">N/A (Derived)</td>
+                                <td class="px-3 py-2 font-mono">confirmed_cases + study_controls</td>
+                                <td class="px-3 py-2 font-mono">N/A (Row by row export)</td>
+                                <td class="px-3 py-2 text-slate-700">Defines "Enrolled" strictly as Cases + Controls
+                                </td>
+                            </tr>
+                            <tr class="bg-rose-50/30">
+                                <td class="px-3 py-2 font-semibold">Adjudication Pending</td>
+                                <td class="px-3 py-2 font-mono">Not in Participant.CLASSIFICATION_CHOICES</td>
+                                <td class="px-3 py-2 font-mono">filter(classification="Adjudication Pending")</td>
+                                <td class="px-3 py-2 font-mono">lambda p: p.classification</td>
+                                <td class="px-3 py-2 text-rose-700 font-semibold">Mismatch: Never assigned by intake
+                                    engine</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: POTENTIAL PROBLEMS -->
+        <div id="tab-problems" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-rose-200 shadow-sm space-y-6">
+                <div class="border-b border-rose-100 pb-3">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center text-rose-800">
+                        <i data-lucide="alert-octagon" class="w-5 h-5 text-rose-600 mr-2"></i>
+                        Potential Business Rule Problems & Logic Inconsistencies (6)
+                    </h2>
+                    <p class="text-xs text-slate-500">Every identified issue with severity, actual behavior, source
+                        lines, example trigger, and recommended fix.</p>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Issue 1 -->
+                    <div class="p-4 rounded-xl border border-rose-200 bg-rose-50/40 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span
+                                class="px-2 py-0.5 rounded font-mono text-[11px] font-bold bg-rose-200 text-rose-900">PRB-01
+                                · HIGH SEVERITY</span>
+                            <span
+                                class="text-xs text-slate-500 font-mono">abcg_project/questions/views.py#L1085-L1089</span>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-sm">Check #6 (&gt;30-day Pending Exclusion) Overrules
+                            Confirmed Microbiological TB Cases</h4>
+                        <p class="text-xs text-slate-700"><strong>Actual Behavior:</strong> Check #6 evaluates <code
+                                class="font-mono text-xs">(now - created_at).days &gt; 30 and (mctb == 'PENDING' or cxr == 'PENDING' or eptb_status == 'PENDING')</code>
+                            <em>before</em> Check #7 (Case). If a participant is NAAT Positive (a confirmed TB Case),
+                            but their CXR was delayed or pending for &gt;30 days, they are classified as
+                            <strong>`Excluded`</strong>.</p>
+                        <div class="bg-white p-2.5 rounded border border-rose-200 text-xs text-slate-800 font-mono">
+                            Example Input: mctb="POSITIVE", cxr="PENDING", created_at=45 days ago &rarr; Actual Output:
+                            "Excluded" (Expected: "Case")
+                        </div>
+                        <p class="text-xs text-rose-800"><strong>Recommended Fix:</strong> Check #7 (<code
+                                class="font-mono">Case</code>) should be evaluated <em>before</em> Check #6 (<code
+                                class="font-mono">Overdue Investigation Exclusion</code>). A confirmed positive TB
+                            diagnosis must never be discarded due to pending secondary tests.</p>
+                    </div>
+
+                    <!-- Issue 2 -->
+                    <div class="p-4 rounded-xl border border-rose-200 bg-rose-50/40 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span
+                                class="px-2 py-0.5 rounded font-mono text-[11px] font-bold bg-rose-200 text-rose-900">PRB-02
+                                · HIGH SEVERITY</span>
+                            <span
+                                class="text-xs text-slate-500 font-mono">abcg_project/questions/views.py#L1080-L1089</span>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-sm">Check #4 (<code class="font-mono">TPT+BCG</code>)
+                            Preempts Active TB Case Classification</h4>
+                        <p class="text-xs text-slate-700"><strong>Actual Behavior:</strong> Check #4 evaluates <code
+                                class="font-mono text-xs">is_tpt_bcg</code> <em>before</em> Check #7 (Case). If a
+                            participant who underwent TPT and received BCG develops active TB and tests NAAT positive,
+                            they are saved as <code class="font-mono">classification = "TPT+BCG"</code> in the <code
+                                class="font-mono">TptIndividual</code> table, rather than being identified as a TB Case
+                            in the primary surveillance cohort.</p>
+                        <div class="bg-white p-2.5 rounded border border-rose-200 text-xs text-slate-800 font-mono">
+                            Example Input: tpt_undergone="Yes", bcg_status="Yes", mctb="POSITIVE" &rarr; Actual Output:
+                            "TPT+BCG" (Expected: "Case" with TPT exploratory flag)
+                        </div>
+                        <p class="text-xs text-rose-800"><strong>Recommended Fix:</strong> Clarify with protocol whether
+                            TPT recipients who develop active TB should be classified as Cases within the TPT cohort or
+                            have dual reporting.</p>
+                    </div>
+
+                    <!-- Issue 3 -->
+                    <div class="p-4 rounded-xl border border-amber-200 bg-amber-50/40 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span
+                                class="px-2 py-0.5 rounded font-mono text-[11px] font-bold bg-amber-200 text-amber-900">PRB-03
+                                · MEDIUM SEVERITY</span>
+                            <span
+                                class="text-xs text-slate-500 font-mono">abcg_project/questions/views.py#L1076-L1079</span>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-sm">Check #3 (Incomplete BCG Details) Suppresses Active
+                            TB Case Detection</h4>
+                        <p class="text-xs text-slate-700"><strong>Actual Behavior:</strong> If a nurse records <code
+                                class="font-mono">bcg_status="Yes"</code> but leaves the BCG batch number or facility
+                            blank, <code class="font-mono">bcg_complete</code> evaluates to <code
+                                class="font-mono">False</code>. Because Check #3 is before Check #7, a participant with
+                            a positive sputum NAAT is classified as <strong>`Pending`</strong> ("One or more required
+                            BCG verification or vaccine details are incomplete") instead of a confirmed
+                            <strong>`Case`</strong>.</p>
+                        <div class="bg-white p-2.5 rounded border border-amber-200 text-xs text-slate-800 font-mono">
+                            Example Input: mctb="POSITIVE", bcg_status="Yes", bcg_batch_number="" &rarr; Actual Output:
+                            "Pending" (Expected: "Case")
+                        </div>
+                        <p class="text-xs text-amber-800"><strong>Recommended Fix:</strong> Disease status (Case) should
+                            be evaluated first, with incomplete BCG tracked as a verification sub-flag.</p>
+                    </div>
+
+                    <!-- Issue 4 -->
+                    <div class="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span
+                                class="px-2 py-0.5 rounded font-mono text-[11px] font-bold bg-blue-200 text-blue-900">PRB-04
+                                · MEDIUM SEVERITY</span>
+                            <span class="text-xs text-slate-500 font-mono">abcg_project/questions/views.py#L977,
+                                L1103</span>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-sm">Untested Asymptomatic Participants Can Never
+                            Qualify as Controls</h4>
+                        <p class="text-xs text-slate-700"><strong>Actual Behavior:</strong> For an asymptomatic
+                            participant who does not undergo sputum testing (<code
+                                class="font-mono">undergone_testing == "No"</code>), line 977 assigns <code
+                                class="font-mono">mctb = "PENDING"</code>. Check #8 requires <code
+                                class="font-mono">mctb == "NEGATIVE"</code> to become a Control. Therefore, asymptomatic
+                            participants with no sputum test remain indefinitely in <strong>`Pending`</strong>.</p>
+                        <div class="bg-white p-2.5 rounded border border-blue-200 text-xs text-slate-800 font-mono">
+                            Example Input: is_asymptomatic=True, cxr="NORMAL", undergone_testing="No" &rarr; Actual
+                            Output: "Pending"
+                        </div>
+                        <p class="text-xs text-blue-800"><strong>Protocol Confirmation Needed:</strong> In the study
+                            protocol, are asymptomatic community controls required to submit sputum for NAAT, or does
+                            asymptomatic status with normal/absent CXR qualify as a Control?</p>
+                    </div>
+
+                    <!-- Issue 5 -->
+                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span
+                                class="px-2 py-0.5 rounded font-mono text-[11px] font-bold bg-slate-200 text-slate-800">PRB-05
+                                · LOW SEVERITY</span>
+                            <span class="text-xs text-slate-500 font-mono">abcg_project/questions/views.py#L4424,
+                                L4750</span>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-sm">Orphaned "Adjudication Pending" & "Needs
+                            Correction" Dashboard Filters</h4>
+                        <p class="text-xs text-slate-700"><strong>Actual Behavior:</strong> The admin adjudication
+                            dashboard queries <code class="font-mono">classification="Adjudication Pending"</code> and
+                            <code class="font-mono">classification="Needs Correction"</code>, but neither state is part
+                            of <code class="font-mono">Participant.CLASSIFICATION_CHOICES</code> or assigned anywhere in
+                            the codebase. As a result, the adjudication queue always falls back to mock data.</p>
+                        <p class="text-xs text-slate-600"><strong>Recommended Fix:</strong> Either implement the
+                            supervisor adjudication transition workflow or decouple adjudication from the primary
+                            classification field.</p>
+                    </div>
+
+                    <!-- Issue 6 -->
+                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span
+                                class="px-2 py-0.5 rounded font-mono text-[11px] font-bold bg-slate-200 text-slate-800">PRB-06
+                                · LOW SEVERITY</span>
+                            <span class="text-xs text-slate-500 font-mono">abcg_project/questions/views.py#L1085</span>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-sm">Duration Calculation Uses Record Creation Date
+                            Instead of Clinical Enrollment Date</h4>
+                        <p class="text-xs text-slate-700"><strong>Actual Behavior:</strong> The 30-day pending exclusion
+                            rule computes <code
+                                class="font-mono">(timezone.now() - participant.created_at).days &gt; 30</code>. If an
+                            existing record was imported or created weeks before actual clinical intake, the duration
+                            clock starts prematurely from database insert timestamp rather than <code
+                                class="font-mono">participant.date_enroll</code>.</p>
+                        <p class="text-xs text-slate-600"><strong>Recommended Fix:</strong> Use <code
+                                class="font-mono">participant.date_enroll</code> as the clinical reference date for
+                            pending duration calculations.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        aBCG Study Business Rules Audit · Generated via static code inspection on 29 Oct 2026 · Read-Only
+    </footer>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+        // Initialize Lucide
+        lucide.createIcons();
+
+        // Rules Database
+        const RULES_DATA = [
+            {
+                name: "CASE Classification",
+                status: "Implemented",
+                conditions: "mctb == 'POSITIVE' || cxr == 'SUGGESTIVE_OF_TB' || eptb_status == 'POSITIVE'",
+                result: "classification = 'Case'",
+                file: "questions/views.py",
+                line: "1088-1101",
+                dashExcel: "Yes (KPI & Excel column)",
+                finding: "Matches active TB. Preceded by incomplete BCG, TPT, and >30d exclusion checks."
+            },
+            {
+                name: "CONTROL Classification",
+                status: "Implemented",
+                conditions: "cxr == 'NORMAL' && mctb == 'NEGATIVE' && (eptb_symptoms == 'NO' || eptb_status == 'NEGATIVE')",
+                result: "classification = 'Control'",
+                file: "questions/views.py",
+                line: "1103-1104",
+                dashExcel: "Yes (KPI & Excel column)",
+                finding: "Requires negative NAAT; untested asymptomatics stay Pending."
+            },
+            {
+                name: "PENDING Classification",
+                status: "Implemented",
+                conditions: "Default fallback state OR incomplete BCG OR missing NAAT/CXR/EPTB results",
+                result: "classification = 'Pending'",
+                file: "questions/views.py",
+                line: "1055, 1106-1128",
+                dashExcel: "Yes (KPI & Excel column)",
+                finding: "Generates fine-grained reason string naming the exact pending tests."
+            },
+            {
+                name: "EXCLUDED: Consent Refused",
+                status: "Implemented",
+                conditions: "consent == 'No' (consent_declined)",
+                result: "classification = 'Excluded'",
+                file: "questions/views.py",
+                line: "1061-1075",
+                dashExcel: "Yes (Clinical data blanked in Excel)",
+                finding: "Halts data collection in UI; blanks clinical fields on backend."
+            },
+            {
+                name: "EXCLUDED: Abnormal Non-TB CXR",
+                status: "Implemented",
+                conditions: "cxr == 'ABNORMAL_NON_TB' && mctb == 'NEGATIVE'",
+                result: "classification = 'Excluded'",
+                file: "questions/views.py",
+                line: "1082-1084",
+                dashExcel: "Yes (Excluded in Excel)",
+                finding: "Excludes non-TB pulmonary pathology when NAAT is negative."
+            },
+            {
+                name: "EXCLUDED: Pending >30 Days",
+                status: "Implemented",
+                conditions: "(now - created_at).days > 30 && any test PENDING",
+                result: "classification = 'Excluded'",
+                file: "questions/views.py",
+                line: "1085-1087",
+                dashExcel: "Yes (Excluded in Excel)",
+                finding: "High risk: Check #6 evaluated before Case check #7."
+            },
+            {
+                name: "NOT ELIGIBLE Classification",
+                status: "Implemented",
+                conditions: "!has_hrg || !eligible_bcg_campaign",
+                result: "classification = 'Not Eligible'",
+                file: "questions/views.py",
+                line: "1058-1060, 1429",
+                dashExcel: "Yes (IneligibleIndividual table & Excel)",
+                finding: "Stored in IneligibleIndividual model with Study ID SCR-YYMMDD-XXXX."
+            },
+            {
+                name: "Pending BCG Status",
+                status: "Partially Implemented",
+                conditions: "bcg_status.startswith('Yes') but date, batch, or facility missing",
+                result: "classification = 'Pending'",
+                file: "questions/views.py",
+                line: "1076-1078",
+                dashExcel: "Grouped into generic 'Pending'",
+                finding: "No dedicated 'Pending BCG' status in DB models; uses generic Pending."
+            },
+            {
+                name: "TPT + BCG Exploratory Cohort",
+                status: "Implemented",
+                conditions: "has_hrg && eligible_bcg_campaign && tpt_undergone=='Yes' && bcg_status=='Yes'",
+                result: "classification = 'TPT+BCG'",
+                file: "questions/views.py",
+                line: "1053, 1080, 1446",
+                dashExcel: "Yes (TptIndividual table & Excel)",
+                finding: "Diverts participant to TptIndividual table. Evaluated before Case check."
+            },
+            {
+                name: "Target HRG: Elderly (>=60)",
+                status: "Implemented",
+                conditions: "age >= 60 || 'Individuals aged 60 years or above' in risk_factors",
+                result: "is_elderly = True, match_hrg = 'Elderly (Age >= 60)'",
+                file: "questions/views.py",
+                line: "564-569",
+                dashExcel: "Yes (Exported in HRG columns)",
+                finding: "Matches age >= 60 or textual risk factor."
+            },
+            {
+                name: "Target HRG: Malnourished",
+                status: "Implemented",
+                conditions: "BMI < 18 || 'Individuals with BMI < 18' in risk_factors",
+                result: "is_malnourished = True",
+                file: "questions/views.py",
+                line: "570-575",
+                dashExcel: "Yes (Exported in HRG columns)",
+                finding: "Matches BMI < 18 or textual risk factor."
+            },
+            {
+                name: "Target HRG: Close Contact",
+                status: "Implemented",
+                conditions: "Contact of TB case enrolled since 1 Jan 2021",
+                result: "is_contact = True",
+                file: "questions/views.py",
+                line: "576-580",
+                dashExcel: "Yes (Exported in HRG columns)",
+                finding: "Matches textual selection or bcg_eligibility_criteria."
+            },
+            {
+                name: "Target HRG: Diabetes",
+                status: "Implemented",
+                conditions: "Self-reported diabetes during BCG campaign",
+                result: "is_diabetes = True",
+                file: "questions/views.py",
+                line: "581-585",
+                dashExcel: "Yes (Exported in HRG columns)",
+                finding: "Matches textual selection or bcg_eligibility_criteria."
+            },
+            {
+                name: "Target HRG: Past History of TB",
+                status: "Implemented",
+                conditions: "Reported TB episode in past 5 years (2019-2024)",
+                result: "is_past_tb = True",
+                file: "questions/views.py",
+                line: "586-590",
+                dashExcel: "Yes (Exported in HRG columns)",
+                finding: "Matches textual selection or bcg_eligibility_criteria."
+            },
+            {
+                name: "Target HRG: Tobacco Smoker",
+                status: "Implemented",
+                conditions: "History of smoking tobacco (Current / Past User)",
+                result: "is_smoker = True",
+                file: "questions/views.py",
+                line: "591-596",
+                dashExcel: "Yes (Exported in HRG columns)",
+                finding: "Matches textual selection or bcg_eligibility_criteria."
+            },
+            {
+                name: "NAAT (MCTB) Result Parsing",
+                status: "Implemented",
+                conditions: "String matching on final_interpretation or naat_status",
+                result: "mctb = 'POSITIVE' | 'NEGATIVE' | 'PENDING'",
+                file: "questions/views.py",
+                line: "965-980",
+                dashExcel: "Yes (PTB Test Result column)",
+                finding: "Detects MTB Detected / Rif Resistant as Positive; Not Detected as Negative."
+            },
+            {
+                name: "CXR Status Interpretation",
+                status: "Implemented",
+                conditions: "Suggestive of TB / Abnormal (Non-TB) / Normal / Not Done",
+                result: "cxr = 'SUGGESTIVE_OF_TB' | 'ABNORMAL_NON_TB' | 'NORMAL' | 'PENDING'",
+                file: "questions/views.py",
+                line: "983-996",
+                dashExcel: "Yes (CXR Result column)",
+                finding: "Asymptomatics with cxr_done=='No' are auto-set to NORMAL."
+            },
+            {
+                name: "EPTB 11-Site Screening",
+                status: "Implemented",
+                conditions: "11 anatomical site questions (q1a-q6a, q7-q11) + investigation findings",
+                result: "eptb_status = 'POSITIVE' | 'NEGATIVE' | 'PENDING'",
+                file: "questions/views.py",
+                line: "902-932, 999-1039",
+                dashExcel: "Yes (EPTB Screened & Symptoms columns)",
+                finding: "Positive investigation sets Case; pending results hold as Pending."
+            },
+            {
+                name: "Enrollment Date Preservation",
+                status: "Implemented",
+                conditions: "Fallback chain: participant.date_enroll -> target_pk -> hidden POST -> today",
+                result: "original_date_enroll preserved, updated_at recorded",
+                file: "questions/views.py",
+                line: "1400-1428",
+                dashExcel: "Yes (Date of Enrollment & Last Updated Date columns)",
+                finding: "Verified with 6 passing regression tests."
+            },
+            {
+                name: "Operational Location Resolution",
+                status: "Implemented",
+                conditions: "Participant location > submitted > user profile > session > default",
+                result: "Guarantees no 'GLOBAL' or 'ALL DISTRICTS' saved",
+                file: "questions/locations_data.py",
+                line: "354-410",
+                dashExcel: "Yes (State, District, TB Unit)",
+                finding: "Protects participant coordinates from logged-in admin profiles."
+            },
+            {
+                name: "Dashboard KPI Aggregation",
+                status: "Implemented",
+                conditions: "filter(classification='Case').count(), filter(classification='Control').count()",
+                result: "confirmed_cases, study_controls, total_enrolled",
+                file: "questions/views.py",
+                line: "206-212, 3686-3729",
+                dashExcel: "Direct Dashboard UI",
+                finding: "Total Enrolled strictly defined as Cases + Controls."
+            },
+            {
+                name: "Adjudication Workflow",
+                status: "Partially Implemented",
+                conditions: "filter(classification='Adjudication Pending')",
+                result: "Never assigned by registration intake",
+                file: "questions/views.py",
+                line: "4424, 4750",
+                dashExcel: "Not exported",
+                finding: "Adjudication view falls back to mock data."
+            }
+        ];
+
+        function populateRuleTable(data) {
+            const tbody = document.getElementById('ruleTableBody');
+            tbody.innerHTML = '';
+            data.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+
+                let badgeClass = "bg-emerald-100 text-emerald-800";
+                if (r.status.includes("Partially")) badgeClass = "bg-amber-100 text-amber-800";
+                if (r.status.includes("Not Found")) badgeClass = "bg-rose-100 text-rose-800";
+
+                tr.innerHTML = `
+                    <td class="px-3 py-2 font-bold text-slate-900">${r.name}</td>
+                    <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${badgeClass}">${r.status}</span></td>
+                    <td class="px-3 py-2 font-mono text-[11px] text-slate-700">${r.conditions}</td>
+                    <td class="px-3 py-2 font-semibold text-slate-900">${r.result}</td>
+                    <td class="px-3 py-2 font-mono text-blue-600">${r.file}#L${r.line}</td>
+                    <td class="px-3 py-2 text-slate-600">${r.dashExcel}</td>
+                    <td class="px-3 py-2 text-slate-600">${r.finding}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterRuleTable() {
+            const query = document.getElementById('ruleSearch').value.toLowerCase();
+            const filtered = RULES_DATA.filter(r =>
+                r.name.toLowerCase().includes(query) ||
+                r.conditions.toLowerCase().includes(query) ||
+                r.result.toLowerCase().includes(query) ||
+                r.finding.toLowerCase().includes(query)
+            );
+            populateRuleTable(filtered);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'border-blue-600', 'text-white'));
+
+            const targetContent = document.getElementById(`tab-${tabId}`);
+            if (targetContent) targetContent.classList.remove('hidden');
+
+            const targetBtn = document.querySelector(`button[data-tab="${tabId}"]`);
+            if (targetBtn) targetBtn.classList.add('active', 'border-blue-600', 'text-white');
+
+            if (tabId === 'flowchart') {
+                mermaid.contentLoaded();
+            }
+        }
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            populateRuleTable(RULES_DATA);
+            mermaid.run();
+        });
+    </script>
+</body>
+
+</html>

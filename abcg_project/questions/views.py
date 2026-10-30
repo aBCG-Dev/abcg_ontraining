@@ -521,8 +521,48 @@ def registration(request, pk=None):
         informant_name = request.POST.get("informant_name", "").strip()
         informant_designation = request.POST.get("informant_designation", "").strip()
         
-        symptoms_list = request.POST.getlist("symptoms")
-        symptoms = ", ".join(symptoms_list) if symptoms_list else "Asymptomatic"
+        # PTB Symptoms processing & strict mutual-exclusion validation
+        raw_symptoms_list = [s.strip() for s in request.POST.getlist("symptoms") if s.strip()]
+        other_symptom = request.POST.get("other_symptom", "").strip()
+        
+        has_asymptomatic = any(s.lower() == "asymptomatic" for s in raw_symptoms_list)
+        has_other_symptoms = any(s.lower() != "asymptomatic" for s in raw_symptoms_list)
+        
+        # Rule 1 & Rule 2: Asymptomatic and symptomatic options are strictly mutually exclusive.
+        # Direct API, curl, or form POST requests containing both must be rejected.
+        if has_asymptomatic and has_other_symptoms:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest" or (request.content_type and "application/json" in request.content_type):
+                return JsonResponse({
+                    "status": "error",
+                    "error": "Invalid PTB symptom selection: 'Asymptomatic' cannot coexist with other symptoms."
+                }, status=400)
+            from django.contrib import messages
+            messages.error(
+                request,
+                "Invalid PTB symptom selection: 'Asymptomatic' cannot coexist with other symptoms. Please select either Asymptomatic or one or more active symptoms."
+            )
+            return redirect(request.path)
+            
+        if has_asymptomatic:
+            symptoms = "Asymptomatic"
+            is_asymptomatic = True
+            symptoms_list = ["Asymptomatic"]
+        elif has_other_symptoms:
+            is_asymptomatic = False
+            symptoms_list = []
+            for s in raw_symptoms_list:
+                if s == "Others":
+                    symptoms_list.append(f"Others ({other_symptom})" if other_symptom else "Others")
+                elif not s.lower().startswith("others"):
+                    symptoms_list.append(s)
+                else:
+                    symptoms_list.append(s)
+            symptoms = ", ".join(symptoms_list)
+        else:
+            # Rule 3: Empty symptom selection is allowed; do not automatically select Asymptomatic
+            symptoms = ""
+            is_asymptomatic = False
+            symptoms_list = []
         
         risk_factors_list = request.POST.getlist("risk_factors")
         bcg_eligibility_criteria_list = request.POST.getlist("bcg_eligibility_criteria")
@@ -674,24 +714,9 @@ def registration(request, pk=None):
         cxr_status = "Not Done"
         naat_status = ""
         final_interpretation = ""
-        is_asymptomatic = True
 
         if eligible and not consent_declined:
             ptb_screened = True
-            other_symptom = request.POST.get("other_symptom", "").strip()
-            
-            # Process "Others" symptoms description
-            if "Others" in symptoms_list:
-                symptoms_list = [s for s in symptoms_list if s != "Others"]
-                if other_symptom:
-                    symptoms_list.append(f"Others ({other_symptom})")
-                else:
-                    symptoms_list.append("Others")
-            
-            symptoms = ", ".join(symptoms_list) if symptoms_list else "Asymptomatic"
-            is_asymptomatic = "Asymptomatic" in symptoms_list or not symptoms_list
-            if is_asymptomatic:
-                symptoms = "Asymptomatic"
             
             # Retrieve undergone_testing
             undergone_testing = request.POST.get("undergone_testing", "").strip()
@@ -1508,6 +1533,10 @@ def registration(request, pk=None):
     eptb_form = EPTBScreeningForm()
     
     participant_json = "null"
+    has_symptom_conflict = False
+    conflict_original_symptoms = ""
+    participant_symptoms_list = []
+
     if participant:
         nikshay_val = getattr(participant, "nikshay_id", None)
         if not nikshay_val:
@@ -1518,6 +1547,18 @@ def registration(request, pk=None):
                 nikshay_val = nikshay_rec.nikshay_id
         if not nikshay_val and nikshay_id_param:
             nikshay_val = nikshay_id_param
+
+        # Parse participant symptoms and detect historical conflicting records
+        raw_symptoms = [s.strip() for s in participant.symptoms.split(",") if s.strip()] if getattr(participant, "symptoms", None) else []
+        has_historical_asymp = any(s.lower() == "asymptomatic" for s in raw_symptoms)
+        has_historical_clinical = any(s.lower() != "asymptomatic" for s in raw_symptoms)
+        has_symptom_conflict = has_historical_asymp and has_historical_clinical
+        if has_symptom_conflict:
+            # Approved recovery rule: Deselect Asymptomatic and preserve documented clinical symptoms
+            participant_symptoms_list = [s for s in raw_symptoms if s.lower() != "asymptomatic"]
+            conflict_original_symptoms = participant.symptoms or ""
+        else:
+            participant_symptoms_list = raw_symptoms
 
         participant_data = {
             "date_enroll": participant.date_enroll.strftime("%Y-%m-%d") if getattr(participant, "date_enroll", None) else "",
@@ -1568,7 +1609,9 @@ def registration(request, pk=None):
             "hiv_status": participant.hiv_status,
             "eligible_bcg_campaign": "Yes" if participant.eligible_bcg_campaign else "No",
             "bcg_eligibility_criteria": [c.strip() for c in participant.bcg_eligibility_criteria.split(",") if c.strip()] if participant.bcg_eligibility_criteria else [],
-            "symptoms": [s.strip() for s in participant.symptoms.split(",") if s.strip()] if participant.symptoms else [],
+            "symptoms": participant_symptoms_list,
+            "has_symptom_conflict": has_symptom_conflict,
+            "conflict_original_symptoms": conflict_original_symptoms,
             "risk_factors": [r.strip() for r in participant.risk_factors.split(",") if r.strip()] if participant.risk_factors else [],
             "questionnaire_answers": participant.questionnaire_answers,
             
@@ -1810,6 +1853,9 @@ def registration(request, pk=None):
         "eptb_form": eptb_form,
         "participant": participant,
         "participant_json": participant_json,
+        "has_symptom_conflict": has_symptom_conflict,
+        "conflict_original_symptoms": conflict_original_symptoms,
+        "participant_symptoms": participant_symptoms_list,
         "symptoms_list": active_symptoms,
         "risk_factors_list": active_risks,
         "eptb_sites_list": active_eptb_sites,
@@ -5656,6 +5702,127 @@ def data_export_view(request):
                 return "; ".join(selected)
             return ""
 
+        def _get_ptb_sample_available(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            if not details:
+                return ""
+            s_avail = details.get("sample_availability")
+            if s_avail in ["Present", "Absent"]:
+                return s_avail
+            if s_avail in ["Yes", "True", True, 1]:
+                return "Present"
+            if s_avail in ["No", "False", False, 0]:
+                return "Absent"
+            # Fallback to sample_details
+            sd = details.get("sample_details")
+            if isinstance(sd, dict):
+                if sd.get("samples") or sd.get("sample_serial_id") or sd.get("sample_type"):
+                    return "Present"
+            if details.get("undergone_testing") == "No":
+                return "Absent"
+            return ""
+
+        def _get_ptb_sample_results(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            res = details.get("final_interpretation") or ""
+            if not res:
+                res = (details.get("result_details") or {}).get("final_interpretation") or ""
+            if not res:
+                res = getattr(p, "ptb_test_result", "") or ""
+            if not res:
+                res = details.get("naat_status") or ""
+            res_str = str(res).strip()
+            if res_str.lower() in ["none", "null", "n/a", "na", ""]:
+                return ""
+            return res_str
+
+        def _get_eptb_sample_available(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            if not getattr(p, "eptb_details", None):
+                return ""
+            try:
+                details = json.loads(p.eptb_details) if isinstance(p.eptb_details, str) else p.eptb_details
+            except Exception:
+                return ""
+            if not isinstance(details, dict) or not details:
+                return ""
+            if details.get("eptb_asymptomatic") in ["Yes", True, "yes"]:
+                return ""
+            # Check direct keys
+            for direct_k in ["eptb_sample_available", "eptb_sample_availability", "sample_availability"]:
+                if direct_k in details:
+                    val = str(details[direct_k]).strip()
+                    if val in ["Present", "Yes", "True", True]:
+                        return "Present"
+                    if val in ["Absent", "No", "False", False]:
+                        return "Absent"
+            # Check all investigation-specific keys
+            avail_values = []
+            for k, v in details.items():
+                if (k.startswith("eptb_investigation_") or k.startswith("eptb_")) and ("_sample_available" in k or "_sample_availability" in k):
+                    v_str = str(v).strip()
+                    if v_str in ["Present", "Yes", "True", True]:
+                        avail_values.append("Present")
+                    elif v_str in ["Absent", "No", "False", False]:
+                        avail_values.append("Absent")
+            if "Present" in avail_values:
+                return "Present"
+            # Check if any sample type or serial id exists
+            for k, v in details.items():
+                if (k.startswith("eptb_investigation_") or k.startswith("eptb_")) and ("_sample_type" in k or "_sample_serial_id" in k):
+                    if str(v).strip() and str(v).strip().lower() not in ["none", "null", "n/a"]:
+                        return "Present"
+            if avail_values and all(v == "Absent" for v in avail_values):
+                return "Absent"
+            return ""
+
+        def _get_eptb_sample_results(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            if not getattr(p, "eptb_details", None):
+                return ""
+            try:
+                details = json.loads(p.eptb_details) if isinstance(p.eptb_details, str) else p.eptb_details
+            except Exception:
+                return ""
+            if not isinstance(details, dict) or not details:
+                return ""
+            if details.get("eptb_asymptomatic") in ["Yes", True, "yes"]:
+                return ""
+            # Check direct keys
+            for direct_k in ["eptb_sample_results", "eptb_sample_result", "eptb_test_result"]:
+                if direct_k in details and str(details[direct_k]).strip():
+                    return str(details[direct_k]).strip()
+            # Check investigation-specific results
+            results_list = []
+            seen_bases = set()
+            # 1. Performed investigations
+            for k, v in details.items():
+                if k.startswith("eptb_investigation_") and k.endswith("_performed") and str(v).strip().lower() in ["yes", "true"]:
+                    base_key = k[:-10]
+                    seen_bases.add(base_key)
+                    res = details.get(f"{base_key}_final_interpretation") or details.get(f"{base_key}_result_findings") or ""
+                    res_str = str(res).strip()
+                    if res_str and res_str.lower() not in ["none", "null", "n/a", ""]:
+                        results_list.append(res_str)
+            # 2. Any other direct result_findings or final_interpretation
+            for k, v in details.items():
+                if (k.endswith("_final_interpretation") or k.endswith("_result_findings")):
+                    base_key = k.rsplit("_", 2)[0]
+                    if base_key not in seen_bases:
+                        v_str = str(v).strip()
+                        if v_str and v_str.lower() not in ["none", "null", "n/a", ""]:
+                            results_list.append(v_str)
+                            seen_bases.add(base_key)
+            if results_list:
+                return "; ".join(results_list)
+            return ""
+
         # Fields mapping definition (Header name, lambda to extract raw value)
         # Sequenced chronologically matching the 8-Step Application Intake Wizard
         fields_map = [
@@ -5753,9 +5920,13 @@ def data_export_view(request):
             ("CXR Date", lambda p: _get_cxr_date(p)),
             ("PTB Test Registered", lambda p: "" if _is_clinical_data_blanked(p) else ("Yes" if getattr(p, "ptb_test_registered", False) else "No")),
             ("PTB Test Type", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_type),
+            ("PTB Sample Available", lambda p: _get_ptb_sample_available(p)),
+            ("PTB Sample Results", lambda p: _get_ptb_sample_results(p)),
             ("PTB Test Result", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_result),
             ("PTB Test Date", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_date),
             ("PTB Test Facility", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_facility),
+            ("EPTB Sample Available", lambda p: _get_eptb_sample_available(p)),
+            ("EPTB Sample Results", lambda p: _get_eptb_sample_results(p)),
 
             # 8. Step 8: BCG Vaccine Verification
             ("BCG Status", lambda p: _get_bcg_status(p)),
