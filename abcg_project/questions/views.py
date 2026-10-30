@@ -5702,6 +5702,70 @@ def data_export_view(request):
                 return "; ".join(selected)
             return ""
 
+        def _parse_eptb_details(p):
+            if not getattr(p, "eptb_details", None):
+                return {}
+            try:
+                d = json.loads(p.eptb_details) if isinstance(p.eptb_details, str) else p.eptb_details
+                return d if isinstance(d, dict) else {}
+            except Exception:
+                return {}
+
+        def _get_ptb_undergone_testing(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            val = details.get("undergone_testing")
+            if val in ["Yes", "No"]:
+                return val
+            if getattr(p, "ptb_test_registered", False):
+                return "Yes"
+            if getattr(p, "ptb_screened", False):
+                return "No"
+            return ""
+
+        def _get_ptb_test_reason(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            return details.get("test_reason", "")
+
+        def _get_ptb_predominant_symptom(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            return details.get("predominant_symptom", "")
+
+        def _get_ptb_duration_days(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            return details.get("duration_days", "")
+
+        def _get_ptb_hcp_visits(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            return details.get("hcp_visits", "")
+
+        def _get_ptb_case_type(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            return details.get("case_type", "")
+
+        def _get_ptb_facility_state(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            return details.get("facility_state", "")
+
+        def _get_ptb_facility_district(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            return details.get("facility_district", "")
+
         def _get_ptb_sample_available(p):
             if _is_clinical_data_blanked(p):
                 return ""
@@ -5724,6 +5788,51 @@ def data_export_view(request):
                 return "Absent"
             return ""
 
+        def _get_ptb_sample_detail(p, field_name):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            sd = details.get("sample_details") or {}
+            if isinstance(sd, dict):
+                if sd.get(field_name):
+                    return str(sd.get(field_name)).strip()
+                samples = sd.get("samples")
+                if isinstance(samples, list) and samples:
+                    vals = [str(s.get(field_name, "")).strip() for s in samples if str(s.get(field_name, "")).strip()]
+                    if vals:
+                        return "; ".join(vals)
+            return ""
+
+        def _get_ptb_result_available(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            val = details.get("result_availability")
+            if val in ["Present", "Absent"]:
+                return val
+            if val in ["Yes", True, "True"]:
+                return "Present"
+            if val in ["No", False, "False"]:
+                return "Absent"
+            if details.get("final_interpretation") or getattr(p, "ptb_test_result", ""):
+                return "Present"
+            return ""
+
+        def _get_ptb_result_detail(p, field_name):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            rd = details.get("result_details") or {}
+            if isinstance(rd, dict) and rd.get(field_name):
+                return str(rd.get(field_name)).strip()
+            return ""
+
+        def _get_ptb_naat_status(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            return details.get("naat_status", "")
+
         def _get_ptb_sample_results(p):
             if _is_clinical_data_blanked(p):
                 return ""
@@ -5740,16 +5849,68 @@ def data_export_view(request):
                 return ""
             return res_str
 
+        def _get_eptb_asymptomatic(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_eptb_details(p)
+            val = details.get("eptb_asymptomatic")
+            if val in ["Yes", True, "yes", "True"]:
+                return "Yes"
+            if val in ["No", False, "no", "False"]:
+                return "No"
+            return ""
+
+        def _get_eptb_doctor_history(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_eptb_details(p)
+            return details.get("doctor_history", "")
+
+        def _get_eptb_q_answer(p, q_key):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_eptb_details(p)
+            val = details.get(q_key, "")
+            if isinstance(val, bool):
+                return "Yes" if val else "No"
+            return str(val).strip()
+
+        def _get_eptb_investigations_performed(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_eptb_details(p)
+            performed = []
+            for k, v in details.items():
+                if k.startswith("eptb_investigation_") and k.endswith("_performed") and str(v).strip().lower() in ["yes", "true"]:
+                    base = k[len("eptb_investigation_"):-len("_performed")]
+                    name = base.replace("_", " ").title()
+                    performed.append(name)
+            if performed:
+                return "; ".join(performed)
+            return ""
+
+        def _get_eptb_inv_detail(p, field_suffix):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_eptb_details(p)
+            vals = []
+            for k, v in details.items():
+                if k.startswith("eptb_investigation_") and k.endswith(field_suffix):
+                    v_str = str(v).strip()
+                    if v_str and v_str.lower() not in ["none", "null", "n/a", ""]:
+                        vals.append(v_str)
+            if vals:
+                return "; ".join(vals)
+            direct_k = f"eptb{field_suffix}"
+            if direct_k in details and str(details[direct_k]).strip():
+                return str(details[direct_k]).strip()
+            return ""
+
         def _get_eptb_sample_available(p):
             if _is_clinical_data_blanked(p):
                 return ""
-            if not getattr(p, "eptb_details", None):
-                return ""
-            try:
-                details = json.loads(p.eptb_details) if isinstance(p.eptb_details, str) else p.eptb_details
-            except Exception:
-                return ""
-            if not isinstance(details, dict) or not details:
+            details = _parse_eptb_details(p)
+            if not details:
                 return ""
             if details.get("eptb_asymptomatic") in ["Yes", True, "yes"]:
                 return ""
@@ -5784,13 +5945,8 @@ def data_export_view(request):
         def _get_eptb_sample_results(p):
             if _is_clinical_data_blanked(p):
                 return ""
-            if not getattr(p, "eptb_details", None):
-                return ""
-            try:
-                details = json.loads(p.eptb_details) if isinstance(p.eptb_details, str) else p.eptb_details
-            except Exception:
-                return ""
-            if not isinstance(details, dict) or not details:
+            details = _parse_eptb_details(p)
+            if not details:
                 return ""
             if details.get("eptb_asymptomatic") in ["Yes", True, "yes"]:
                 return ""
@@ -5822,6 +5978,40 @@ def data_export_view(request):
             if results_list:
                 return "; ".join(results_list)
             return ""
+
+        def _get_eptb_status(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_eptb_details(p)
+            if not details:
+                return "Negative" if not getattr(p, "eptb_screened", False) else ""
+            if details.get("eptb_asymptomatic") in ["Yes", True, "yes"]:
+                return "Negative"
+            has_symptoms = False
+            main_keys = ["eptb_q1a", "eptb_q2a", "eptb_q3a", "eptb_q4a", "eptb_q5a", "eptb_q6a", "eptb_q7", "eptb_q8", "eptb_q9", "eptb_q10", "eptb_q11"]
+            for k in main_keys:
+                if details.get(k) in ["Yes", True, "yes"]:
+                    has_symptoms = True
+                    break
+            if not has_symptoms and not getattr(p, "eptb_screened", False):
+                return "Negative"
+            any_performed = False
+            any_pending = False
+            any_positive = False
+            for k, v in details.items():
+                if k.startswith("eptb_investigation_") and k.endswith("_performed") and str(v).strip().lower() in ["yes", "true"]:
+                    any_performed = True
+                    base_key = k[:-10]
+                    res = str(details.get(f"{base_key}_final_interpretation") or details.get(f"{base_key}_result_findings") or "").strip().upper()
+                    if not res or "PENDING" in res:
+                        any_pending = True
+                    elif "POSITIVE" in res or "SUGGESTIVE" in res or "DETECTED" in res:
+                        any_positive = True
+            if any_positive:
+                return "Positive"
+            if any_pending or not any_performed:
+                return "Pending"
+            return "Negative"
 
         # Fields mapping definition (Header name, lambda to extract raw value)
         # Sequenced chronologically matching the 8-Step Application Intake Wizard
@@ -5906,11 +6096,40 @@ def data_export_view(request):
             # 5. Step 5: PTB Screening
             ("PTB Screened", lambda p: "" if _is_clinical_data_blanked(p) else ("Yes" if getattr(p, "ptb_screened", False) else "No")),
             ("Symptoms", lambda p: "" if _is_clinical_data_blanked(p) else p.symptoms),
+            ("PTB Undergone Testing", lambda p: _get_ptb_undergone_testing(p)),
+            ("PTB Predominant Symptom", lambda p: _get_ptb_predominant_symptom(p)),
+            ("PTB Symptom Duration (Days)", lambda p: _get_ptb_duration_days(p)),
+            ("PTB HCP Visits", lambda p: _get_ptb_hcp_visits(p)),
+            ("PTB Case Type", lambda p: _get_ptb_case_type(p)),
             ("HIV Status", lambda p: p.hiv_status),
 
             # 6. Step 6: EPTB Screening
             ("EPTB Screened", lambda p: "" if _is_clinical_data_blanked(p) else _get_eptb_screened(p)),
+            ("EPTB Asymptomatic", lambda p: _get_eptb_asymptomatic(p)),
             ("EPTB Symptoms", lambda p: "" if _is_clinical_data_blanked(p) else _get_eptb_symptoms(p)),
+            ("EPTB Doctor History", lambda p: _get_eptb_doctor_history(p)),
+            ("EPTB Lymph Node Swelling", lambda p: _get_eptb_q_answer(p, "eptb_q1a")),
+            ("EPTB Lymph Node Details", lambda p: _get_eptb_q_answer(p, "eptb_q1_details")),
+            ("EPTB Pleural Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q2a")),
+            ("EPTB Pleural Details", lambda p: _get_eptb_q_answer(p, "eptb_q2_details")),
+            ("EPTB CNS / Meningitis Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q3a")),
+            ("EPTB CNS Details", lambda p: _get_eptb_q_answer(p, "eptb_q3_details")),
+            ("EPTB Abdominal Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q4a")),
+            ("EPTB Abdominal Details", lambda p: _get_eptb_q_answer(p, "eptb_q4_details")),
+            ("EPTB Spine / Joint Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q5a")),
+            ("EPTB Spine / Joint Details", lambda p: _get_eptb_q_answer(p, "eptb_q5_details")),
+            ("EPTB Genitourinary Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q6a")),
+            ("EPTB Genitourinary Details", lambda p: _get_eptb_q_answer(p, "eptb_q6_details")),
+            ("EPTB Female Genital Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q7")),
+            ("EPTB Female Genital Details", lambda p: _get_eptb_q_answer(p, "eptb_q7_details")),
+            ("EPTB Cutaneous Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q8")),
+            ("EPTB Cutaneous Details", lambda p: _get_eptb_q_answer(p, "eptb_q8_details")),
+            ("EPTB Ocular Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q9")),
+            ("EPTB Ocular Details", lambda p: _get_eptb_q_answer(p, "eptb_q9_details")),
+            ("EPTB Pericardial Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q10")),
+            ("EPTB Pericardial Details", lambda p: _get_eptb_q_answer(p, "eptb_q10_details")),
+            ("EPTB Disseminated Symptoms", lambda p: _get_eptb_q_answer(p, "eptb_q11")),
+            ("EPTB Disseminated Details", lambda p: _get_eptb_q_answer(p, "eptb_q11_details")),
 
             # 7. Step 7: Diagnosis (CXR & PTB/EPTB Tests)
             ("Chest X-Ray (CXR) Done?", lambda p: _get_cxr_done(p)),
@@ -5919,14 +6138,51 @@ def data_export_view(request):
             ("CXR Site / Facility", lambda p: _get_cxr_facility(p)),
             ("CXR Date", lambda p: _get_cxr_date(p)),
             ("PTB Test Registered", lambda p: "" if _is_clinical_data_blanked(p) else ("Yes" if getattr(p, "ptb_test_registered", False) else "No")),
+            ("PTB Test Reason", lambda p: _get_ptb_test_reason(p)),
             ("PTB Test Type", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_type),
+            ("PTB Testing Facility State", lambda p: _get_ptb_facility_state(p)),
+            ("PTB Testing Facility District", lambda p: _get_ptb_facility_district(p)),
+            ("PTB Test Facility", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_facility),
             ("PTB Sample Available", lambda p: _get_ptb_sample_available(p)),
+            ("PTB Sample Type", lambda p: _get_ptb_sample_detail(p, "sample_type")),
+            ("PTB Sputum Collection Detail", lambda p: _get_ptb_sample_detail(p, "sputum_collection_detail")),
+            ("PTB Sample Description", lambda p: _get_ptb_sample_detail(p, "sample_description")),
+            ("PTB Sample Serial ID", lambda p: _get_ptb_sample_detail(p, "sample_serial_id")),
+            ("PTB Sample QR Code", lambda p: _get_ptb_sample_detail(p, "sample_qr_code")),
+            ("PTB Sample Collection Date", lambda p: _get_ptb_sample_detail(p, "collection_date")),
+            ("PTB Sample Collection Time", lambda p: _get_ptb_sample_detail(p, "collection_time")),
+            ("PTB Sample Collection Site", lambda p: _get_ptb_sample_detail(p, "collection_site")),
+            ("PTB Sample Referral Site", lambda p: _get_ptb_sample_detail(p, "referral_site")),
+            ("PTB Sample Referral Date", lambda p: _get_ptb_sample_detail(p, "referral_date")),
+            ("PTB Result Available", lambda p: _get_ptb_result_available(p)),
+            ("PTB Lab Serial Number", lambda p: _get_ptb_result_detail(p, "lab_serial_number")),
+            ("PTB Result Sample ID", lambda p: _get_ptb_result_detail(p, "result_sample_id")),
+            ("PTB Date Tested", lambda p: _get_ptb_result_detail(p, "date_tested")),
+            ("PTB Date Reported", lambda p: _get_ptb_result_detail(p, "date_reported")),
+            ("PTB Reported By", lambda p: _get_ptb_result_detail(p, "reported_by")),
+            ("PTB NAAT Status", lambda p: _get_ptb_naat_status(p)),
             ("PTB Sample Results", lambda p: _get_ptb_sample_results(p)),
             ("PTB Test Result", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_result),
             ("PTB Test Date", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_date),
-            ("PTB Test Facility", lambda p: "" if _is_clinical_data_blanked(p) else p.ptb_test_facility),
+            ("PTB Test Remarks", lambda p: _get_ptb_result_detail(p, "remarks")),
+            ("EPTB Investigations Performed", lambda p: _get_eptb_investigations_performed(p)),
+            ("EPTB Investigation Facility", lambda p: _get_eptb_inv_detail(p, "_facility")),
+            ("EPTB Investigation Date", lambda p: _get_eptb_inv_detail(p, "_date")),
             ("EPTB Sample Available", lambda p: _get_eptb_sample_available(p)),
+            ("EPTB Sample Type", lambda p: _get_eptb_inv_detail(p, "_sample_type")),
+            ("EPTB Sample Serial ID", lambda p: _get_eptb_inv_detail(p, "_sample_serial_id")),
+            ("EPTB Sample QR Code", lambda p: _get_eptb_inv_detail(p, "_sample_qr_code")),
+            ("EPTB Collection Date", lambda p: _get_eptb_inv_detail(p, "_collection_date")),
+            ("EPTB Collection Time", lambda p: _get_eptb_inv_detail(p, "_collection_time")),
+            ("EPTB Collection Site", lambda p: _get_eptb_inv_detail(p, "_collection_site")),
+            ("EPTB Result Available", lambda p: _get_eptb_inv_detail(p, "_result_available")),
+            ("EPTB Lab Serial Number", lambda p: _get_eptb_inv_detail(p, "_lab_serial_number")),
+            ("EPTB Date Tested", lambda p: _get_eptb_inv_detail(p, "_date_tested")),
+            ("EPTB Date Reported", lambda p: _get_eptb_inv_detail(p, "_date_reported")),
+            ("EPTB Reported By", lambda p: _get_eptb_inv_detail(p, "_reported_by")),
             ("EPTB Sample Results", lambda p: _get_eptb_sample_results(p)),
+            ("EPTB Remarks", lambda p: _get_eptb_inv_detail(p, "_remarks")),
+            ("EPTB Classification Status", lambda p: _get_eptb_status(p)),
 
             # 8. Step 8: BCG Vaccine Verification
             ("BCG Status", lambda p: _get_bcg_status(p)),

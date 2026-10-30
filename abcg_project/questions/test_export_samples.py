@@ -29,10 +29,33 @@ class ExportSampleDetailsTestCase(TestCase):
         ws = wb["Master Registry"]
         excel_headers = [cell.value for cell in ws[1]]
 
-        self.assertIn("PTB Sample Available", excel_headers)
-        self.assertIn("PTB Sample Results", excel_headers)
-        self.assertIn("EPTB Sample Available", excel_headers)
-        self.assertIn("EPTB Sample Results", excel_headers)
+        expected_key_headers = [
+            "PTB Screened", "Symptoms", "PTB Undergone Testing", "PTB Predominant Symptom",
+            "PTB Symptom Duration (Days)", "PTB HCP Visits", "PTB Case Type",
+            "EPTB Screened", "EPTB Asymptomatic", "EPTB Symptoms", "EPTB Doctor History",
+            "EPTB Lymph Node Swelling", "EPTB Pleural Symptoms", "EPTB CNS / Meningitis Symptoms",
+            "EPTB Abdominal Symptoms", "EPTB Spine / Joint Symptoms", "EPTB Genitourinary Symptoms",
+            "EPTB Female Genital Symptoms", "EPTB Cutaneous Symptoms", "EPTB Ocular Symptoms",
+            "EPTB Pericardial Symptoms", "EPTB Disseminated Symptoms",
+            "PTB Test Registered", "PTB Test Reason", "PTB Test Type",
+            "PTB Testing Facility State", "PTB Testing Facility District", "PTB Test Facility",
+            "PTB Sample Available", "PTB Sample Type", "PTB Sputum Collection Detail",
+            "PTB Sample Description", "PTB Sample Serial ID", "PTB Sample QR Code",
+            "PTB Sample Collection Date", "PTB Sample Collection Time", "PTB Sample Collection Site",
+            "PTB Sample Referral Site", "PTB Sample Referral Date",
+            "PTB Result Available", "PTB Lab Serial Number", "PTB Result Sample ID",
+            "PTB Date Tested", "PTB Date Reported", "PTB Reported By", "PTB NAAT Status",
+            "PTB Sample Results", "PTB Test Result", "PTB Test Date", "PTB Test Remarks",
+            "EPTB Investigations Performed", "EPTB Investigation Facility", "EPTB Investigation Date",
+            "EPTB Sample Available", "EPTB Sample Type", "EPTB Sample Serial ID", "EPTB Sample QR Code",
+            "EPTB Collection Date", "EPTB Collection Time", "EPTB Collection Site",
+            "EPTB Result Available", "EPTB Lab Serial Number", "EPTB Date Tested",
+            "EPTB Date Reported", "EPTB Reported By", "EPTB Sample Results", "EPTB Remarks",
+            "EPTB Classification Status"
+        ]
+
+        for h in expected_key_headers:
+            self.assertIn(h, excel_headers)
 
         # 2. CSV export
         response_csv = self.client.get(reverse("questions:data_export") + "?format=csv")
@@ -40,10 +63,8 @@ class ExportSampleDetailsTestCase(TestCase):
         csv_content = response_csv.content.decode("utf-8")
         csv_headers = [h.strip() for h in csv_content.split("\n")[0].split(",")]
 
-        self.assertIn("PTB Sample Available", csv_headers)
-        self.assertIn("PTB Sample Results", csv_headers)
-        self.assertIn("EPTB Sample Available", csv_headers)
-        self.assertIn("EPTB Sample Results", csv_headers)
+        for h in expected_key_headers:
+            self.assertIn(h, csv_headers)
 
     def test_02_ptb_sample_available_and_results_exported_accurately(self):
         """Verifies PTB sample availability and sample results are properly extracted into Excel."""
