@@ -40,6 +40,14 @@ JURISDICTION_DATA = {
             "Kadapa Rural": ["Kadapa DTC"]
         }
     },
+    "Karnataka": {
+        "Bengaluru": {
+            "Bengaluru TU": ["Bengaluru DTC"]
+        },
+        "Dharwad": {
+            "Dharwad TU": ["Dharwad DTC", "KIMS Hubballi"]
+        }
+    },
     "Haryana": {
         "Ambala": {
             "Ambala": ["DTC TB Hospital Ambala"],

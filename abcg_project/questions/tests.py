@@ -1577,9 +1577,9 @@ class DynamicQuestionsTestCase(TestCase):
             study_id="SCR-222222-0001",
             age=35,
             date_enroll=today,
-            state="GLOBAL",
-            district="ALL DISTRICTS",
-            tb_unit="ALL TB UNITS",
+            state="Karnataka",
+            district="Bengaluru",
+            tb_unit="Bengaluru TU",
             classification="Case",
             created_by=user_b
         )

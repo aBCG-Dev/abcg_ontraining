@@ -2657,25 +2657,29 @@
         function updateSectorFields() {
             const publicPhiHidden = document.getElementById("publicPhiHidden");
             const publicPhiReadonly = document.getElementById("publicPhiReadonly");
-            if (sectorPublic.checked) {
-                publicPhiContainer.classList.remove("d-none");
-                publicPhi.setAttribute("required", "required");
-                
-                privateFacilityContainer.classList.add("d-none");
-                privateFacility.removeAttribute("required");
-                privateFacility.value = ""; // Clear selection
-                
-                informantDetailsContainer.classList.remove("d-none");
-                
+            if (sectorPublic && sectorPublic.checked) {
+                if (publicPhiContainer) publicPhiContainer.classList.remove("d-none");
+                if (publicPhi) publicPhi.setAttribute("required", "required");
+
+                if (privateFacilityContainer) privateFacilityContainer.classList.add("d-none");
+                if (privateFacility) {
+                    privateFacility.removeAttribute("required");
+                    privateFacility.value = ""; // Clear selection
+                }
+
+                if (informantDetailsContainer) informantDetailsContainer.classList.remove("d-none");
+
                 // Refresh populated PHIs to enforce single-PHI lock and hidden input sync
                 populatePhis();
-            } else if (sectorPrivate.checked) {
-                privateFacilityContainer.classList.remove("d-none");
-                privateFacility.setAttribute("required", "required");
-                
-                publicPhiContainer.classList.add("d-none");
-                publicPhi.removeAttribute("required");
-                publicPhi.value = ""; // Clear selection
+            } else if (sectorPrivate && sectorPrivate.checked) {
+                if (privateFacilityContainer) privateFacilityContainer.classList.remove("d-none");
+                if (privateFacility) privateFacility.setAttribute("required", "required");
+
+                if (publicPhiContainer) publicPhiContainer.classList.add("d-none");
+                if (publicPhi) {
+                    publicPhi.removeAttribute("required");
+                    publicPhi.value = ""; // Clear selection
+                }
                 if (publicPhiReadonly) {
                     publicPhiReadonly.value = "";
                 }
@@ -2683,10 +2687,12 @@
                     publicPhiHidden.value = "";
                     publicPhiHidden.disabled = true;
                 }
-                
-                informantDetailsContainer.classList.add("d-none");
-                document.getElementById("informantName").value = "";
-                document.getElementById("informantDesignation").value = "";
+
+                if (informantDetailsContainer) informantDetailsContainer.classList.add("d-none");
+                const infName = document.getElementById("informantName");
+                if (infName) infName.value = "";
+                const infDesig = document.getElementById("informantDesignation");
+                if (infDesig) infDesig.value = "";
             }
         }
 
@@ -2858,22 +2864,28 @@
                 }
             } else {
                 console.warn("No match in jurisdictionData for state, district, tbu:", { state, district, tbu });
-                if (state && district && tbu && state.toUpperCase() !== "GLOBAL" && district.toUpperCase() !== "ALL DISTRICTS" && tbu.toUpperCase() !== "ALL TB UNITS") {
-                    if (!warningDiv) {
-                        const newWarning = document.createElement("div");
-                        newWarning.id = "publicPhiWarning";
-                        newWarning.className = "text-danger small mt-1";
-                        newWarning.textContent = `Debug Lookup Failed: No PHI found for State='${state}', District='${district}', TBU='${tbu}'.`;
-                        publicPhiSelect.parentNode.appendChild(newWarning);
-                    } else {
-                        warningDiv.textContent = `Debug Lookup Failed: No PHI found for State='${state}', District='${district}', TBU='${tbu}'.`;
+                if (warningDiv) {
+                    warningDiv.remove();
+                }
+                // Provide fallback option using TB unit if no specific PHI is listed in master
+                if (tbu && tbu.toUpperCase() !== "ALL TB UNITS" && tbu.toUpperCase() !== "GLOBAL") {
+                    const fallbackName = `${tbu} Public Facility`;
+                    const fallbackOpt = document.createElement("option");
+                    fallbackOpt.value = fallbackName;
+                    fallbackOpt.textContent = fallbackName;
+                    publicPhiSelect.appendChild(fallbackOpt);
+                    publicPhiSelect.value = fallbackName;
+                    if (publicPhiReadonly) {
+                        publicPhiReadonly.value = fallbackName;
+                        publicPhiReadonly.classList.remove("d-none");
                     }
-                } else {
-                    if (warningDiv) {
-                        warningDiv.remove();
+                    if (publicPhiHidden) {
+                        publicPhiHidden.value = fallbackName;
+                        publicPhiHidden.disabled = false;
+                        publicPhiHidden.setAttribute("name", "public_phi");
                     }
                 }
-                
+
                 publicPhiSelect.disabled = false;
                 publicPhiSelect.classList.remove("bg-light");
                 publicPhiSelect.classList.remove("d-none");
@@ -2907,8 +2919,8 @@
             publicPhiSelect.addEventListener("input", syncValues);
         }
 
-        sectorPublic.addEventListener("change", updateSectorFields);
-        sectorPrivate.addEventListener("change", updateSectorFields);
+        if (sectorPublic) sectorPublic.addEventListener("change", updateSectorFields);
+        if (sectorPrivate) sectorPrivate.addEventListener("change", updateSectorFields);
         updateSectorFields(); // Run initially
 
         // Initialize PHIs list based on locked session values
@@ -4284,7 +4296,6 @@
 
             });
 
-        });
         });
 
 
