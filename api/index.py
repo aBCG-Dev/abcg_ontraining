@@ -78,6 +78,9 @@ try:
                       AND (UPPER(state) = 'GLOBAL' OR UPPER(district) = 'ALL DISTRICTS' OR UPPER(tb_unit) IN ('ALL TB UNITS', 'GLOBAL'));
                 """)
 
+            # Ensure pediatric PTB symptoms are deactivated
+            cursor.execute("UPDATE questions_symptom SET is_active = FALSE WHERE code IN ('fail_weight', 'decreased_activity');")
+
     from django.core.management import call_command
     call_command("migrate", interactive=False, verbosity=0)
 except Exception as _e:

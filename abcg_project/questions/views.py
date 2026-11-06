@@ -366,7 +366,7 @@ def registration(request, pk=None):
         first_name = request.POST.get("first_name", "").strip() or (getattr(participant, "first_name", "") if participant else "")
         last_name = request.POST.get("last_name", "").strip() or (getattr(participant, "last_name", "") if participant else "")
         father_husband_name = request.POST.get("father_husband_name", "").strip() or (getattr(participant, "father_husband_name", "") if participant else "")
-        age_str = request.POST.get("age", "").strip()
+        age_str = request.POST.get("current_age", "").strip() or request.POST.get("age", "").strip()
         age = int(age_str) if age_str else (getattr(participant, "age", 0) if participant else 0)
         
         dob_str = request.POST.get("dob", "").strip()
@@ -395,7 +395,7 @@ def registration(request, pk=None):
         previous_address = request.POST.get("previous_address", "").strip() if recently_changed_address == "Yes" else ""
 
         # Residence & Location Parameters
-        address = request.POST.get("address", "").strip() or (getattr(participant, "address", "") if participant else "")
+        address = request.POST.get("current_address", "").strip() or request.POST.get("address", "").strip() or (getattr(participant, "address", "") if participant else "")
         state = request.POST.get("state", "").strip()
         district = request.POST.get("district", "").strip()
         tb_unit = request.POST.get("tb_unit", "").strip()
@@ -406,10 +406,10 @@ def registration(request, pk=None):
         public_phi = request.POST.get("public_phi", "").strip() or (getattr(participant, "public_phi", "") if participant else "")
         facility = (public_phi if sector == "Public Sector" else private_facility) or (getattr(participant, "facility", "Local Clinic") if participant else "Local Clinic")
         
-        taluka_block = request.POST.get("taluka_block", "").strip() or (getattr(participant, "taluka_block", "") if participant else "")
-        landmark = request.POST.get("landmark", "").strip() or (getattr(participant, "landmark", "") if participant else "")
-        village = request.POST.get("village", "").strip() or (getattr(participant, "village", "") if participant else "")
-        pincode = request.POST.get("pincode", "").strip() or (getattr(participant, "pincode", "") if participant else "")
+        taluka_block = request.POST.get("current_taluka_block", "").strip() or request.POST.get("taluka_block", "").strip() or (getattr(participant, "taluka_block", "") if participant else "")
+        landmark = request.POST.get("current_landmark", "").strip() or request.POST.get("landmark", "").strip() or (getattr(participant, "landmark", "") if participant else "")
+        village = request.POST.get("current_village", "").strip() or request.POST.get("village", "").strip() or (getattr(participant, "village", "") if participant else "")
+        pincode = request.POST.get("current_pincode", "").strip() or request.POST.get("pincode", "").strip() or (getattr(participant, "pincode", "") if participant else "")
         demographic_area = request.POST.get("demographic_area", "Unknown")
         marital_status = request.POST.get("marital_status", "Unknown")
         occupation = request.POST.get("occupation", "Unknown").strip()
@@ -1821,7 +1821,7 @@ def registration(request, pk=None):
             }
             participant_json = json.dumps(participant_data)
 
-    active_symptoms = Symptom.objects.filter(is_active=True).order_by("display_order")
+    active_symptoms = Symptom.objects.filter(is_active=True).exclude(code__in=["fail_weight", "decreased_activity"]).order_by("display_order")
     active_risks = RiskFactor.objects.filter(is_active=True).order_by("display_order")
     active_eptb_sites = EptbSite.objects.filter(is_active=True).order_by("display_order")
     
@@ -6042,7 +6042,7 @@ def data_export_view(request):
             ("Father/Husband Name", lambda p: p.father_husband_name),
             ("Does the participant have any government-issued identification?", lambda p: getattr(p, "has_government_id", "No")),
             ("Which government-issued ID does the participant have?", lambda p: getattr(p, "government_id_name", "")),
-            ("Age", lambda p: p.age),
+            ("Current Age", lambda p: p.age),
             ("Date of Birth", lambda p: p.dob),
             ("Gender", lambda p: p.gender),
             ("Height (cm)", lambda p: p.height_cm),
@@ -6057,11 +6057,11 @@ def data_export_view(request):
             ("Secondary Phone 3", lambda p: p.secondary_phone_3),
 
             # 3. Step 3: Socio-demographics & Address
-            ("Street Address / House Detail", lambda p: p.address),
-            ("Taluka/Block", lambda p: p.taluka_block),
-            ("Landmark", lambda p: p.landmark),
-            ("Village", lambda p: p.village),
-            ("Pincode", lambda p: p.pincode),
+            ("Current Street Address / House Detail", lambda p: p.address),
+            ("Current Taluka/Block", lambda p: p.taluka_block),
+            ("Current Landmark", lambda p: p.landmark),
+            ("Current Village", lambda p: p.village),
+            ("Current Pincode", lambda p: p.pincode),
             ("Has the participant changed their residential address after the BCG campaign period?", lambda p: getattr(p, "recently_changed_address", "No")),
             ("Previous Address", lambda p: getattr(p, "previous_address", "")),
             ("Marital Status", lambda p: p.marital_status),
@@ -6522,6 +6522,7 @@ class MockParticipantAdapter:
         self.study_id = study_id or data.get("studyId", "ABCG-OD-TU14-2026-000001")
         self.full_name = data.get("name", "Vikram Thakur")
         self.age = data.get("age", 42)
+        self.current_age = self.age
         sex = data.get("sex", "M")
         self.gender = "Male" if sex == "M" else "Female" if sex == "F" else sex
         self.date_enroll = data.get("enrolmentDate", "2026-03-30")

@@ -713,11 +713,11 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label for="age" class="form-label fw-semibold text-muted small">AGE (YEARS) *</label>
+                            <label for="age" class="form-label fw-semibold text-muted small">CURRENT AGE (YEARS) *</label>
                             <input type="number" class="form-control" id="age" name="age" min="1" max="99"
                                 placeholder="e.g. 45" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                            <div class="invalid-feedback">Age must be between 1 and 99.</div>
+                            <div class="invalid-feedback">Current age must be between 1 and 99.</div>
                         </div>
                         <div class="col-md-4">
                             <label for="dob" class="form-label fw-semibold text-muted small">DATE OF BIRTH</label>
@@ -848,32 +848,32 @@
                             <span class="summary-label fw-bold d-block text-muted mb-2">RESIDENCE DETAIL</span>
                         </div>
                         <div class="col-md-12">
-                            <label for="address" class="form-label fw-semibold text-muted small">STREET ADDRESS / HOUSE DETAIL *</label>
+                            <label for="address" class="form-label fw-semibold text-muted small">CURRENT STREET ADDRESS / HOUSE DETAIL *</label>
                             <input type="text" class="form-control" id="address" name="address"
                                 placeholder="Street, Door No." required pattern="[A-Za-z0-9\s,\./\-#]+" maxlength="2000"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Address cannot be empty, cannot exceed 2000 characters and only English letters are allowed</div>
                         </div>
                         <div class="col-md-6">
-                            <label for="talukaBlock" class="form-label fw-semibold text-muted small">TALUKA / BLOCK</label>
+                            <label for="talukaBlock" class="form-label fw-semibold text-muted small">CURRENT TALUKA / BLOCK</label>
                             <input type="text" class="form-control" id="talukaBlock" name="taluka_block"
                                 placeholder="Taluka or Block"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
                         <div class="col-md-6">
-                            <label for="landmark" class="form-label fw-semibold text-muted small">LANDMARK</label>
+                            <label for="landmark" class="form-label fw-semibold text-muted small">CURRENT LANDMARK</label>
                             <input type="text" class="form-control" id="landmark" name="landmark"
                                 placeholder="Landmark"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
                         <div class="col-md-6">
-                            <label for="village" class="form-label fw-semibold text-muted small">VILLAGE / WARD *</label>
+                            <label for="village" class="form-label fw-semibold text-muted small">CURRENT VILLAGE / WARD *</label>
                             <input type="text" class="form-control" id="village" name="village" placeholder="Village"
                                 required style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">This field is required.</div>
                         </div>
                         <div class="col-md-6">
-                            <label for="pincode" class="form-label fw-semibold text-muted small">PINCODE *</label>
+                            <label for="pincode" class="form-label fw-semibold text-muted small">CURRENT PINCODE *</label>
                             <input type="text" class="form-control" id="pincode" name="pincode"
                                 placeholder="6-digit postal code" required pattern="[0-9]{6}"
                                 style="border-radius: var(--radius); border-color: var(--line);">
@@ -1554,7 +1554,7 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-md-12">
-                                <label class="form-label fw-bold text-dark small text-uppercase">Have you undergone any PTB test? *</label>
+                                <label class="form-label fw-bold text-dark small text-uppercase">Have you undergone any sputum testing for Pulmonary tuberculosis? *</label>
                                 <select class="form-select" id="undergoneTesting" name="undergone_testing"
                                     style="border-radius: var(--radius); border-color: var(--line);">
                                     <option value="" disabled selected>-- Select Option --</option>
@@ -1918,7 +1918,7 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-md-12">
-                                <label class="form-label fw-bold text-dark small text-uppercase">Has patient undergone any EPTB test? *</label>
+                                <label class="form-label fw-bold text-dark small text-uppercase">Have you undergone any specimen testing for Extra Pulmonary tuberculosis? *</label>
                                 <select class="form-select" id="undergoneEptbTesting" name="undergone_eptb_testing"
                                     style="border-radius: var(--radius); border-color: var(--line);">
                                     <option value="" disabled selected>-- Select Option --</option>

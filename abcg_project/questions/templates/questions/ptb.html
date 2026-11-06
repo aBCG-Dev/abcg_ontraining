@@ -32,7 +32,7 @@
                     <h3 class="h5 fw-bold mb-1 text-dark">{{ participant.full_name }}</h3>
                     <div class="text-muted small">
                         <strong>Study ID:</strong> <code class="text-secondary fw-semibold">{{ participant.study_id }}</code> &nbsp;|&nbsp;
-                        <strong>Age:</strong> {{ participant.age }} &nbsp;|&nbsp;
+                        <strong>Current Age:</strong> {{ participant.age }} &nbsp;|&nbsp;
                         <strong>Gender:</strong> {{ participant.gender }}
                     </div>
                 </div>
@@ -105,18 +105,6 @@
                         <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
                             <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symFatigue" value="Fatigue">
                             <label class="form-check-label text-dark small ps-2" for="symFatigue">Fatigue</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
-                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symFailWeight" value="Failure to gain weight (in children)">
-                            <label class="form-check-label text-dark small ps-2" for="symFailWeight">Failure to gain weight (children)</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-check p-2.5 border rounded h-100" style="border-radius: var(--radius);">
-                            <input class="form-check-input ms-1 symptom-cb" type="checkbox" name="symptoms" id="symPlay" value="Decreased activity or playfulness (in children)">
-                            <label class="form-check-label text-dark small ps-2" for="symPlay">Decreased playfulness (children)</label>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -396,7 +384,7 @@
                 <tr>
                     <td class="ps-4">
                         <div class="fw-bold text-dark">{{ p.full_name }}</div>
-                        <div class="text-muted small">Age: {{ p.age }} | {{ p.gender }} | Phone: {{ p.contact_number }}</div>
+                        <div class="text-muted small">Current Age: {{ p.age }} | {{ p.gender }} | Phone: {{ p.contact_number }}</div>
                     </td>
                     <td><code class="text-secondary fw-semibold">{{ p.study_id }}</code></td>
                     <td>

@@ -260,6 +260,30 @@ class Participant(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_participants")
 
+    @property
+    def current_age(self):
+        return self.age
+
+    @property
+    def current_address(self):
+        return self.address
+
+    @property
+    def current_taluka_block(self):
+        return self.taluka_block
+
+    @property
+    def current_landmark(self):
+        return self.landmark
+
+    @property
+    def current_village(self):
+        return self.village
+
+    @property
+    def current_pincode(self):
+        return self.pincode
+
     def __str__(self):
         return f"{self.full_name} ({self.study_id})"
 
@@ -504,6 +528,30 @@ class TptIndividual(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_tpt_individuals")
 
+    @property
+    def current_age(self):
+        return self.age
+
+    @property
+    def current_address(self):
+        return self.address
+
+    @property
+    def current_taluka_block(self):
+        return self.taluka_block
+
+    @property
+    def current_landmark(self):
+        return self.landmark
+
+    @property
+    def current_village(self):
+        return self.village
+
+    @property
+    def current_pincode(self):
+        return self.pincode
+
     def __str__(self):
         return f"[TPT] {self.full_name} ({self.study_id})"
 
@@ -662,6 +710,30 @@ class IneligibleIndividual(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_ineligible_individuals")
 
+    @property
+    def current_age(self):
+        return self.age
+
+    @property
+    def current_address(self):
+        return self.address
+
+    @property
+    def current_taluka_block(self):
+        return self.taluka_block
+
+    @property
+    def current_landmark(self):
+        return self.landmark
+
+    @property
+    def current_village(self):
+        return self.village
+
+    @property
+    def current_pincode(self):
+        return self.pincode
+
     def __str__(self):
         return f"[INELIGIBLE] {self.full_name} ({self.study_id})"
 
@@ -728,6 +800,30 @@ class NikshayRecord(models.Model):
         ordering = ["-updated_at"]
         verbose_name = "Nikshay Record"
         verbose_name_plural = "Nikshay Records"
+
+    @property
+    def current_age(self):
+        return self.age
+
+    @property
+    def current_address(self):
+        return self.address
+
+    @property
+    def current_taluka_block(self):
+        return self.taluka_block
+
+    @property
+    def current_landmark(self):
+        return self.landmark
+
+    @property
+    def current_village(self):
+        return self.village
+
+    @property
+    def current_pincode(self):
+        return self.pincode
 
     def __str__(self):
         return f"{self.nikshay_id} - {self.full_name} ({self.study_id or self.screening_id or 'No Study ID'})"

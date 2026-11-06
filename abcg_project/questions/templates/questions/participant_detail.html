@@ -679,7 +679,7 @@
                             <div class="data-value">{{ p.full_name }}</div>
                         </div>
                         <div class="col-6 col-sm-4">
-                            <div class="data-label">Age &amp; Gender</div>
+                            <div class="data-label">Current Age &amp; Gender</div>
                             <div class="data-value">{{ p.age }} yrs / {{ p.gender }}</div>
                         </div>
                         <div class="col-6 col-sm-4">
@@ -746,7 +746,7 @@
                         <div class="col-12 pt-2 border-top border-slate-100">
                             <div class="row g-2.5">
                                 <div class="col-12">
-                                    <div class="data-label">Street Address</div>
+                                    <div class="data-label">Current Street Address</div>
                                     <div class="data-value">
                                         {% if p.address %}
                                         <i class="bi bi-geo-alt text-primary me-1"></i>{{ p.address }}
@@ -764,15 +764,15 @@
                                 </div>
                                 {% endif %}
                                 <div class="col-6 col-sm-4">
-                                    <div class="data-label">Village / Ward</div>
+                                    <div class="data-label">Current Village / Ward</div>
                                     <div class="data-value">{{ p.village|default:"-" }}</div>
                                 </div>
                                 <div class="col-6 col-sm-4">
-                                    <div class="data-label">Taluka / Block</div>
+                                    <div class="data-label">Current Taluka / Block</div>
                                     <div class="data-value">{{ p.taluka_block|default:"-" }}</div>
                                 </div>
                                 <div class="col-6 col-sm-4">
-                                    <div class="data-label">Pincode</div>
+                                    <div class="data-label">Current Pincode</div>
                                     <div class="data-value font-monospace">{{ p.pincode|default:"-" }}</div>
                                 </div>
                                 <div class="col-6 col-sm-4">
@@ -784,7 +784,7 @@
                                     <div class="data-value">{{ p.state|default:"-" }}</div>
                                 </div>
                                 <div class="col-6 col-sm-4">
-                                    <div class="data-label">Landmark</div>
+                                    <div class="data-label">Current Landmark</div>
                                     <div class="data-value">{{ p.landmark|default:"-" }}</div>
                                 </div>
                             </div>
