@@ -1113,9 +1113,6 @@ def registration(request, pk=None):
         elif cxr == "ABNORMAL_NON_TB" and mctb == "NEGATIVE":
             classification = "Excluded"
             classification_reason = "Abnormal CXR not suggestive of TB with NAAT Negative"
-        elif participant and participant.created_at and (timezone.now() - participant.created_at).days > 30 and (mctb == "PENDING" or cxr == "PENDING" or eptb_status == "PENDING"):
-            classification = "Excluded"
-            classification_reason = "Pending investigation beyond one month"
         elif mctb == "POSITIVE" or cxr == "SUGGESTIVE_OF_TB" or eptb_status == "POSITIVE":
             classification = "Case"
             if mctb == "POSITIVE" and cxr == "SUGGESTIVE_OF_TB":

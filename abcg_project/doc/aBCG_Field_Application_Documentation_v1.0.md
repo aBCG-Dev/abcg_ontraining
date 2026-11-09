@@ -213,18 +213,14 @@ graph TD
                                              has `tpt_undergone` ==  
                                              `"Yes"`.                
 
-  **Excluded**      `Participant`            **1. Abnormal Non-TB    **1.**
-                                             CXR**: `cxr` ==         `"Abnormal CXR not suggestive of TB with NAAT Negative"`
-                                             `"ABNORMAL_NON_TB"` and `<br>`{=html}**2.**
-                                             `mctb` == `"NEGATIVE"`. `"Pending investigation beyond one month"`
+  **Excluded**      `Participant`            **1. Abnormal Non-TB    `"Abnormal CXR not suggestive of TB with NAAT Negative"`
+                                             CXR**: `cxr` ==         
+                                             `"ABNORMAL_NON_TB"` and 
+                                             `mctb` == `"NEGATIVE"`. 
                                              `<br>`{=html}**2.       
-                                             Testing Timeout**:      
-                                             Investigation results   
-                                             are pending (`mctb` or  
-                                             `cxr` or `eptb_status`  
-                                             is `"PENDING"`) and     
-                                             record creation is over 
-                                             30 days old.            
+                                             Consent Declined**:     
+                                             Informed consent was    
+                                             declined by participant.
 
   **Case**          `Participant`            **1. NAAT Positive**:   **Specific Rationale mappings:** `<br>`{=html}- *Both
                                              `mctb` == `"POSITIVE"`. Positive*: `"MCTB Positive and CXR suggestive of TB"`

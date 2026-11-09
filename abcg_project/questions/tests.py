@@ -894,6 +894,82 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         self.assertContains(response, 'Do you have any records? *')
         self.assertContains(response, 'id="bcgHasRecord" name="bcg_has_record" required')
 
+    def test_pending_investigation_beyond_30_days_not_excluded(self):
+        """Verifies that participants with pending investigations are NOT excluded even if created > 30 days ago."""
+        from datetime import timedelta
+        from django.utils import timezone
+        from questions.models import Participant
+        import json
+
+        self.client.login(username=self.username, password=self.password)
+        old_created = timezone.now() - timedelta(days=45)
+
+        participant = Participant.objects.create(
+            first_name="Delayed",
+            last_name="Patient",
+            age=40,
+            gender="Male",
+            contact_number="9876543299",
+            address="Village Street",
+            state="Tamil Nadu",
+            district="Tiruvallur",
+            tb_unit="Tiruvallur TU",
+            eligible=True,
+            consent="Yes",
+            date_enroll=timezone.localdate(),
+            classification="Pending",
+            classification_reason="One or more required investigation results are pending.",
+            bcg_status="No",
+            created_by=self.user
+        )
+        # Force created_at to 45 days ago
+        Participant.objects.filter(pk=participant.pk).update(created_at=old_created)
+        participant.refresh_from_db()
+        self.assertTrue((timezone.now() - participant.created_at).days >= 45)
+
+        # Update record with still pending investigations
+        post_data = {
+            "first_name": "Delayed",
+            "last_name": "Patient",
+            "age": 40,
+            "dob": "1986-01-01",
+            "gender": "Male",
+            "primary_phone": "9876543299",
+            "address": "Village Street",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "APL",
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Cough"],
+            "consent": "Yes",
+            "bcg_status": "No",
+            "bcg_scar": "No",
+            "bcg_has_record": "No",
+            "cxr_done": "No",
+            "undergone_testing": "No",
+            "naat_status": "",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+        res = self.client.post(reverse("questions:registration_edit", kwargs={"pk": participant.pk}), data=post_data)
+        self.assertRedirects(res, reverse("questions:home"))
+
+        participant.refresh_from_db()
+        # MUST remain Pending, NOT Excluded!
+        self.assertEqual(participant.classification, "Pending")
+        self.assertNotEqual(participant.classification, "Excluded")
+        self.assertNotIn("Pending investigation beyond one month", participant.classification_reason)
+
 
 class DynamicQuestionsTestCase(TestCase):
     def setUp(self):
