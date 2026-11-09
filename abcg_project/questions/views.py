@@ -659,8 +659,9 @@ def registration(request, pk=None):
         has_bcg_criteria = len(bcg_eligibility_criteria_list) > 0
         eligible_bcg_campaign = True if (eligible_bcg_campaign_raw == "Yes" and has_bcg_criteria) else False
         
-        # Eligibility rule: Patient is eligible if they match at least one of the 6 HRGs AND are eligible for BCG vaccine during campaign period
-        eligible = has_hrg and eligible_bcg_campaign
+        # Eligibility rule: Patient is eligible if they are an adult (age >= 18), match at least one of the 6 HRGs, AND are eligible for BCG vaccine during campaign period
+        is_adult = (age >= 18) if age > 0 else True
+        eligible = is_adult and has_hrg and eligible_bcg_campaign
         
         match_hrg = None
         if eligible:
@@ -684,6 +685,8 @@ def registration(request, pk=None):
                 match_hrg = "Target High Risk Group"
         else:
             reasons = []
+            if not is_adult:
+                reasons.append("Participant must be an adult (age >= 18 years)")
             if not has_hrg:
                 reasons.append("Does not match any Target High Risk Group (HRG)")
             if not eligible_bcg_campaign:
@@ -709,6 +712,7 @@ def registration(request, pk=None):
         # Initialize variables that eligibility engine needs
         # (will be overridden inside if-eligible block when applicable)
         undergone_testing = "No"
+        test_type = ""
         cxr_done = "No"
         cxr_result = ""
         cxr_status = "Not Done"
@@ -952,9 +956,9 @@ def registration(request, pk=None):
                 if not eptb_asymptomatic_val:
                     eptb_answers[post_key] = post_val
             
-        # Combine any EPTB result_findings that are "Other" with their specify value
+        # Combine any EPTB result_findings or final_interpretation that are "Other" with their specify value
         for key in list(eptb_answers.keys()):
-            if key.endswith("_result_findings") and eptb_answers[key] == "Other":
+            if (key.endswith("_result_findings") or key.endswith("_final_interpretation")) and eptb_answers[key] == "Other":
                 other_val = eptb_answers.get(f"{key}_other", "").strip()
                 if other_val:
                     eptb_answers[key] = f"Other ({other_val})"
@@ -999,7 +1003,7 @@ def registration(request, pk=None):
             val = effective_naat.upper()
             if "MTB NOT DETECTED" in val or val in ["NEGATIVE", "NOT DETECTED"] or ("NEGATIVE" in val and "POSITIVE" not in val and "DETECTED" not in val):
                 mctb = "NEGATIVE"
-            elif "MTB DETECTED" in val or "POSITIVE" in val or "RIF RESISTANT" in val or "RIF SENSITIVE" in val:
+            elif "DETECTED" in val or "POSITIVE" in val or "RIF RESISTANT" in val or "RIF SENSITIVE" in val or "GROWTH OF" in val:
                 mctb = "POSITIVE"
             elif "RIF NOT DETECTED" in val or "RIF NEGATIVE" in val:
                 mctb = "NEGATIVE"
@@ -1048,8 +1052,7 @@ def registration(request, pk=None):
                 if k.startswith("eptb_investigation_") and k.endswith("_performed") and v == "Yes":
                     any_performed = True
                     base_key = k[:-10]
-                    result_key = f"{base_key}_result_findings"
-                    result_val = eptb_answers.get(result_key, "").strip()
+                    result_val = (eptb_answers.get(f"{base_key}_final_interpretation") or eptb_answers.get(f"{base_key}_result_findings") or "").strip()
                     
                     if not result_val or "PENDING" in result_val.upper():
                         any_pending = True
@@ -1068,20 +1071,22 @@ def registration(request, pk=None):
                 eptb_status = "PENDING"
                 pending_sites.append("presumptive EPTB investigation")
 
-        # Check if BCG verification and vaccine details are filled
-        bcg_status_str = (bcg_status or "").strip()
-        bcg_complete = False
-        if bcg_status_str.startswith("No"):
-            bcg_complete = True
-        elif bcg_status_str.startswith("Yes"):
-            has_date = bool(bcg_vaccination_date or bcg_vaccination_date_str)
-            has_batch = bool(bcg_batch_number)
-            has_facility = bool(bcg_facility)
-            if has_date and has_batch and has_facility:
-                bcg_complete = True
+        # Supportive histopathology / cytopathology check
+        is_histopathology_positive = False
+        if test_type in ["Histopathology", "Cytopathology"] and effective_naat:
+            val_h = effective_naat.upper()
+            if "POSITIVE" in val_h or "SUGGESTIVE" in val_h or "CASEATING" in val_h or "GRANULOMA" in val_h or "DETECTED" in val_h:
+                is_histopathology_positive = True
 
-        # TPT+BCG cohort override check (tpt_undergone already parsed from POST at line 238)
-        is_tpt_bcg = has_hrg and eligible_bcg_campaign and (tpt_undergone == "Yes") and bcg_status.startswith("Yes") and not consent_declined
+        # Case Evaluation per Study Protocol:
+        # 1. Microbiologically confirmed TB case: biological specimen tests positive for M. tuberculosis (NAAT)
+        # 2. Clinically diagnosed TB case: not microbiologically confirmed, but diagnosed based on supportive evidence (CXR, histopathology, EPTB)
+        is_microbiological_case = (mctb == "POSITIVE")
+        is_clinical_case = (not is_microbiological_case) and (cxr == "SUGGESTIVE_OF_TB" or eptb_status == "POSITIVE" or is_histopathology_positive)
+        is_case = is_microbiological_case or is_clinical_case
+
+        # TPT+BCG cohort check (only for participants without active TB disease)
+        is_tpt_bcg = has_hrg and eligible_bcg_campaign and (tpt_undergone == "Yes") and bcg_status.startswith("Yes") and not consent_declined and not is_case
 
         classification = "Pending"
         classification_reason = "One or more required investigation results are pending."
@@ -1104,29 +1109,30 @@ def registration(request, pk=None):
             eptb_details = "{}"
             bcg_status = "No"
             is_tpt_bcg = False
-        elif not bcg_complete:
-            classification = "Pending"
-            classification_reason = "One or more required BCG verification or vaccine details are incomplete."
+        elif is_case:
+            classification = "Case"
+            if is_microbiological_case:
+                if cxr == "SUGGESTIVE_OF_TB":
+                    classification_reason = "Microbiologically confirmed TB case: MCTB Positive and CXR suggestive of TB"
+                elif cxr == "NORMAL":
+                    classification_reason = "Microbiologically confirmed TB case: MCTB Positive and Normal CXR"
+                else:
+                    classification_reason = "Microbiologically confirmed TB case: MCTB Positive"
+            else:
+                if cxr == "SUGGESTIVE_OF_TB" and mctb == "NEGATIVE":
+                    classification_reason = "Clinically diagnosed TB case: CXR suggestive of TB with MCTB Negative"
+                elif cxr == "SUGGESTIVE_OF_TB":
+                    classification_reason = "Clinically diagnosed TB case: Chest X-Ray suggestive of TB"
+                elif eptb_status == "POSITIVE":
+                    classification_reason = "Clinically diagnosed TB case: EPTB Investigation Positive"
+                else:
+                    classification_reason = "Clinically diagnosed TB case: Histopathology Investigation Positive"
         elif is_tpt_bcg:
             classification = "TPT+BCG"
             classification_reason = "Eligible for BCG + TPT Exploratory Cohort"
         elif cxr == "ABNORMAL_NON_TB" and mctb == "NEGATIVE":
             classification = "Excluded"
             classification_reason = "Abnormal CXR not suggestive of TB with NAAT Negative"
-        elif mctb == "POSITIVE" or cxr == "SUGGESTIVE_OF_TB" or eptb_status == "POSITIVE":
-            classification = "Case"
-            if mctb == "POSITIVE" and cxr == "SUGGESTIVE_OF_TB":
-                classification_reason = "MCTB Positive and CXR suggestive of TB"
-            elif mctb == "POSITIVE" and cxr == "NORMAL":
-                classification_reason = "MCTB Positive and Normal CXR"
-            elif mctb == "POSITIVE":
-                classification_reason = "MCTB Positive"
-            elif cxr == "SUGGESTIVE_OF_TB" and mctb == "NEGATIVE":
-                classification_reason = "CXR suggestive of TB with MCTB Negative"
-            elif cxr == "SUGGESTIVE_OF_TB":
-                classification_reason = "Chest X-Ray suggestive of TB"
-            else:
-                classification_reason = "EPTB Investigation Positive"
         elif cxr == "NORMAL" and mctb == "NEGATIVE" and (eptb_symptoms_val == "NO" or (eptb_symptoms_val == "YES" and eptb_status == "NEGATIVE")):
             classification = "Control"
             classification_reason = "Normal CXR, Negative NAAT, and Negative EPTB status"

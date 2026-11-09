@@ -1,6 +1,6 @@
 # Participant Classification & Eligibility Rules Engine
 
-**Document Version:** 1.1 (Updated: 30-Day Pending Expiry Rule Removed)  
+**Document Version:** 1.3 (Updated: Formal Protocol Case Definitions - Microbiologically Confirmed & Clinically Diagnosed)  
 **Target Codebase Location:** [`abcg_project/questions/views.py`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/views.py#L995-L1170)  
 **Database Models:** [`Participant`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L180), [`TptIndividual`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L460), [`IneligibleIndividual`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L640)  
 
@@ -10,50 +10,50 @@
 
 The **Eligibility & Clinical Classification Engine** automatically evaluates each screened individual during registration (and upon clinical record updates) to categorize them into one of the primary study cohorts:
 
-1. **`Case`** – Confirmed Active Tuberculosis (Pulmonary or Extra-Pulmonary).
-2. **`Control`** – Confirmed Healthy / Non-TB Control.
-3. **`TPT+BCG`** – Exploratory Cohort: High-risk individual with BCG vaccination and TPT chemoprophylaxis history.
-4. **`Pending`** – Investigation or verification data pending (CXR, NAAT, EPTB, or BCG verification details). **Participants with pending tests are NEVER excluded based on elapsed time (even $\ge 30$ days), ensuring diagnostic delays never cause improper disqualification.**
+1. **`Case`** – Confirmed Active Tuberculosis. Subdivided strictly per study protocol into:
+   - **Microbiologically Confirmed TB Case**: An adult (age $\ge 18$) belonging to an identified high-risk group, eligible for adult BCG vaccination, whose biological specimen tests positive for *Mycobacterium tuberculosis* using a quality-assured molecular diagnostic test (NAAT).
+   - **Clinically Diagnosed TB Case**: An adult (age $\ge 18$) belonging to an identified high-risk group, eligible for adult BCG vaccination, who is not microbiologically confirmed, but has been diagnosed with active TB based on supportive clinical evidence (X-ray suggestive of TB, positive histopathology, or extrapulmonary symptoms).
+2. **`Control`** – Confirmed Healthy / Non-TB Control (Normal CXR, Negative NAAT, Negative EPTB).
+3. **`TPT+BCG`** – Exploratory Cohort: High-risk individual with BCG vaccination and TPT chemoprophylaxis history **without active TB disease**.
+4. **`Pending`** – Clinical investigation data pending (CXR, NAAT, or EPTB). **Participants with pending tests are NEVER excluded based on elapsed time (even $\ge 30$ days), ensuring diagnostic delays never cause improper disqualification.**
 5. **`Excluded`** – Ineligible for study analysis (consent declined or non-TB radiological pathology with negative NAAT).
-6. **`Not Eligible`** – Did not meet preliminary screening criteria (age $< 18$, outside study TB Unit, or no high-risk criteria).
+6. **`Not Eligible`** – Did not meet preliminary screening criteria (age $< 18$, outside study TB Unit, or no target high-risk criteria).
 
 ---
 
 ## 2. Input Diagnostic Signals
 
-The engine processes 7 primary input signals before evaluating the decision hierarchy:
+The engine processes 6 primary input signals before evaluating the decision hierarchy:
 
 | Signal | Source Field(s) | Possible Internal Values | Clinical Interpretation |
 | :--- | :--- | :--- | :--- |
 | **1. Screening Eligibility** | Preliminary Screening Steps 1–4 | `True` / `False` | Age $\ge 18$, lives in study site/TB Unit, belongs to target high-risk groups. |
 | **2. Informed Consent** | Step 4: `consent` | `"Yes"` / `"No"` | Whether participant agreed to provide informed consent. |
-| **3. TPT + BCG Profile** | `has_hrg`, `eligible_bcg_campaign`, `tpt_undergone`, `bcg_status` | `True` / `False` | Belongs to HRG, eligible for campaign, underwent TPT, and was vaccinated with BCG. |
-| **4. BCG Completeness** | `bcg_status`, `bcg_vaccination_date`, `bcg_batch_number`, `bcg_facility` | `True` / `False` | `True` if `bcg_status == "No"` OR if `Yes` with date, batch number, and facility present. |
-| **5. Pulmonary NAAT (MCTB)** | `final_interpretation` or `naat_status` | `POSITIVE`, `NEGATIVE`, `PENDING` | Detected/Rif Resistant/Sensitive vs Not Detected/Negative vs unperformed/blank. |
-| **6. Chest X-Ray (CXR)** | `cxr_done`, `cxr_result`, `cxr_status` | `SUGGESTIVE_OF_TB`, `ABNORMAL_NON_TB`, `NORMAL`, `NOT_DONE`, `PENDING` | CXR suggestive of TB vs non-TB abnormality vs normal (or unperformed in asymptomatic). |
-| **7. Extra-Pulmonary TB (EPTB)** | `eptb_answers` (symptoms & site investigations) | `POSITIVE`, `NEGATIVE`, `PENDING` | Positive at any site vs all investigated negative / no symptoms vs symptoms with pending tests. |
+| **3. Pulmonary NAAT (MCTB)** | `final_interpretation` or `naat_status` | `POSITIVE`, `NEGATIVE`, `PENDING` | Quality-assured molecular test (CBNAAT, Truenat, FLLPA, culture). Positive on: `"DETECTED"`, `"POSITIVE"`, `"RIF RESISTANT"`, `"RIF SENSITIVE"`, `"GROWTH OF"`. |
+| **4. Chest X-Ray (CXR)** | `cxr_done`, `cxr_result`, `cxr_status` | `SUGGESTIVE_OF_TB`, `ABNORMAL_NON_TB`, `NORMAL`, `NOT_DONE`, `PENDING` | CXR suggestive of TB vs non-TB abnormality vs normal (or unperformed in asymptomatic). |
+| **5. Extra-Pulmonary TB & Histopathology** | `eptb_answers`, `test_type` | `POSITIVE`, `NEGATIVE`, `PENDING` | Positive biopsy, lymph node FNAC, pleural fluid NAAT, caseating granuloma, or imaging suggestive of TB. |
+| **6. TPT + BCG Profile** | `has_hrg`, `eligible_bcg_campaign`, `tpt_undergone`, `bcg_status` | `True` / `False` | Belongs to HRG, eligible for campaign, underwent TPT, and was vaccinated with BCG. |
 
 ---
 
 ## 3. Decision Hierarchy & Classification Rules
 
-The rules are evaluated in **strict sequential order of precedence**. The first rule whose condition evaluates to `True` assigns the classification and terminates further evaluation.
+The rules are evaluated in **strict sequential order of precedence**. Confirmed active disease (`Case`) takes priority over exploratory cohort assignments (`TPT+BCG`) and radiological exclusions (`Excluded`).
 
 ```
-Rule 1: Screening Ineligibility  ──► "Not Eligible"
-Rule 2: Consent Declined         ──► "Excluded"
-Rule 3: Incomplete BCG Details   ──► "Pending"
-Rule 4: TPT + BCG Cohort Check   ──► "TPT+BCG"
-Rule 5: Non-TB CXR Pathology     ──► "Excluded"
-Rule 6: Confirmed TB Case        ──► "Case"
-Rule 7: Healthy / Non-TB Control ──► "Control"
-Rule 8: Default Fallthrough      ──► "Pending" (indefinite, with dynamic itemized reason)
+Rule 1: Screening Ineligibility      ──► "Not Eligible" (Underage < 18, outside TU, or non-HRG)
+Rule 2: Consent Declined             ──► "Excluded" (Refused consent)
+Rule 3: Confirmed Active TB Case     ──► "Case" (Microbiologically Confirmed or Clinically Diagnosed)
+Rule 4: TPT + BCG Cohort Check       ──► "TPT+BCG" (High Risk + TPT Yes + BCG Yes without active TB)
+Rule 5: Non-TB CXR Pathology         ──► "Excluded" (Abnormal non-TB CXR with NAAT Negative)
+Rule 6: Healthy / Non-TB Control     ──► "Control" (Normal CXR, NAAT Negative, and EPTB Negative)
+Rule 7: Default Fallthrough          ──► "Pending" (Indefinite, with dynamic itemized missing tests)
 ```
 
 ---
 
 ### Rule 1: Screening Ineligibility
-* **Condition:** `not eligible` (participant failed age, residency, or HRG criteria).
+* **Condition:** `not eligible` (Age $< 18$, outside study TB Unit, or non-HRG).
 * **Assigned Classification:** `Not Eligible`
 * **Assigned Reason:** `"Participant is ineligible under screening criteria."`
 * **Storage Destination:** [`IneligibleIndividual`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L640) table.
@@ -69,18 +69,65 @@ Rule 8: Default Fallthrough      ──► "Pending" (indefinite, with dynamic i
 
 ---
 
-### Rule 3: Incomplete BCG Verification Details
-* **Condition:** `not bcg_complete`  
-  *(Occurs when participant answered `bcg_status == "Yes"` but vaccination date, batch number, or facility name was left blank).*
-* **Assigned Classification:** `Pending`
-* **Assigned Reason:** `"One or more required BCG verification or vaccine details are incomplete."`
+### Rule 3: Confirmed Active Tuberculosis (`Case`)
+
+Evaluated **BEFORE** TPT+BCG exploratory checks and Non-TB CXR exclusion, ensuring that any participant with active TB is captured as a Case:
+
+#### Sub-category 3A: Microbiologically Confirmed TB Case
+* **Protocol Criteria:** Adult ($\ge 18$), target HRG, eligible for BCG campaign, whose biological specimen tests positive for *M. tuberculosis* using a quality-assured molecular diagnostic test (NAAT / CBNAAT / TrueNat).
+* **Condition:** `mctb == "POSITIVE"`
+* **Assigned Classification:** `Case`
+* **Granular Reasons Assigned:**
+  - Both NAAT Positive & CXR Suggestive: `"Microbiologically confirmed TB case: MCTB Positive and CXR suggestive of TB"`
+  - NAAT Positive & Normal CXR: `"Microbiologically confirmed TB case: MCTB Positive and Normal CXR"`
+  - NAAT Positive only: `"Microbiologically confirmed TB case: MCTB Positive"`
+
+#### Sub-category 3B: Clinically Diagnosed TB Case
+* **Protocol Criteria:** Adult ($\ge 18$), target HRG, eligible for BCG campaign, not microbiologically confirmed (`mctb != "POSITIVE"`), but diagnosed with active TB by a clinician based on supportive clinical evidence (X-ray, histopathology, or extrapulmonary symptoms).
+* **Condition:** `mctb != "POSITIVE"` AND (`cxr == "SUGGESTIVE_OF_TB"` OR `eptb_status == "POSITIVE"` OR `is_histopathology_positive == True`)
+* **Assigned Classification:** `Case`
+* **Granular Reasons Assigned:**
+  - CXR Suggestive & NAAT Negative: `"Clinically diagnosed TB case: CXR suggestive of TB with MCTB Negative"`
+  - CXR Suggestive only: `"Clinically diagnosed TB case: Chest X-Ray suggestive of TB"`
+  - EPTB Positive: `"Clinically diagnosed TB case: EPTB Investigation Positive"`
+  - Histopathology Positive: `"Clinically diagnosed TB case: Histopathology Investigation Positive"`
+
+##### Deep-Dive: Extra-Pulmonary TB (EPTB) Case Classification Logic
+For a participant to become a `Case` via the EPTB pathway:
+1. **Screening Gate:** Must be an adult ($\ge 18$), belonging to a target High-Risk Group (HRG), eligible for the adult BCG campaign, with consent provided (`consent == "Yes"`).
+2. **Symptom Trigger (Step 6):** Any of the 11 anatomical site symptom questions is checked `"Yes"`:
+   - `eptb_q1a`: Swelling in neck/armpit/groin (Lymph Node TB)
+   - `eptb_q2a`: Chest pain + breathlessness (Pleural TB)
+   - `eptb_q3a`: Headache / altered mental status / seizures (CNS / TB Meningitis)
+   - `eptb_q4a`: Abdominal pain / distension / vomiting (Abdominal TB)
+   - `eptb_q5a`: Pain in spine / joint region >6 weeks (Spinal TB / Pott's Disease or Bone & Joint TB)
+   - `eptb_q6a`: Urinary or scrotal symptoms (Genitourinary TB)
+   - `eptb_q7`: Infertility / pelvic pain / menstrual irregularities (Female Genital TB)
+   - `eptb_q8`: Ulcer / discharging sinus / skin lesion (Cutaneous TB)
+   - `eptb_q9`: Redness / blurred vision / eye pain (Ocular TB)
+   - `eptb_q10`: Chest pain + breathlessness + ECG changes (Pericardial TB)
+   - `eptb_q11`: Multi-organ involvement + systemic symptoms (Disseminated / Miliary TB)
+3. **Investigation & Result Parsing:**
+   - For any active site, an investigation must be marked performed (`eptb_investigation_<site>_<inv>_performed == "Yes"`).
+   - **Laboratory Tests** (FNAC, Biopsy, Histopathology, CBNAAT/Xpert, Culture, LPA, ADA, Fluid Analysis): checked via `_final_interpretation` or `_result_findings`.
+   - **Imaging & Clinical Exams** (Ultrasound, CT, MRI, CXR, Endoscopy): checked via `_result_findings`.
+   - **Positivity Criteria:** If the result contains `"POSITIVE"`, `"SUGGESTIVE"`, or `"DETECTED"` (case-insensitive) $\rightarrow$ `eptb_status = "POSITIVE"`.
+4. **Classification Priority:**
+   - If `mctb != "POSITIVE"` and `eptb_status == "POSITIVE"`, participant is classified as `Case` with reason:
+     `"Clinically diagnosed TB case: EPTB Investigation Positive"`
+   - If sputum NAAT is also `"POSITIVE"`, microbiological confirmation takes protocol precedence:
+     `"Microbiologically confirmed TB case: ..."`
+   - An EPTB Case overrides `cxr == "ABNORMAL_NON_TB"` (participant is classified as `Case`, not `Excluded`).
+   - An EPTB Case overrides TPT cohort routing (participant is kept as `Case` in `Participant` table).
+5. **Pending State:** If EPTB symptoms are present but no investigation has been performed, or the findings are blank / pending, `eptb_status = "PENDING"` and the participant is placed in `Pending`.
+
 * **Storage Destination:** [`Participant`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L180) table.
 
 ---
 
 ### Rule 4: TPT + BCG Exploratory Cohort
 * **Condition:** `is_tpt_bcg == True`  
-  *(Criteria: High-Risk Group + BCG campaign eligible + `tpt_undergone == "Yes"` + `bcg_status == "Yes"` + consent provided).*
+  *(Criteria: High-Risk Group + BCG campaign eligible + `tpt_undergone == "Yes"` + `bcg_status == "Yes"` + consent provided + **NOT an active TB Case**).*
 * **Assigned Classification:** `TPT+BCG`
 * **Assigned Reason:** `"Eligible for BCG + TPT Exploratory Cohort"`
 * **Storage Destination:** [`TptIndividual`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L460) table.
@@ -88,32 +135,14 @@ Rule 8: Default Fallthrough      ──► "Pending" (indefinite, with dynamic i
 ---
 
 ### Rule 5: Non-TB CXR Pathology Exclusion
-* **Condition:** `cxr == "ABNORMAL_NON_TB"` AND `mctb == "NEGATIVE"`.
+* **Condition:** `cxr == "ABNORMAL_NON_TB"` AND `mctb == "NEGATIVE"` AND `eptb_status != "POSITIVE"`.
 * **Assigned Classification:** `Excluded`
 * **Assigned Reason:** `"Abnormal CXR not suggestive of TB with NAAT Negative"`
-* **Clinical Note:** Radiographic abnormality unrelated to TB combined with negative microbiology excludes the subject from both Case and Control definitions.
+* **Clinical Note:** True non-TB radiographic abnormality combined with negative microbiology and negative EPTB excludes the subject from both Case and Control definitions.
 
 ---
 
-### Rule 6: Confirmed Active Tuberculosis (`Case`)
-* **Condition:** Any ONE of the following is `True`:
-  1. `mctb == "POSITIVE"` (NAAT / CBNAAT / Truenat / MCTB Detected)
-  2. `cxr == "SUGGESTIVE_OF_TB"` (Chest radiograph suggestive of TB)
-  3. `eptb_status == "POSITIVE"` (Biopsy, smear, NAAT, or imaging positive for EPTB)
-
-* **Assigned Classification:** `Case`
-* **Granular Reason Assigned:**
-  - Both NAAT Positive & CXR Suggestive: `"MCTB Positive and CXR suggestive of TB"`
-  - NAAT Positive & Normal CXR: `"MCTB Positive and Normal CXR"`
-  - NAAT Positive only: `"MCTB Positive"`
-  - CXR Suggestive & NAAT Negative: `"CXR suggestive of TB with MCTB Negative"`
-  - CXR Suggestive only: `"Chest X-Ray suggestive of TB"`
-  - EPTB Positive: `"EPTB Investigation Positive"`
-* **Storage Destination:** [`Participant`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L180) table.
-
----
-
-### Rule 7: Healthy / Non-TB Control (`Control`)
+### Rule 6: Healthy / Non-TB Control (`Control`)
 * **Condition:** ALL THREE of the following must be `True`:
   1. `cxr == "NORMAL"` (Normal radiograph, or asymptomatic participant with no CXR indicated)
   2. `mctb == "NEGATIVE"` (NAAT / MCTB Not Detected)
@@ -125,8 +154,8 @@ Rule 8: Default Fallthrough      ──► "Pending" (indefinite, with dynamic i
 
 ---
 
-### Rule 8: Default Fallthrough (`Pending`)
-* **Condition:** Does not meet Case or Control criteria because one or more diagnostic tests are unperformed, blank, or pending.
+### Rule 7: Default Fallthrough (`Pending`)
+* **Condition:** Does not meet Case or Control criteria because one or more clinical diagnostic tests are unperformed, blank, or pending.
 * **Duration Policy:** **Indefinite.** Participants remain in `Pending` regardless of time elapsed ($\ge 30$ days, 60 days, etc.) until diagnostic results are submitted or overridden by a doctor.
 * **Assigned Classification:** `Pending`
 * **Dynamic Itemized Reasons Generated:**
@@ -147,28 +176,25 @@ Rule 8: Default Fallthrough      ──► "Pending" (indefinite, with dynamic i
 
 ```mermaid
 flowchart TD
-    Start([Participant Registered or Updated]) --> C1{Eligible under<br/>screening criteria?}
+    Start([Participant Registered or Updated]) --> C1{Eligible Adult HRG?<br/>Age >= 18 & HRG & BCG Eligible}
     
     C1 -- No --> R1["Classification: Not Eligible<br/>Destination: IneligibleIndividual table"]
     C1 -- Yes --> C2{Informed Consent<br/>Provided?}
     
     C2 -- No --> R2["Classification: Excluded<br/>Reason: Consent not provided"]
-    C2 -- Yes --> C3{BCG Verification<br/>Details Complete?}
+    C2 -- Yes --> C3{Active TB Confirmed?<br/>• NAAT Positive (Microbiological)<br/>• CXR Suggestive (Clinical)<br/>• EPTB/Histology Positive (Clinical)}
     
-    C3 -- No --> R3["Classification: Pending<br/>Reason: BCG verification details incomplete"]
-    C3 -- Yes --> C4{High Risk + TPT Yes +<br/>BCG Yes?}
+    C3 -- Yes --> R3["Classification: Case<br/>Microbiologically Confirmed or Clinically Diagnosed"]
+    C3 -- No --> C4{High Risk + TPT Yes +<br/>BCG Yes?}
     
     C4 -- Yes --> R4["Classification: TPT+BCG<br/>Destination: TptIndividual table"]
     C4 -- No --> C5{CXR Abnormal Non-TB<br/>& NAAT Negative?}
     
     C5 -- Yes --> R5["Classification: Excluded<br/>Reason: Non-TB CXR abnormality"]
-    C5 -- No --> C6{Any Positive Test?<br/>• NAAT Positive<br/>• CXR Suggestive<br/>• EPTB Positive}
+    C5 -- No --> C6{All Tests Negative?<br/>• CXR Normal<br/>• NAAT Negative<br/>• EPTB Negative}
     
-    C6 -- Yes --> R6["Classification: Case<br/>Confirmed Active Tuberculosis"]
-    C6 -- No --> C7{All Tests Negative?<br/>• CXR Normal<br/>• NAAT Negative<br/>• EPTB Negative}
-    
-    C7 -- Yes --> R7["Classification: Control<br/>Confirmed Healthy / Non-TB Control"]
-    C7 -- No --> R8["Classification: Pending (Indefinite)<br/>Itemized missing diagnostic results"]
+    C6 -- Yes --> R6["Classification: Control<br/>Confirmed Healthy / Non-TB Control"]
+    C6 -- No --> R7["Classification: Pending (Indefinite)<br/>Itemized missing diagnostic results"]
 ```
 
 ---

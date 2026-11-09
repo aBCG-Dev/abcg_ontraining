@@ -970,6 +970,302 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         self.assertNotEqual(participant.classification, "Excluded")
         self.assertNotIn("Pending investigation beyond one month", participant.classification_reason)
 
+    def test_bcg_vaccinated_without_batch_or_date_classifies_correctly(self):
+        """Verifies that participants with bcg_status='Yes' but no batch/date are classified based on diagnostics."""
+        from questions.models import Participant
+        self.client.login(username=self.username, password=self.password)
+
+        # 1. Test Case classification when CXR suggestive, even with no BCG batch/date
+        post_case = {
+            "first_name": "BcgYes",
+            "last_name": "Case",
+            "age": 35,
+            "dob": "1991-01-01",
+            "gender": "Female",
+            "primary_phone": "9876543201",
+            "address": "123 Street",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "APL",
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Cough"],
+            "consent": "Yes",
+            "bcg_status": "Yes",
+            "bcg_scar": "Yes",
+            "bcg_has_record": "No",
+            "bcg_batch_number": "",
+            "bcg_vaccination_date": "",
+            "bcg_facility": "",
+            "cxr_done": "Yes",
+            "cxr_result": "Suggestive of TB",
+            "undergone_testing": "No",
+            "naat_status": "",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+        res = self.client.post(reverse("questions:registration"), data=post_case)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_case = Participant.objects.latest("created_at")
+        self.assertEqual(p_case.classification, "Case")
+        self.assertNotIn("BCG verification or vaccine details are incomplete", p_case.classification_reason)
+
+        # 2. Test Control classification when CXR Normal + NAAT Negative, even with no BCG batch/date
+        post_control = {
+            "first_name": "BcgYes",
+            "last_name": "Control",
+            "age": 35,
+            "dob": "1991-01-01",
+            "gender": "Female",
+            "primary_phone": "9876543202",
+            "address": "123 Street",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "APL",
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Asymptomatic"],
+            "consent": "Yes",
+            "bcg_status": "Yes",
+            "bcg_scar": "Yes",
+            "bcg_has_record": "No",
+            "bcg_batch_number": "",
+            "bcg_vaccination_date": "",
+            "bcg_facility": "",
+            "cxr_done": "Yes",
+            "cxr_result": "Normal",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB Not Detected",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+        res = self.client.post(reverse("questions:registration"), data=post_control)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_control = Participant.objects.latest("created_at")
+        self.assertEqual(p_control.classification, "Control")
+        self.assertNotIn("BCG verification or vaccine details are incomplete", p_control.classification_reason)
+
+    def test_protocol_case_definitions_and_priority_resolutions(self):
+        """Verifies Microbiologically Confirmed & Clinically Diagnosed Case definitions per protocol."""
+        from questions.models import Participant, TptIndividual
+        self.client.login(username=self.username, password=self.password)
+
+        # 1. Microbiologically confirmed TB case: biological specimen NAAT Positive
+        post_micro = {
+            "first_name": "Micro",
+            "last_name": "Case",
+            "age": 45,
+            "dob": "1981-01-01",
+            "gender": "Male",
+            "primary_phone": "9876543291",
+            "address": "123 Main St",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Active (ACF campaign)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Married",
+            "occupation": "Farmer",
+            "socioeconomic_status": "BPL",
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Cough (>2 weeks)"],
+            "consent": "Yes",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Detected",
+            "final_interpretation": "MTB Detected",
+            "cxr_done": "Yes",
+            "cxr_result": "Normal",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+        res = self.client.post(reverse("questions:registration"), data=post_micro)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_micro = Participant.objects.latest("created_at")
+        self.assertEqual(p_micro.classification, "Case")
+        self.assertIn("Microbiologically confirmed TB case", p_micro.classification_reason)
+
+        # 2. Clinically diagnosed TB case: NAAT Negative + CXR Suggestive of TB
+        post_clinical_cxr = {
+            "first_name": "Clinical",
+            "last_name": "CxrCase",
+            "age": 50,
+            "dob": "1976-01-01",
+            "gender": "Female",
+            "primary_phone": "9876543292",
+            "address": "123 Main St",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "APL",
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Persistent Fever"],
+            "consent": "Yes",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB Not Detected",
+            "cxr_done": "Yes",
+            "cxr_result": "Suggestive of TB",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+        res = self.client.post(reverse("questions:registration"), data=post_clinical_cxr)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_clin = Participant.objects.latest("created_at")
+        self.assertEqual(p_clin.classification, "Case")
+        self.assertIn("Clinically diagnosed TB case", p_clin.classification_reason)
+        self.assertIn("suggestive of tb", p_clin.classification_reason.lower())
+
+        # 3. Active TB breakthrough in TPT + BCG recipient classifies as Case in Participant table
+        post_tpt_case = {
+            "first_name": "TptBcg",
+            "last_name": "ActiveCase",
+            "age": 42,
+            "dob": "1984-01-01",
+            "gender": "Male",
+            "primary_phone": "9876543293",
+            "address": "123 Main St",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Active (ACF campaign)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Married",
+            "occupation": "Other",
+            "socioeconomic_status": "BPL",
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Cough (>2 weeks)"],
+            "consent": "Yes",
+            "tpt_undergone": "Yes",
+            "tpt_status": "Completed",
+            "bcg_status": "Yes",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Detected",
+            "final_interpretation": "MTB Detected",
+            "cxr_done": "Yes",
+            "cxr_result": "Suggestive of TB",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+        res = self.client.post(reverse("questions:registration"), data=post_tpt_case)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_tpt = Participant.objects.filter(contact_number="9876543293").first()
+        self.assertIsNotNone(p_tpt, "Active TB case in TPT+BCG recipient must be saved in Participant table")
+        self.assertEqual(p_tpt.classification, "Case")
+        self.assertFalse(TptIndividual.objects.filter(contact_number="9876543293").exists())
+
+        # 4. Confirmed EPTB Case with Non-TB CXR abnormality is NOT excluded
+        post_eptb_case = {
+            "first_name": "Eptb",
+            "last_name": "NonTbCxrCase",
+            "age": 38,
+            "dob": "1988-01-01",
+            "gender": "Female",
+            "primary_phone": "9876543294",
+            "address": "123 Main St",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "BPL",
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Asymptomatic"],
+            "consent": "Yes",
+            "eptb_q1a": "Yes",
+            "eptb_investigation_lymph_node_performed": "Yes",
+            "eptb_investigation_lymph_node_result_findings": "Positive for M. tuberculosis",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB Not Detected",
+            "cxr_done": "Yes",
+            "cxr_result": "Abnormal (Non-TB)",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+        res = self.client.post(reverse("questions:registration"), data=post_eptb_case)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_eptb = Participant.objects.latest("created_at")
+        self.assertEqual(p_eptb.classification, "Case")
+        self.assertIn("Clinically diagnosed TB case", p_eptb.classification_reason)
+        self.assertIn("EPTB", p_eptb.classification_reason)
+
+        # Test 5: EPTB Laboratory Investigation (e.g. FNAC) with final_interpretation "MTB Detected"
+        post_eptb_lab_case = dict(post_eptb_case)
+        post_eptb_lab_case.update({
+            "phone_number": "9998881235",
+            "eptb_q1a": "Yes",
+            "eptb_investigation_lymph_node_tb_fnac_performed": "Yes",
+            "eptb_investigation_lymph_node_tb_fnac_final_interpretation": "MTB Detected",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB Not Detected",
+            "cxr_done": "Yes",
+            "cxr_result": "Normal",
+        })
+        res = self.client.post(reverse("questions:registration"), data=post_eptb_lab_case)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_eptb_lab = Participant.objects.latest("created_at")
+        self.assertEqual(p_eptb_lab.classification, "Case")
+        self.assertIn("Clinically diagnosed TB case", p_eptb_lab.classification_reason)
+        self.assertIn("EPTB Investigation Positive", p_eptb_lab.classification_reason)
+
 
 class DynamicQuestionsTestCase(TestCase):
     def setUp(self):
