@@ -1971,8 +1971,8 @@
                     
                     <div class="row g-3">
                         <div class="col-md-12">
-                            <label class="form-label fw-bold text-dark small text-uppercase">Were you vaccinated during the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>)?</label>
-                            <select class="form-select mb-3" id="bcgCampaignVaccinated" name="bcg_status"
+                            <label class="form-label fw-bold text-dark small text-uppercase">Were you vaccinated during the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>)? *</label>
+                            <select class="form-select mb-3" id="bcgCampaignVaccinated" name="bcg_status" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
                                 <option value="" disabled selected>-- Select Option --</option>
                                 <option value="Yes" {% if participant.bcg_status == "Yes" or "Yes" in participant.bcg_status %}selected{% endif %}>Yes</option>
@@ -1981,8 +1981,8 @@
                         </div>
 
                         <div class="col-md-12">
-                            <label class="form-label fw-bold text-dark small text-uppercase">Does the participant have a scar on the right upper arm?</label>
-                            <select class="form-select mb-3" id="bcgScar" name="bcg_scar"
+                            <label class="form-label fw-bold text-dark small text-uppercase">Does the participant have a scar on the right upper arm? *</label>
+                            <select class="form-select mb-3" id="bcgScar" name="bcg_scar" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
                                 <option value="" disabled selected>-- Select Option --</option>
                                 <option value="Yes" {% if participant.bcg_scar == "Yes" %}selected{% endif %}>Yes</option>
@@ -2053,8 +2053,8 @@
                         </div>
 
                         <div class="col-md-12">
-                            <label class="form-label fw-bold text-dark small text-uppercase">Do you have any records?</label>
-                            <select class="form-select mb-3" id="bcgHasRecord" name="bcg_has_record"
+                            <label class="form-label fw-bold text-dark small text-uppercase">Do you have any records? *</label>
+                            <select class="form-select mb-3" id="bcgHasRecord" name="bcg_has_record" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
                                 <option value="" disabled selected>-- Select Option --</option>
                                 <option value="Yes" {% if participant.bcg_has_record == "Yes" %}selected{% endif %}>Yes</option>

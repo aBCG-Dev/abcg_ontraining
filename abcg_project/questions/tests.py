@@ -876,6 +876,24 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         self.assertEqual(cxr_details.get("doctor_advised_cxr"), "Yes")
         self.assertEqual(cxr_details.get("cxr_done"), "No")
 
+    def test_bcg_verification_three_questions_mandatory(self):
+        """Verifies that all 3 BCG verification questions are marked mandatory with required attribute."""
+        self.client.login(username=self.username, password=self.password)
+        response = self.client.get(reverse("questions:registration"))
+        self.assertEqual(response.status_code, 200)
+
+        # 1. Were you vaccinated during the BCG campaign period?
+        self.assertContains(response, 'Were you vaccinated during the BCG campaign period')
+        self.assertContains(response, 'id="bcgCampaignVaccinated" name="bcg_status" required')
+
+        # 2. Does the participant have a scar on the right upper arm?
+        self.assertContains(response, 'Does the participant have a scar on the right upper arm? *')
+        self.assertContains(response, 'id="bcgScar" name="bcg_scar" required')
+
+        # 3. Do you have any records?
+        self.assertContains(response, 'Do you have any records? *')
+        self.assertContains(response, 'id="bcgHasRecord" name="bcg_has_record" required')
+
 
 class DynamicQuestionsTestCase(TestCase):
     def setUp(self):
