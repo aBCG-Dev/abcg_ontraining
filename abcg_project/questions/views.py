@@ -724,7 +724,11 @@ def registration(request, pk=None):
                 undergone_testing = "Yes" if (request.POST.get("test_reason") or request.POST.get("test_type")) else "No"
             
             # ALWAYS parse all the detailed TB Test fields (for both symptomatic and asymptomatic)
+            doctor_advised_cxr = request.POST.get("doctor_advised_cxr", "").strip()
             cxr_done = request.POST.get("cxr_done", "").strip()
+            if not doctor_advised_cxr:
+                doctor_advised_cxr = "Yes" if cxr_done == "Yes" else "No"
+
             if undergone_testing == "No":
                 test_reason = ""
                 test_type = ""
@@ -762,6 +766,7 @@ def registration(request, pk=None):
                     cxr_result = cxr_status
             
             cxr_details = {
+                "doctor_advised_cxr": doctor_advised_cxr,
                 "cxr_done": cxr_done,
                 "cxr_id": cxr_id,
                 "cxr_date": cxr_date,
@@ -915,6 +920,7 @@ def registration(request, pk=None):
                 "sample_details": sample_details,
                 "result_details": result_details,
                 "final_interpretation": final_interpretation,
+                "doctor_advised_cxr": doctor_advised_cxr,
                 "cxr_done": cxr_done,
                 "cxr_result": cxr_result,
                 "cxr_status": cxr_status,
@@ -1767,13 +1773,15 @@ def registration(request, pk=None):
                 "sample_details": sample_details,
                 "result_details": result_details,
                 "cxr_status": cxr_status,
+                "doctor_advised_cxr": "Yes" if cxr_done == "Yes" else "No",
                 "cxr_details": {
+                    "doctor_advised_cxr": "Yes" if cxr_done == "Yes" else "No",
                     "cxr_done": cxr_done,
                     "cxr_id": simulated.get("cxr_id", f"CXR-{nikshay_id_param[3:]}" if len(nikshay_id_param) > 3 else "CXR-9999"),
                     "cxr_date": simulated.get("cxr_date", "2026-03-05"),
                     "cxr_facility": simulated.get("cxr_facility", "State Diagnostic Lab"),
                     "cxr_result": simulated.get("cxr_result", "Suggestive of TB")
-                } if cxr_done == "Yes" else {},
+                } if cxr_done == "Yes" else {"doctor_advised_cxr": "No", "cxr_done": "No"},
                 "naat_status": simulated.get("naat_status", "Done")
             }
 
@@ -5586,6 +5594,19 @@ def data_export_view(request):
                 return True
             return False
 
+        def _get_doctor_advised_cxr(p):
+            if _is_clinical_data_blanked(p):
+                return ""
+            details = _parse_ptb_details(p)
+            cxr_det = details.get("cxr_details") or {}
+            adv = cxr_det.get("doctor_advised_cxr") or details.get("doctor_advised_cxr")
+            if adv in ["Yes", "No"]:
+                return adv
+            done = cxr_det.get("cxr_done") or ("Yes" if details.get("cxr_status") not in ["", "Not Done", None] else "")
+            if done == "Yes":
+                return "Yes"
+            return adv or ("No" if done == "No" else "")
+
         def _get_cxr_done(p):
             if _is_clinical_data_blanked(p):
                 return ""
@@ -6132,6 +6153,7 @@ def data_export_view(request):
             ("EPTB Disseminated Details", lambda p: _get_eptb_q_answer(p, "eptb_q11_details")),
 
             # 7. Step 7: Diagnosis (CXR & PTB/EPTB Tests)
+            ("Did the doctor advise taking an X-ray?", lambda p: _get_doctor_advised_cxr(p)),
             ("Chest X-Ray (CXR) Done?", lambda p: _get_cxr_done(p)),
             ("CXR Result", lambda p: _get_cxr_result(p)),
             ("CXR Suggestive of TB", lambda p: _get_cxr_suggestive(p)),

@@ -814,6 +814,7 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         # Verify CXR details saved correctly
         details = json.loads(p.ptb_test_details)
         cxr_details = details.get("cxr_details", {})
+        self.assertEqual(cxr_details.get("doctor_advised_cxr"), "Yes")
         self.assertEqual(cxr_details.get("cxr_done"), "Yes")
         self.assertEqual(cxr_details.get("cxr_id"), "CXR-A01")
         self.assertEqual(cxr_details.get("cxr_date"), "2026-07-22")
@@ -825,6 +826,55 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         
         # Should classify as Case since CXR is suggestive of TB (and NAAT is empty)
         self.assertEqual(p.classification, "Case")
+
+    def test_doctor_advised_cxr_in_diagnosis_step(self):
+        """Verifies that 'Did the doctor advise taking an X-ray?' is present on the page and saved accurately."""
+        self.client.login(username=self.username, password=self.password)
+        from questions.models import Participant
+        import json
+
+        # 1. Verify presence in GET response
+        response = self.client.get(reverse("questions:registration"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Did the doctor advise taking an X-ray? *")
+
+        # 2. Verify POST saves doctor_advised_cxr accurately
+        post_data = {
+            "first_name": "Advised",
+            "last_name": "Test",
+            "age": 30,
+            "dob": "1996-01-01",
+            "gender": "Female",
+            "primary_phone": "9876543211",
+            "address": "456 Street",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "APL",
+            "risk_factors": ["Diabetes"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Fever"],
+            "doctor_advised_cxr": "Yes",
+            "cxr_done": "No",
+            "naat_status": "",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+        res = self.client.post(reverse("questions:registration"), data=post_data)
+        self.assertRedirects(res, reverse("questions:home"))
+        p = Participant.objects.latest("created_at")
+        details = json.loads(p.ptb_test_details)
+        cxr_details = details.get("cxr_details", {})
+        self.assertEqual(cxr_details.get("doctor_advised_cxr"), "Yes")
+        self.assertEqual(cxr_details.get("cxr_done"), "No")
 
 
 class DynamicQuestionsTestCase(TestCase):
@@ -2416,6 +2466,7 @@ class NewVerificationFieldsTestCase(TestCase):
         self.assertIn("What is the address of the vaccination facility?", headers)
         self.assertIn("pincode", headers)
         self.assertIn("Under which eligibility criteria was the BCG vaccine administered to the participant?", headers)
+        self.assertIn("Did the doctor advise taking an X-ray?", headers)
         self.assertIn("CXR Suggestive of TB", headers)
 
         # Test Excel export

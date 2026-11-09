@@ -1444,6 +1444,20 @@
                     <!-- Chest X-Ray (CXR) Section -->
                     <div class="row g-3 mb-4 border-bottom pb-3">
                         <div class="col-md-12">
+                            <label class="form-label fw-bold text-dark mb-2">Did the doctor advise taking an X-ray? *</label>
+                            <div class="d-flex gap-4 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="doctor_advised_cxr" id="doctorAdvisedCxrYes" value="Yes">
+                                    <label class="form-check-label small text-dark fw-semibold" for="doctorAdvisedCxrYes">Yes</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="doctor_advised_cxr" id="doctorAdvisedCxrNo" value="No" checked>
+                                    <label class="form-check-label small text-dark fw-semibold" for="doctorAdvisedCxrNo">No</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
                             <label class="form-label fw-bold text-dark mb-2">CHEST X-RAY (CXR) DONE? *</label>
                             <div class="d-flex gap-4 mt-1">
                                 <div class="form-check">
@@ -4589,7 +4603,13 @@
         }
 
         if (cxrDoneYes && cxrDoneNo) {
-            cxrDoneYes.addEventListener("change", updateCxrVisibility);
+            cxrDoneYes.addEventListener("change", function() {
+                if (cxrDoneYes.checked) {
+                    const docAdvYes = document.getElementById("doctorAdvisedCxrYes");
+                    if (docAdvYes) docAdvYes.checked = true;
+                }
+                updateCxrVisibility();
+            });
             cxrDoneNo.addEventListener("change", updateCxrVisibility);
         }
 
@@ -5040,6 +5060,7 @@
                 }
 
                 // Load CXR details (single block with legacy fallback)
+                let doctorAdvisedCxrVal = "No";
                 let cxrDoneVal = "No";
                 let cxrIdVal = "";
                 let cxrDateVal = "";
@@ -5048,6 +5069,7 @@
 
                 if (test.cxr_details) {
                     const cd = test.cxr_details;
+                    doctorAdvisedCxrVal = cd.doctor_advised_cxr || (cd.cxr_done === "Yes" ? "Yes" : "No");
                     cxrDoneVal = cd.cxr_done || "No";
                     cxrIdVal = cd.cxr_id || "";
                     cxrDateVal = cd.cxr_date || "";
@@ -5056,9 +5078,14 @@
                 } else if (test.cxr_status) {
                     const legacyVal = test.cxr_status;
                     cxrDoneVal = (legacyVal === "Not Done") ? "No" : "Yes";
+                    doctorAdvisedCxrVal = (cxrDoneVal === "Yes") ? "Yes" : "No";
                     cxrResultVal = (legacyVal !== "Not Done") ? legacyVal : "";
                 }
 
+                const radDocAdv = document.querySelector(`input[name="doctor_advised_cxr"][value="${doctorAdvisedCxrVal}"]`);
+                if (radDocAdv) {
+                    radDocAdv.checked = true;
+                }
                 const radCxrDone = document.querySelector(`input[name="cxr_done"][value="${cxrDoneVal}"]`);
                 if (radCxrDone) {
                     radCxrDone.checked = true;
