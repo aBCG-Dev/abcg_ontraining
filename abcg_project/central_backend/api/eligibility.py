@@ -171,7 +171,7 @@ class RulesEngine:
             else:
                 cxr = "PENDING"
         elif cxr_done == "No" or cxr_status == "Not Done":
-            cxr = "NORMAL" if is_asymptomatic else "NOT_DONE"
+            cxr = "NOT_DONE"
         else:
             cxr = "PENDING"
                 
@@ -204,14 +204,15 @@ class RulesEngine:
                 if k.startswith("eptb_investigation_") and k.endswith("_performed") and v == "Yes":
                     any_performed = True
                     base_key = k[:-10]
-                    result_key = f"{base_key}_result_findings"
-                    result_val = eptb_answers.get(result_key, "").strip()
-                    
-                    if not result_val or "PENDING" in result_val.upper():
+                    result_val = (eptb_answers.get(f"{base_key}_final_interpretation") or eptb_answers.get(f"{base_key}_result_findings") or "").strip()
+                    res_upper = result_val.upper()
+                    if not result_val or "PENDING" in res_upper:
                         any_pending = True
                         site_name = base_key.replace("eptb_investigation_", "").replace("_", " ").title()
                         pending_sites.append(site_name)
-                    elif "POSITIVE" in result_val.upper() or "SUGGESTIVE" in result_val.upper() or "DETECTED" in result_val.upper():
+                    elif "NOT DETECTED" in res_upper or "NEGATIVE" in res_upper or "NORMAL" in res_upper:
+                        pass
+                    elif "POSITIVE" in res_upper or "SUGGESTIVE" in res_upper or "DETECTED" in res_upper or "GROWTH OF" in res_upper:
                         any_positive = True
             if any_positive:
                 eptb_status = "POSITIVE"
@@ -264,7 +265,10 @@ class RulesEngine:
                 classification_reason = "EPTB Investigation Positive"
         elif cxr == "NORMAL" and mctb == "NEGATIVE" and (eptb_symptoms_val == "NO" or (eptb_symptoms_val == "YES" and eptb_status == "NEGATIVE")):
             classification = "Control"
-            classification_reason = "Normal CXR, Negative NAAT, and Negative EPTB status"
+            if eptb_symptoms_val == "YES" and eptb_status == "NEGATIVE":
+                classification_reason = "Normal CXR, Negative NAAT, and EPTB investigations confirmed negative"
+            else:
+                classification_reason = "Normal CXR, Negative NAAT, and Negative EPTB status"
             
         if classification == "Pending" and classification_reason == "One or more required investigation results are pending.":
             pending_list = []

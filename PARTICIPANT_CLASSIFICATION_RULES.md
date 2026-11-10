@@ -143,13 +143,18 @@ For a participant to become a `Case` via the EPTB pathway:
 ---
 
 ### Rule 6: Healthy / Non-TB Control (`Control`)
-* **Condition:** ALL THREE of the following must be `True`:
-  1. `cxr == "NORMAL"` (Normal radiograph, or asymptomatic participant with no CXR indicated)
-  2. `mctb == "NEGATIVE"` (NAAT / MCTB Not Detected)
-  3. `eptb_status == "NEGATIVE"` (No EPTB symptoms reported, or all symptom investigations confirmed negative)
-
+* **Study Protocol Criteria:** Adult ($\ge 18$), target HRG, eligible for BCG campaign, informed consent provided, without active TB disease.
+* **Pre-requisites:**
+  1. **CXR Performed and Normal:** `cxr == "NORMAL"` (CXR **must be taken** `cxr_done == "Yes"` and interpretation is `"Normal"`). If CXR is not taken (`cxr_done == "No"`), the participant is held in **`Pending`** (`"Chest X-Ray has not been performed"`).
+  2. **PTB NAAT Performed and Negative:** `mctb == "NEGATIVE"` (Sputum testing **must be undergone** `undergone_testing == "Yes"` and result is `"MTB Not Detected"` / `"Negative"` / `"No growth"`). If NAAT is not undergone, the participant is held in **`Pending`** (`"NAAT (MCTB) is pending because clinical testing has not been undergone"`).
+* **Two Control Pathways:**
+  - **Pathway 6A (No EPTB Symptoms):**
+    - Condition: `eptb_symptoms_val == "NO"` (No EPTB symptoms checked, or `eptb_asymptomatic == "Yes"`).
+    - Assigned Reason: `"Normal CXR, Negative NAAT, and Negative EPTB status"`
+  - **Pathway 6B (EPTB Symptoms Positive, but Tests Negative):**
+    - Condition: `eptb_symptoms_val == "YES"` AND all investigated EPTB sites confirmed negative (`eptb_status == "NEGATIVE"`).
+    - Assigned Reason: `"Normal CXR, Negative NAAT, and EPTB investigations confirmed negative"`
 * **Assigned Classification:** `Control`
-* **Assigned Reason:** `"Normal CXR, Negative NAAT, and Negative EPTB status"`
 * **Storage Destination:** [`Participant`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L180) table.
 
 ---

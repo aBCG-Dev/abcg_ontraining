@@ -1266,6 +1266,110 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         self.assertIn("Clinically diagnosed TB case", p_eptb_lab.classification_reason)
         self.assertIn("EPTB Investigation Positive", p_eptb_lab.classification_reason)
 
+    def test_protocol_control_definitions_rule1_and_rule2(self):
+        """Verifies Control definitions per study protocol:
+        Rule 1: No EPTB symptoms + normal CXR + PTB not detected -> Control
+        Rule 2: EPTB symptoms positive but TB tests negative + normal CXR -> Control
+        Gating: CXR not performed or NAAT not performed -> Pending
+        """
+        from questions.models import Participant
+        self.client.login(username=self.username, password=self.password)
+
+        base_ctrl = {
+            "first_name": "Ctrl",
+            "last_name": "Test",
+            "age": 45,
+            "dob": "1981-01-01",
+            "gender": "Female",
+            "address": "456 Test Lane",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "BPL",
+            "risk_factors": ["Individuals aged 60 years or above"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Asymptomatic"],
+            "consent": "Yes",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Was aged >=60 years during the BCG campaign period"],
+            "bcg_status": "No",
+            "bcg_scar": "No",
+            "bcg_has_record": "No",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB Not Detected",
+            "cxr_done": "Yes",
+            "cxr_result": "Normal",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+
+        # 1. Rule 1: No EPTB symptoms + Normal CXR + PTB not detected
+        r1_data = dict(base_ctrl)
+        r1_data.update({
+            "primary_phone": "9876500001",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=r1_data)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_r1 = Participant.objects.filter(contact_number="9876500001").latest("created_at")
+        self.assertEqual(p_r1.classification, "Control")
+        self.assertEqual(p_r1.classification_reason, "Normal CXR, Negative NAAT, and Negative EPTB status")
+
+        # 2. Rule 2: EPTB symptoms positive, but EPTB test negative + Normal CXR + PTB not detected
+        r2_data = dict(base_ctrl)
+        r2_data.update({
+            "primary_phone": "9876500002",
+            "eptb_q1a": "Yes",
+            "eptb_investigation_lymph_node_tb_fnac_performed": "Yes",
+            "eptb_investigation_lymph_node_tb_fnac_final_interpretation": "MTB Not Detected",
+        })
+        res = self.client.post(reverse("questions:registration"), data=r2_data)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_r2 = Participant.objects.filter(contact_number="9876500002").latest("created_at")
+        self.assertEqual(p_r2.classification, "Control")
+        self.assertEqual(p_r2.classification_reason, "Normal CXR, Negative NAAT, and EPTB investigations confirmed negative")
+
+        # 3. Gating check: CXR not performed -> Must remain Pending
+        g1_data = dict(base_ctrl)
+        g1_data.update({
+            "primary_phone": "9876500003",
+            "cxr_done": "No",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=g1_data)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_g1 = Participant.objects.filter(contact_number="9876500003").latest("created_at")
+        self.assertEqual(p_g1.classification, "Pending")
+        self.assertIn("Chest X-Ray has not been performed", p_g1.classification_reason)
+
+        # 4. Gating check: Sputum NAAT not performed -> Must remain Pending
+        g2_data = dict(base_ctrl)
+        g2_data.update({
+            "primary_phone": "9876500004",
+            "undergone_testing": "No",
+            "test_reason": "",
+            "test_type": "",
+            "naat_status": "",
+            "final_interpretation": "",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=g2_data)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_g2 = Participant.objects.filter(contact_number="9876500004").latest("created_at")
+        self.assertEqual(p_g2.classification, "Pending")
+        self.assertIn("NAAT (MCTB) is pending because clinical testing has not been undergone", p_g2.classification_reason)
+
 
 class DynamicQuestionsTestCase(TestCase):
     def setUp(self):
