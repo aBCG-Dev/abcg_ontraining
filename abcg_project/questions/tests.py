@@ -1370,6 +1370,146 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         self.assertEqual(p_g2.classification, "Pending")
         self.assertIn("NAAT (MCTB) is pending because clinical testing has not been undergone", p_g2.classification_reason)
 
+    def test_protocol_excluded_definitions(self):
+        """Verifies the three study protocol conditions for Excluded classification and their safeguards:
+        1. Consent = No -> Excluded.
+        2. CXR = No AND PTB = No testing/asymptomatic AND EPTB = No testing/asymptomatic -> Excluded.
+        3. CXR Abnormal (Non-TB) AND NAAT Negative AND EPTB Negative/asymptomatic -> Excluded.
+        And safeguards:
+        - Condition 2 Safeguard: If symptomatic (PTB or EPTB symptoms), cannot be Excluded (must remain Pending).
+        - Condition 3 Safeguard: If EPTB investigation is pending, cannot be Excluded (must remain Pending).
+        - Active disease override: If NAAT is Positive with Abnormal Non-TB CXR, participant is Case.
+        """
+        self.client.login(username=self.username, password=self.password)
+        base_payload = {
+            "first_name": "Excluded",
+            "last_name": "Test",
+            "age": 62,
+            "gender": "Male",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "BPL",
+            "risk_factors": ["Individuals aged 60 years or above"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Asymptomatic"],
+            "consent": "Yes",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Was aged >=60 years during the BCG campaign period"],
+            "bcg_status": "No",
+            "bcg_scar": "No",
+            "bcg_has_record": "No",
+            "undergone_testing": "No",
+            "cxr_done": "No",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+
+        # 1. Condition 1: Consent = No -> Excluded
+        c1_data = dict(base_payload)
+        c1_data.update({
+            "primary_phone": "9876510001",
+            "consent": "No",
+        })
+        res = self.client.post(reverse("questions:registration"), data=c1_data)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_c1 = Participant.objects.filter(contact_number="9876510001").latest("created_at")
+        self.assertEqual(p_c1.classification, "Excluded")
+        self.assertIn("Informed consent not provided", p_c1.classification_reason)
+
+        # 2. Condition 2: Completely uninvestigated / unscreened (CXR=No, PTB=No, EPTB=No) -> Excluded
+        c2_data = dict(base_payload)
+        c2_data.update({
+            "primary_phone": "9876510002",
+            "cxr_done": "No",
+            "undergone_testing": "No",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=c2_data)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_c2 = Participant.objects.filter(contact_number="9876510002").latest("created_at")
+        self.assertEqual(p_c2.classification, "Excluded")
+        self.assertEqual(p_c2.classification_reason, "Excluded from Study: No clinical investigations or active symptoms (CXR not done, PTB not tested/asymptomatic, EPTB not tested/asymptomatic)")
+
+        # 3. Condition 2 Safeguard: Active symptoms present (e.g. cough) -> Must NOT be Excluded, must remain Pending
+        c2_symp = dict(base_payload)
+        c2_symp.update({
+            "primary_phone": "9876510003",
+            "symptoms": ["Cough > 2 weeks"],
+            "cxr_done": "No",
+            "undergone_testing": "No",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=c2_symp)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_c2_symp = Participant.objects.filter(contact_number="9876510003").latest("created_at")
+        self.assertEqual(p_c2_symp.classification, "Pending")
+
+        # 4. Condition 3: CXR Abnormal Non-TB + NAAT Negative + EPTB Negative -> Excluded
+        c3_data = dict(base_payload)
+        c3_data.update({
+            "primary_phone": "9876510004",
+            "cxr_done": "Yes",
+            "cxr_result": "Abnormal (Non-TB)",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB Not Detected",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=c3_data)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_c3 = Participant.objects.filter(contact_number="9876510004").latest("created_at")
+        self.assertEqual(p_c3.classification, "Excluded")
+        self.assertEqual(p_c3.classification_reason, "Abnormal CXR not suggestive of TB with NAAT Negative and Negative EPTB status")
+
+        # 5. Condition 3 Safeguard: CXR Abnormal Non-TB + NAAT Negative, BUT EPTB investigation is pending -> Must remain Pending
+        c3_pending = dict(base_payload)
+        c3_pending.update({
+            "primary_phone": "9876510005",
+            "cxr_done": "Yes",
+            "cxr_result": "Abnormal (Non-TB)",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB Not Detected",
+            "eptb_q1a": "Yes",  # Lymph node swelling present
+            # No investigation entered -> EPTB is pending
+        })
+        res = self.client.post(reverse("questions:registration"), data=c3_pending)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_c3_pending = Participant.objects.filter(contact_number="9876510005").latest("created_at")
+        self.assertEqual(p_c3_pending.classification, "Pending")
+        self.assertIn("EPTB is pending", p_c3_pending.classification_reason)
+
+        # 6. Disease Priority Override: CXR Abnormal Non-TB + NAAT Positive -> Case
+        c3_case = dict(base_payload)
+        c3_case.update({
+            "primary_phone": "9876510006",
+            "cxr_done": "Yes",
+            "cxr_result": "Abnormal (Non-TB)",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Detected",
+            "final_interpretation": "MTB Detected",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=c3_case)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_c3_case = Participant.objects.filter(contact_number="9876510006").latest("created_at")
+        self.assertEqual(p_c3_case.classification, "Case")
+
 
 class DynamicQuestionsTestCase(TestCase):
     def setUp(self):

@@ -757,17 +757,19 @@ def registration(request, pk=None):
             
             # Derive legacy cxr_status
             cxr_status = request.POST.get("cxr_status", "").strip()
-            if not cxr_status:
-                if cxr_done == "Yes":
+            if cxr_done == "Yes":
+                if not cxr_status or cxr_status == "Not Done":
                     cxr_status = cxr_result or "Normal"
-                else:
-                    cxr_status = "Not Done"
-                    cxr_done = "No"
+            elif cxr_done == "No":
+                cxr_status = "Not Done"
             else:
-                if not cxr_done:
-                    cxr_done = "No" if cxr_status == "Not Done" else "Yes"
-                if cxr_done == "Yes" and not cxr_result:
-                    cxr_result = cxr_status
+                if cxr_status and cxr_status != "Not Done":
+                    cxr_done = "Yes"
+                    if not cxr_result:
+                        cxr_result = cxr_status
+                else:
+                    cxr_done = "No"
+                    cxr_status = "Not Done"
             
             cxr_details = {
                 "doctor_advised_cxr": doctor_advised_cxr,
@@ -1133,9 +1135,12 @@ def registration(request, pk=None):
         elif is_tpt_bcg:
             classification = "TPT+BCG"
             classification_reason = "Eligible for BCG + TPT Exploratory Cohort"
-        elif cxr == "ABNORMAL_NON_TB" and mctb == "NEGATIVE":
+        elif cxr == "ABNORMAL_NON_TB" and mctb == "NEGATIVE" and (eptb_symptoms_val == "NO" or eptb_status == "NEGATIVE"):
             classification = "Excluded"
-            classification_reason = "Abnormal CXR not suggestive of TB with NAAT Negative"
+            classification_reason = "Abnormal CXR not suggestive of TB with NAAT Negative and Negative EPTB status"
+        elif (cxr_done == "No" or cxr_status == "Not Done") and (undergone_testing == "No" and is_asymptomatic) and (eptb_symptoms_val == "NO"):
+            classification = "Excluded"
+            classification_reason = "Excluded from Study: No clinical investigations or active symptoms (CXR not done, PTB not tested/asymptomatic, EPTB not tested/asymptomatic)"
         elif cxr == "NORMAL" and mctb == "NEGATIVE" and (eptb_symptoms_val == "NO" or (eptb_symptoms_val == "YES" and eptb_status == "NEGATIVE")):
             classification = "Control"
             if eptb_symptoms_val == "YES" and eptb_status == "NEGATIVE":

@@ -224,32 +224,16 @@ class RulesEngine:
                 eptb_status = "PENDING"
                 pending_sites.append("presumptive EPTB investigation")
                 
-        # 30-day testing timeout check
-        date_enroll_raw = participant_data.get("date_enroll")
-        is_older_than_30_days = False
-        if date_enroll_raw:
-            try:
-                if isinstance(date_enroll_raw, str):
-                    import datetime
-                    enroll_date = datetime.datetime.strptime(date_enroll_raw, "%Y-%m-%d").date()
-                else:
-                    enroll_date = date_enroll_raw
-                # Avoid timezone issues by using local date
-                if (timezone.localdate() - enroll_date).days > 30:
-                    is_older_than_30_days = True
-            except Exception:
-                pass
-
         classification = "Pending"
         classification_reason = "One or more required investigation results are pending."
         
-        if cxr == "ABNORMAL_NON_TB" and mctb == "NEGATIVE":
-            classification = "Excluded"
-            classification_reason = "Abnormal CXR not suggestive of TB with NAAT Negative"
-        elif is_older_than_30_days and (mctb == "PENDING" or cxr == "PENDING" or eptb_status == "PENDING"):
-            classification = "Excluded"
-            classification_reason = "Pending investigation beyond one month"
-        elif mctb == "POSITIVE" or cxr == "SUGGESTIVE_OF_TB" or eptb_status == "POSITIVE":
+        is_completely_uninvestigated = (
+            (cxr_done == "No" or cxr_status == "Not Done") and
+            (undergone_testing == "No" and is_asymptomatic) and
+            (eptb_symptoms_val == "NO")
+        )
+
+        if mctb == "POSITIVE" or cxr == "SUGGESTIVE_OF_TB" or eptb_status == "POSITIVE":
             classification = "Case"
             if mctb == "POSITIVE" and cxr == "SUGGESTIVE_OF_TB":
                 classification_reason = "MCTB Positive and CXR suggestive of TB"
@@ -263,6 +247,12 @@ class RulesEngine:
                 classification_reason = "Chest X-Ray suggestive of TB"
             else:
                 classification_reason = "EPTB Investigation Positive"
+        elif cxr == "ABNORMAL_NON_TB" and mctb == "NEGATIVE" and (eptb_symptoms_val == "NO" or eptb_status == "NEGATIVE"):
+            classification = "Excluded"
+            classification_reason = "Abnormal CXR not suggestive of TB with NAAT Negative and Negative EPTB status"
+        elif is_completely_uninvestigated:
+            classification = "Excluded"
+            classification_reason = "Excluded from Study: No clinical investigations or active symptoms (CXR not done, PTB not tested/asymptomatic, EPTB not tested/asymptomatic)"
         elif cxr == "NORMAL" and mctb == "NEGATIVE" and (eptb_symptoms_val == "NO" or (eptb_symptoms_val == "YES" and eptb_status == "NEGATIVE")):
             classification = "Control"
             if eptb_symptoms_val == "YES" and eptb_status == "NEGATIVE":

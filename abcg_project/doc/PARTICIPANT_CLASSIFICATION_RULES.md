@@ -1,7 +1,7 @@
 # Participant Classification & Eligibility Rules Engine
 
-**Document Version:** 1.3 (Updated: Formal Protocol Case Definitions - Microbiologically Confirmed & Clinically Diagnosed)  
-**Target Codebase Location:** [`abcg_project/questions/views.py`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/views.py#L995-L1170)  
+**Document Version:** 1.4 (Updated: Formal Protocol Excluded Definitions & Safeguards)  
+**Target Codebase Location:** [`abcg_project/questions/views.py`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/views.py#L995-L1170) and [`abcg_project/central_backend/api/eligibility.py`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/central_backend/api/eligibility.py#L40-L160)  
 **Database Models:** [`Participant`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L180), [`TptIndividual`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L460), [`IneligibleIndividual`](file:///c:/Users/IPEGlobal60/Desktop/abcg_training_application/abcg_ontraining/abcg_project/questions/models.py#L640)  
 
 ---
@@ -16,7 +16,10 @@ The **Eligibility & Clinical Classification Engine** automatically evaluates eac
 2. **`Control`** – Confirmed Healthy / Non-TB Control (Normal CXR, Negative NAAT, Negative EPTB).
 3. **`TPT+BCG`** – Exploratory Cohort: High-risk individual with BCG vaccination and TPT chemoprophylaxis history **without active TB disease**.
 4. **`Pending`** – Clinical investigation data pending (CXR, NAAT, or EPTB). **Participants with pending tests are NEVER excluded based on elapsed time (even $\ge 30$ days), ensuring diagnostic delays never cause improper disqualification.**
-5. **`Excluded`** – Ineligible for study analysis (consent declined or non-TB radiological pathology with negative NAAT).
+5. **`Excluded`** – Ineligible for study cohort analysis under three distinct protocol conditions:
+   - **Condition 1**: Consent declined (`consent == "No"`).
+   - **Condition 2**: Completely uninvestigated / unscreened (`cxr_done == "No"`, PTB not tested & asymptomatic, EPTB not tested & asymptomatic).
+   - **Condition 3**: Abnormal non-TB CXR with negative NAAT and negative/asymptomatic EPTB.
 6. **`Not Eligible`** – Did not meet preliminary screening criteria (age $< 18$, outside study TB Unit, or no target high-risk criteria).
 
 ---
@@ -45,9 +48,10 @@ Rule 1: Screening Ineligibility      ──► "Not Eligible" (Underage < 18, ou
 Rule 2: Consent Declined             ──► "Excluded" (Refused consent)
 Rule 3: Confirmed Active TB Case     ──► "Case" (Microbiologically Confirmed or Clinically Diagnosed)
 Rule 4: TPT + BCG Cohort Check       ──► "TPT+BCG" (High Risk + TPT Yes + BCG Yes without active TB)
-Rule 5: Non-TB CXR Pathology         ──► "Excluded" (Abnormal non-TB CXR with NAAT Negative)
-Rule 6: Healthy / Non-TB Control     ──► "Control" (Normal CXR, NAAT Negative, and EPTB Negative)
-Rule 7: Default Fallthrough          ──► "Pending" (Indefinite, with dynamic itemized missing tests)
+Rule 5: Non-TB CXR Pathology         ──► "Excluded" (Abnormal non-TB CXR + NAAT Neg + EPTB Neg)
+Rule 6: Completely Uninvestigated    ──► "Excluded" (CXR No + PTB No/Asymptomatic + EPTB No/Asymptomatic)
+Rule 7: Healthy / Non-TB Control     ──► "Control" (Normal CXR, NAAT Negative, and EPTB Negative)
+Rule 8: Default Fallthrough          ──► "Pending" (Indefinite, with dynamic itemized missing tests)
 ```
 
 ---
@@ -60,7 +64,7 @@ Rule 7: Default Fallthrough          ──► "Pending" (Indefinite, with dynam
 
 ---
 
-### Rule 2: Consent Declined
+### Rule 2: Protocol Exclusion – Condition 1 (Consent Declined)
 * **Condition:** `consent_declined == True` (`consent == "No"`).
 * **Assigned Classification:** `Excluded`
 * **Assigned Reason:** `"Excluded from Study: Informed consent not provided"`
@@ -134,24 +138,39 @@ For a participant to become a `Case` via the EPTB pathway:
 
 ---
 
-### Rule 5: Non-TB CXR Pathology Exclusion
-* **Condition:** `cxr == "ABNORMAL_NON_TB"` AND `mctb == "NEGATIVE"` AND `eptb_status != "POSITIVE"`.
+### Rule 5: Protocol Exclusion – Condition 3 (Non-TB CXR Pathology Exclusion)
+* **Condition:** `cxr == "ABNORMAL_NON_TB"` AND `mctb == "NEGATIVE"` AND `(eptb_symptoms_val == "NO" or eptb_status == "NEGATIVE")`.
 * **Assigned Classification:** `Excluded`
-* **Assigned Reason:** `"Abnormal CXR not suggestive of TB with NAAT Negative"`
-* **Clinical Note:** True non-TB radiographic abnormality combined with negative microbiology and negative EPTB excludes the subject from both Case and Control definitions.
+* **Assigned Reason:** `"Abnormal CXR not suggestive of TB with NAAT Negative and Negative EPTB status"`
+* **Safeguards & Overrides:**
+  - **EPTB Safeguard:** If presumptive EPTB investigation is pending (`eptb_status == "PENDING"`), the participant is held in **`Pending`** because a positive EPTB result promotes the participant to a `Case`.
+  - **Active Disease Priority:** If NAAT is positive, microbiological confirmation takes precedence $\rightarrow$ `Case`.
 
 ---
 
-### Rule 6: Healthy / Non-TB Control (`Control`)
+### Rule 6: Protocol Exclusion – Condition 2 (Completely Uninvestigated / Unscreened)
+* **Condition:**
+  1. `cxr_done == "No"` or `cxr_status == "Not Done"`
+  2. `undergone_testing == "No"` AND `is_asymptomatic` (no cough $\ge 2$ weeks, fever, hemoptysis, weight loss, night sweats)
+  3. `eptb_symptoms_val == "NO"` (no EPTB symptoms selected or `eptb_asymptomatic == "Yes"`)
+* **Assigned Classification:** `Excluded`
+* **Assigned Reason:** `"Excluded from Study: No clinical investigations or active symptoms (CXR not done, PTB not tested/asymptomatic, EPTB not tested/asymptomatic)"`
+* **Clinical Rationale & Presumptive Safeguard:**
+  - Individuals without any active symptoms who have not undergone CXR, pulmonary testing, or extrapulmonary investigations cannot be evaluated for Case or Control endpoints and are excluded.
+  - **Crucial Safeguard:** If the individual has **active symptoms** (e.g. cough, fever, lymphadenopathy), they are a **presumptive TB suspect**. They are NOT excluded; they are placed into **`Pending`** so the study team can ensure clinical workup is completed.
+
+---
+
+### Rule 7: Healthy / Non-TB Control (`Control`)
 * **Study Protocol Criteria:** Adult ($\ge 18$), target HRG, eligible for BCG campaign, informed consent provided, without active TB disease.
 * **Pre-requisites:**
   1. **CXR Performed and Normal:** `cxr == "NORMAL"` (CXR **must be taken** `cxr_done == "Yes"` and interpretation is `"Normal"`). If CXR is not taken (`cxr_done == "No"`), the participant is held in **`Pending`** (`"Chest X-Ray has not been performed"`).
   2. **PTB NAAT Performed and Negative:** `mctb == "NEGATIVE"` (Sputum testing **must be undergone** `undergone_testing == "Yes"` and result is `"MTB Not Detected"` / `"Negative"` / `"No growth"`). If NAAT is not undergone, the participant is held in **`Pending`** (`"NAAT (MCTB) is pending because clinical testing has not been undergone"`).
 * **Two Control Pathways:**
-  - **Pathway 6A (No EPTB Symptoms):**
+  - **Pathway 7A (No EPTB Symptoms):**
     - Condition: `eptb_symptoms_val == "NO"` (No EPTB symptoms checked, or `eptb_asymptomatic == "Yes"`).
     - Assigned Reason: `"Normal CXR, Negative NAAT, and Negative EPTB status"`
-  - **Pathway 6B (EPTB Symptoms Positive, but Tests Negative):**
+  - **Pathway 7B (EPTB Symptoms Positive, but Tests Negative):**
     - Condition: `eptb_symptoms_val == "YES"` AND all investigated EPTB sites confirmed negative (`eptb_status == "NEGATIVE"`).
     - Assigned Reason: `"Normal CXR, Negative NAAT, and EPTB investigations confirmed negative"`
 * **Assigned Classification:** `Control`
@@ -159,8 +178,8 @@ For a participant to become a `Case` via the EPTB pathway:
 
 ---
 
-### Rule 7: Default Fallthrough (`Pending`)
-* **Condition:** Does not meet Case or Control criteria because one or more clinical diagnostic tests are unperformed, blank, or pending.
+### Rule 8: Default Fallthrough (`Pending`)
+* **Condition:** Does not meet Case, Excluded, or Control criteria because one or more clinical diagnostic tests are unperformed, blank, or pending.
 * **Duration Policy:** **Indefinite.** Participants remain in `Pending` regardless of time elapsed ($\ge 30$ days, 60 days, etc.) until diagnostic results are submitted or overridden by a doctor.
 * **Assigned Classification:** `Pending`
 * **Dynamic Itemized Reasons Generated:**
@@ -186,20 +205,23 @@ flowchart TD
     C1 -- No --> R1["Classification: Not Eligible<br/>Destination: IneligibleIndividual table"]
     C1 -- Yes --> C2{Informed Consent<br/>Provided?}
     
-    C2 -- No --> R2["Classification: Excluded<br/>Reason: Consent not provided"]
+    C2 -- No --> R2["Classification: Excluded (Condition 1)<br/>Reason: Consent not provided"]
     C2 -- Yes --> C3{Active TB Confirmed?<br/>• NAAT Positive (Microbiological)<br/>• CXR Suggestive (Clinical)<br/>• EPTB/Histology Positive (Clinical)}
     
     C3 -- Yes --> R3["Classification: Case<br/>Microbiologically Confirmed or Clinically Diagnosed"]
     C3 -- No --> C4{High Risk + TPT Yes +<br/>BCG Yes?}
     
     C4 -- Yes --> R4["Classification: TPT+BCG<br/>Destination: TptIndividual table"]
-    C4 -- No --> C5{CXR Abnormal Non-TB<br/>& NAAT Negative?}
+    C4 -- No --> C5{CXR Abnormal Non-TB &<br/>NAAT Neg & EPTB Neg?}
     
-    C5 -- Yes --> R5["Classification: Excluded<br/>Reason: Non-TB CXR abnormality"]
-    C5 -- No --> C6{All Tests Negative?<br/>• CXR Normal<br/>• NAAT Negative<br/>• EPTB Negative}
+    C5 -- Yes --> R5["Classification: Excluded (Condition 3)<br/>Reason: Non-TB CXR abnormality"]
+    C5 -- No --> C6{CXR Not Done &<br/>PTB Asymptomatic/Not Done &<br/>EPTB Asymptomatic?}
     
-    C6 -- Yes --> R6["Classification: Control<br/>Confirmed Healthy / Non-TB Control"]
-    C6 -- No --> R7["Classification: Pending (Indefinite)<br/>Itemized missing diagnostic results"]
+    C6 -- Yes --> R6["Classification: Excluded (Condition 2)<br/>Reason: Completely uninvestigated & asymptomatic"]
+    C6 -- No --> C7{All Tests Negative?<br/>• CXR Normal Done<br/>• NAAT Negative Done<br/>• EPTB Negative/Asymptomatic}
+    
+    C7 -- Yes --> R7["Classification: Control<br/>Confirmed Healthy / Non-TB Control"]
+    C7 -- No --> R8["Classification: Pending (Indefinite)<br/>Itemized missing diagnostic results"]
 ```
 
 ---
