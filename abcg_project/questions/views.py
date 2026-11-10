@@ -361,6 +361,7 @@ def registration(request, pk=None):
             )
 
     if request.method == "POST":
+        is_tpt = False
         is_tpt_bcg = False
         nikshay_id = request.POST.get("nikshay_id", "").strip() or (getattr(participant, "nikshay_id", "") if participant else "")
         first_name = request.POST.get("first_name", "").strip() or (getattr(participant, "first_name", "") if participant else "")
@@ -1090,8 +1091,9 @@ def registration(request, pk=None):
         is_clinical_case = (not is_microbiological_case) and (cxr == "SUGGESTIVE_OF_TB" or eptb_status == "POSITIVE" or is_histopathology_positive)
         is_case = is_microbiological_case or is_clinical_case
 
-        # TPT+BCG cohort check (only for participants without active TB disease)
-        is_tpt_bcg = has_hrg and eligible_bcg_campaign and (tpt_undergone == "Yes") and bcg_status.startswith("Yes") and not consent_declined and not is_case
+        # TPT cohort check: If TPT == Yes, participant is routed to TptIndividual irrespective of BCG or Case/Control/Pending/Excluded status
+        is_tpt = (tpt_undergone == "Yes") and not consent_declined
+        is_tpt_bcg = is_tpt
 
         classification = "Pending"
         classification_reason = "One or more required investigation results are pending."
@@ -1113,7 +1115,11 @@ def registration(request, pk=None):
             eptb_screened = False
             eptb_details = "{}"
             bcg_status = "No"
+            is_tpt = False
             is_tpt_bcg = False
+        elif is_tpt:
+            classification = "TPT"
+            classification_reason = "Eligible for TPT Cohort: Individual has undergone TB Preventive Treatment (TPT)"
         elif is_case:
             classification = "Case"
             if is_microbiological_case:
@@ -1132,9 +1138,6 @@ def registration(request, pk=None):
                     classification_reason = "Clinically diagnosed TB case: EPTB Investigation Positive"
                 else:
                     classification_reason = "Clinically diagnosed TB case: Histopathology Investigation Positive"
-        elif is_tpt_bcg:
-            classification = "TPT+BCG"
-            classification_reason = "Eligible for BCG + TPT Exploratory Cohort"
         elif cxr == "ABNORMAL_NON_TB" and mctb == "NEGATIVE" and (eptb_symptoms_val == "NO" or eptb_status == "NEGATIVE"):
             classification = "Excluded"
             classification_reason = "Abnormal CXR not suggestive of TB with NAAT Negative and Negative EPTB status"
@@ -1201,7 +1204,7 @@ def registration(request, pk=None):
         existing_dup_rec = None
         if not participant:
             from questions.deduplication import ParticipantDeduplicator
-            target_model = IneligibleIndividual if not eligible else (TptIndividual if is_tpt_bcg else Participant)
+            target_model = IneligibleIndividual if not eligible else (TptIndividual if is_tpt else Participant)
             dedup = ParticipantDeduplicator(model_class=target_model)
             is_dup, match_rec, tier, reason = dedup.check_candidate_duplicate(
                 first_name=first_name,
@@ -1488,7 +1491,7 @@ def registration(request, pk=None):
             populate_fields(obj)
             obj.save()
             sync_nikshay_record(obj, nikshay_id, user=request.user)
-        elif is_tpt_bcg:
+        elif is_tpt:
             Participant.objects.filter(study_id=study_id).delete()
             IneligibleIndividual.objects.filter(study_id=study_id).delete()
             if screening_id:
@@ -2100,7 +2103,7 @@ def reconcile_match_api(request):
                 "adherence_records": qa.get("adherence_records") or "",
                 "diagnosis_date": qa.get("diagnosis_date") or "",
                 "bank_aadhaar_details": qa.get("bank_aadhaar_details") or "",
-                "classification": r.classification if hasattr(r, "classification") else ("TPT+BCG" if cohort_name == "tpt" else "Not Eligible"),
+                "classification": r.classification if hasattr(r, "classification") else ("TPT" if cohort_name == "tpt" else "Not Eligible"),
                 "synced": r.synced,
                 "cohort": cohort_name,
                 "match_type": match_status
@@ -3092,8 +3095,8 @@ def pending_sync(request):
             type_label = "Case Group"
         elif p.classification == "Control":
             type_label = "Control Group"
-        elif p.classification == "TPT+BCG":
-            type_label = "TPT+BCG Cohort"
+        elif p.classification in ["TPT", "TPT+BCG"]:
+            type_label = "TPT Cohort"
         elif p.classification == "Not Eligible" or not p.eligible:
             type_label = "Ineligible Group"
         else:
@@ -4266,7 +4269,7 @@ def participants_line_list_view(request):
     total_participants = p_qs.count() + tpt_qs.count() + inel_qs.count()
     cases_count = p_qs.filter(classification="Case").count()
     controls_count = p_qs.filter(classification="Control").count()
-    tpt_count = tpt_qs.count() + p_qs.filter(classification="TPT+BCG").count()
+    tpt_count = tpt_qs.count() + p_qs.filter(classification__in=["TPT", "TPT+BCG"]).count()
     pending_count = p_qs.filter(classification="Pending").count()
     ineligible_count = inel_qs.count() + p_qs.filter(classification__in=["Not Eligible", "Excluded"]).count()
     eligible_count = max(0, total_participants - ineligible_count)
@@ -4331,8 +4334,8 @@ def participants_line_list_view(request):
         inel_qs = inel_qs.filter(date_enroll__lte=date_to)
 
     if cls_filter:
-        if cls_filter == "TPT+BCG":
-            p_qs = p_qs.filter(classification="TPT+BCG")
+        if cls_filter in ["TPT", "TPT+BCG"]:
+            p_qs = p_qs.filter(classification__in=["TPT", "TPT+BCG"])
             inel_qs = inel_qs.none()
         elif cls_filter in ["Not Eligible", "Excluded"]:
             tpt_qs = tpt_qs.none()
@@ -4369,7 +4372,7 @@ def participants_line_list_view(request):
             cohort_badge = "Ineligible Individual"
         elif model_type == "TptIndividual":
             is_el = True
-            cls = getattr(p, "classification", "TPT+BCG") or "TPT+BCG"
+            cls = getattr(p, "classification", "TPT") or "TPT"
             cohort_badge = "TPT Cohort"
         else:
             raw_cls = getattr(p, "classification", "Pending") or "Pending"

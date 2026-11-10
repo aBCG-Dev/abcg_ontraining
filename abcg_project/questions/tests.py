@@ -1194,10 +1194,10 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         }
         res = self.client.post(reverse("questions:registration"), data=post_tpt_case)
         self.assertRedirects(res, reverse("questions:home"))
-        p_tpt = Participant.objects.filter(contact_number="9876543293").first()
-        self.assertIsNotNone(p_tpt, "Active TB case in TPT+BCG recipient must be saved in Participant table")
-        self.assertEqual(p_tpt.classification, "Case")
-        self.assertFalse(TptIndividual.objects.filter(contact_number="9876543293").exists())
+        p_tpt = TptIndividual.objects.filter(contact_number="9876543293").first()
+        self.assertIsNotNone(p_tpt, "TPT participant (TPT=Yes) must be saved in TptIndividual table irrespective of active TB / clinical status")
+        self.assertEqual(p_tpt.classification, "TPT")
+        self.assertFalse(Participant.objects.filter(contact_number="9876543293").exists())
 
         # 4. Confirmed EPTB Case with Non-TB CXR abnormality is NOT excluded
         post_eptb_case = {
@@ -1509,6 +1509,138 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         self.assertRedirects(res, reverse("questions:home"))
         p_c3_case = Participant.objects.filter(contact_number="9876510006").latest("created_at")
         self.assertEqual(p_c3_case.classification, "Case")
+
+    def test_protocol_tpt_cohort_routing_and_classification(self):
+        """Verifies study protocol rules for TPT Cohort:
+        1. TPT == Yes -> Saved in TptIndividual table.
+        2. Irrespective of BCG (whether BCG is Yes, No, or unrecorded).
+        3. Irrespective of Case, Control, Pending, or Excluded (e.g. NAAT Positive, Normal, Unscreened, Non-TB CXR) -> Saved in TptIndividual.
+        4. Classification is 'TPT' (not 'TPT+BCG').
+        5. Regular participants (TPT == No) get Case, Control, Pending, or Excluded in Participant table.
+        """
+        from questions.models import Participant, TptIndividual
+        self.client.login(username=self.username, password=self.password)
+        base_tpt = {
+            "first_name": "TptTest",
+            "last_name": "User",
+            "age": 60,
+            "gender": "Male",
+            "state": "Tamil Nadu",
+            "district": "Tiruvallur",
+            "tb_unit": "Tiruvallur TU",
+            "sector": "Public Sector",
+            "case_finding_type": "Passive (Routine programme)",
+            "public_phi": "Avadi PHC",
+            "village": "Karani Village",
+            "pincode": "602001",
+            "demographic_area": "Rural",
+            "marital_status": "Single",
+            "occupation": "Other",
+            "socioeconomic_status": "BPL",
+            "risk_factors": ["Individuals aged 60 years or above"],
+            "hiv_status": "Non Reactive / Negative",
+            "symptoms": ["Asymptomatic"],
+            "consent": "Yes",
+            "eligible_bcg_campaign": "Yes",
+            "bcg_eligibility_criteria": ["Was aged >=60 years during the BCG campaign period"],
+            "bcg_status": "No",
+            "bcg_scar": "No",
+            "bcg_has_record": "No",
+            "sample_availability": "Absent",
+            "result_availability": "Absent",
+        }
+
+        # 1. TPT == Yes without BCG (bcg_status == 'No') -> Saved in TptIndividual with classification 'TPT'
+        t1 = dict(base_tpt)
+        t1.update({
+            "primary_phone": "9876520001",
+            "tpt_undergone": "Yes",
+            "tpt_status": "Completed",
+            "bcg_status": "No",
+        })
+        res = self.client.post(reverse("questions:registration"), data=t1)
+        self.assertRedirects(res, reverse("questions:home"))
+        rec1 = TptIndividual.objects.filter(contact_number="9876520001").first()
+        self.assertIsNotNone(rec1, "Individual with TPT=Yes must be saved in TptIndividual")
+        self.assertEqual(rec1.classification, "TPT")
+        self.assertFalse(Participant.objects.filter(contact_number="9876520001").exists())
+
+        # 2. TPT == Yes with active TB (Sputum NAAT Positive + CXR Suggestive) -> Saved in TptIndividual with classification 'TPT'
+        t2 = dict(base_tpt)
+        t2.update({
+            "primary_phone": "9876520002",
+            "tpt_undergone": "Yes",
+            "tpt_status": "Completed",
+            "bcg_status": "Yes",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Detected",
+            "final_interpretation": "MTB Detected",
+            "cxr_done": "Yes",
+            "cxr_result": "Suggestive of TB",
+        })
+        res = self.client.post(reverse("questions:registration"), data=t2)
+        self.assertRedirects(res, reverse("questions:home"))
+        rec2 = TptIndividual.objects.filter(contact_number="9876520002").first()
+        self.assertIsNotNone(rec2, "TPT with active TB must still go to TptIndividual table")
+        self.assertEqual(rec2.classification, "TPT")
+        self.assertFalse(Participant.objects.filter(contact_number="9876520002").exists())
+
+        # 3. TPT == Yes with Normal CXR + Negative NAAT (would otherwise be Control) -> Saved in TptIndividual with 'TPT'
+        t3 = dict(base_tpt)
+        t3.update({
+            "primary_phone": "9876520003",
+            "tpt_undergone": "Yes",
+            "tpt_status": "Completed",
+            "cxr_done": "Yes",
+            "cxr_result": "Normal",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Not Detected",
+            "final_interpretation": "MTB Not Detected",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=t3)
+        self.assertRedirects(res, reverse("questions:home"))
+        rec3 = TptIndividual.objects.filter(contact_number="9876520003").first()
+        self.assertIsNotNone(rec3, "TPT with normal investigations must be saved in TptIndividual")
+        self.assertEqual(rec3.classification, "TPT")
+        self.assertFalse(Participant.objects.filter(contact_number="9876520003").exists())
+
+        # 4. TPT == Yes with completely uninvestigated (would otherwise be Excluded) -> Saved in TptIndividual with 'TPT'
+        t4 = dict(base_tpt)
+        t4.update({
+            "primary_phone": "9876520004",
+            "tpt_undergone": "Yes",
+            "cxr_done": "No",
+            "undergone_testing": "No",
+            "eptb_asymptomatic": "Yes",
+        })
+        res = self.client.post(reverse("questions:registration"), data=t4)
+        self.assertRedirects(res, reverse("questions:home"))
+        rec4 = TptIndividual.objects.filter(contact_number="9876520004").first()
+        self.assertIsNotNone(rec4, "TPT completely uninvestigated must be saved in TptIndividual")
+        self.assertEqual(rec4.classification, "TPT")
+        self.assertFalse(Participant.objects.filter(contact_number="9876520004").exists())
+
+        # 5. Regular participant (TPT == No) with NAAT Positive -> Saved in Participant table as Case
+        p_reg = dict(base_tpt)
+        p_reg.update({
+            "primary_phone": "9876520005",
+            "tpt_undergone": "No",
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "naat_status": "MTB Detected",
+            "final_interpretation": "MTB Detected",
+        })
+        res = self.client.post(reverse("questions:registration"), data=p_reg)
+        self.assertRedirects(res, reverse("questions:home"))
+        p_rec = Participant.objects.filter(contact_number="9876520005").first()
+        self.assertIsNotNone(p_rec, "Regular participant (TPT=No) must be saved in Participant table")
+        self.assertEqual(p_rec.classification, "Case")
 
 
 class DynamicQuestionsTestCase(TestCase):
@@ -2065,8 +2197,8 @@ class DynamicQuestionsTestCase(TestCase):
         self.assertEqual(p.tpt_duration_months, 3)
         self.assertEqual(p.tpt_regimen, "3HP – 3 months weekly Isoniazid + Rifapentine")
 
-        # Verify TPT+BCG cohort classification override
-        self.assertEqual(p.classification, "TPT+BCG")
+        # Verify TPT cohort classification override
+        self.assertEqual(p.classification, "TPT")
 
     def test_pending_sync_saves_device_telemetry(self):
         from unittest.mock import patch, MagicMock
@@ -2236,7 +2368,7 @@ class DynamicQuestionsTestCase(TestCase):
             state="Tamil Nadu",
             district="Tiruvallur",
             tb_unit="Tiruvallur TU",
-            classification="TPT+BCG",
+            classification="TPT",
             created_by=self.user
         )
 

@@ -103,6 +103,7 @@ class Participant(models.Model):
         ("Control", "Control"),
         ("Pending", "Pending"),
         ("Not Eligible", "Not Eligible"),
+        ("TPT", "TPT"),
         ("TPT+BCG", "TPT+BCG"),
         ("Excluded", "Excluded"),
     ]
@@ -516,7 +517,7 @@ class TptIndividual(models.Model):
 
     # Classification
     consent = models.CharField(max_length=10, blank=True, null=True, verbose_name="Informed Consent")
-    classification = models.CharField(max_length=25, default="TPT+BCG")
+    classification = models.CharField(max_length=25, default="TPT")
     classification_reason = models.TextField(blank=True, default="")
     
     # Sync metadata

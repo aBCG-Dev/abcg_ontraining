@@ -202,7 +202,7 @@ class ParticipantDeduplicator:
         # Classification status priority
         if classification in {"Case", "Control"}:
             score += 60
-        elif classification == "TPT+BCG":
+        elif classification in {"TPT", "TPT+BCG"}:
             score += 55
         elif classification == "Excluded":
             score += 30

@@ -348,13 +348,13 @@
     </div>
 </div>
 
-<!-- TPT+BCG Modal -->
+<!-- TPT Modal -->
 <div class="modal fade" id="classificationTptBcgModal" tabindex="-1" aria-labelledby="classificationTptBcgModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: var(--radius); border: 2px solid #7c3aed;">
             <div class="modal-header border-bottom-0 pb-0">
                 <h5 class="modal-title fw-bold d-flex align-items-center" id="classificationTptBcgModalLabel" style="color: #6b21a8;">
-                    <i class="bi bi-shield-check-fill me-2 fs-4"></i> BCG + TPT Classification
+                    <i class="bi bi-shield-check-fill me-2 fs-4"></i> TPT Classification
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -362,8 +362,8 @@
                 <div class="fs-1 mb-2" style="color: #6b21a8;">
                     <i class="bi bi-check-circle-fill"></i>
                 </div>
-                <p class="fw-semibold text-dark mb-1">Participant Classified as <span class="badge fs-6" style="background: linear-gradient(135deg, #6b21a8, #4c1d95);">BCG + TPT</span></p>
-                <p class="small text-muted mb-3">The participant has been enrolled in the <strong>Exploratory Database</strong> as BCG + TPT cohort.</p>
+                <p class="fw-semibold text-dark mb-1">Participant Classified as <span class="badge fs-6" style="background: linear-gradient(135deg, #6b21a8, #4c1d95);">TPT</span></p>
+                <p class="small text-muted mb-3">The participant has been enrolled in the <strong>TPT Cohort</strong> as TPT individual.</p>
                 <div class="p-3 rounded border mb-3 d-inline-block w-100" style="border-radius: var(--radius); background-color: #f3e8ff; border-color: #e9d5ff; color: #6b21a8;">
                     <span class="small d-block fw-bold text-uppercase mb-1">Study ID</span>
                     <strong class="fs-5 d-block" style="color: #5b1b8f;">{{ classified_participant.study_id }}</strong>
@@ -466,7 +466,7 @@
             modalId = "classificationCaseModal";
         } else if (classification === "Control") {
             modalId = "classificationControlModal";
-        } else if (classification === "TPT+BCG") {
+        } else if (classification === "TPT" || classification === "TPT+BCG") {
             modalId = "classificationTptBcgModal";
         } else if (classification === "Excluded" || classification === "Not Eligible") {
             modalId = "classificationExcludedModal";

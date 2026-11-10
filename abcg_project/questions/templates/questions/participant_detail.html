@@ -618,9 +618,9 @@
                     <span class="verdict-badge verdict-control">
                         <i class="bi bi-shield-check"></i> Eligible Control
                     </span>
-                    {% elif p.classification == 'TPT+BCG' %}
+                    {% elif p.classification == 'TPT' or p.classification == 'TPT+BCG' %}
                     <span class="verdict-badge verdict-tpt">
-                        <i class="bi bi-plus-circle-fill"></i> TPT + BCG Cohort
+                        <i class="bi bi-plus-circle-fill"></i> TPT Cohort
                     </span>
                     {% elif p.classification == 'Excluded' %}
                     <span class="verdict-badge verdict-pending" style="background: #fef2f2; color: #dc2626; border-color: #fecaca;">

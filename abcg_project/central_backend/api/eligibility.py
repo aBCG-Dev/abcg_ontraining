@@ -99,7 +99,15 @@ class RulesEngine:
         if not eligible:
             return "Not Eligible", "Participant is ineligible under screening criteria."
             
+        consent = participant_data.get("consent", "Yes")
+        if consent == "No":
+            return "Excluded", "Excluded from Study: Informed consent not provided"
+
+        # TPT cohort check: If TPT == Yes, participant is routed to TptIndividual irrespective of BCG or Case/Control/Pending/Excluded status
         tpt_undergone = participant_data.get("tpt_undergone", "No")
+        if tpt_undergone == "Yes":
+            return "TPT", "Eligible for TPT Cohort: Individual has undergone TB Preventive Treatment (TPT)"
+
         bcg_status = participant_data.get("bcg_status", "No") or ""
         
         # Check if BCG verification and vaccine details are filled
@@ -116,13 +124,6 @@ class RulesEngine:
                 
         if not bcg_complete:
             return "Pending", "One or more required BCG verification or vaccine details are incomplete."
-            
-        # TPT+BCG cohort override check
-        # Since eligible is True, has_hrg and eligible_bcg_campaign are True
-        is_tpt_bcg = (tpt_undergone == "Yes") and bcg_status.startswith("Yes")
-        
-        if is_tpt_bcg:
-            return "TPT+BCG", "Eligible for BCG + TPT Exploratory Cohort"
             
         # Parse ptb_test_details and eptb_details to determine mctb, cxr, and eptb_status
         ptb_details_raw = participant_data.get("ptb_test_details", "{}")

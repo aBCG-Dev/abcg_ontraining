@@ -91,10 +91,10 @@
       </div>
     </div>
 
-    <!-- TPT + BCG -->
+    <!-- TPT -->
     <div class="rounded-xl border border-border bg-card p-3.5 shadow-sm flex items-center justify-between border-l-4 border-l-purple-500">
       <div>
-        <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">TPT + BCG</span>
+        <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">TPT</span>
         <div class="text-2xl font-bold text-purple-600 mt-0.5">{{ metrics.tpt_count }}</div>
         <p class="text-[10px] text-muted-foreground">Preventive cohort</p>
       </div>
@@ -150,7 +150,7 @@
             <option value="" {% if not filters.classification %}selected{% endif %}>All Classifications</option>
             <option value="Case" {% if filters.classification == 'Case' %}selected{% endif %}>TB Case</option>
             <option value="Control" {% if filters.classification == 'Control' %}selected{% endif %}>Control</option>
-            <option value="TPT+BCG" {% if filters.classification == 'TPT+BCG' %}selected{% endif %}>TPT + BCG</option>
+            <option value="TPT" {% if filters.classification == 'TPT' or filters.classification == 'TPT+BCG' %}selected{% endif %}>TPT</option>
             <option value="Pending" {% if filters.classification == 'Pending' %}selected{% endif %}>Pending Adjudication</option>
             <option value="Not Eligible" {% if filters.classification == 'Not Eligible' %}selected{% endif %}>Not Eligible</option>
             <option value="Excluded" {% if filters.classification == 'Excluded' %}selected{% endif %}>Excluded</option>
@@ -406,7 +406,7 @@
                     bg-red-100 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800
                   {% elif p.classification == 'Control' %}
                     bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800
-                  {% elif p.classification == 'TPT+BCG' %}
+                  {% elif p.classification == 'TPT' or p.classification == 'TPT+BCG' %}
                     bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800
                   {% elif p.classification == 'Pending' %}
                     bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800
