@@ -108,23 +108,6 @@ class RulesEngine:
         if tpt_undergone == "Yes":
             return "TPT", "Eligible for TPT Cohort: Individual has undergone TB Preventive Treatment (TPT)"
 
-        bcg_status = participant_data.get("bcg_status", "No") or ""
-        
-        # Check if BCG verification and vaccine details are filled
-        bcg_status_str = bcg_status.strip()
-        bcg_complete = False
-        if bcg_status_str.startswith("No"):
-            bcg_complete = True
-        elif bcg_status_str.startswith("Yes"):
-            has_date = bool(participant_data.get("bcg_vaccination_date") or participant_data.get("bcg_date"))
-            has_batch = bool(participant_data.get("bcg_batch_number"))
-            has_facility = bool(participant_data.get("bcg_facility"))
-            if has_date and has_batch and has_facility:
-                bcg_complete = True
-                
-        if not bcg_complete:
-            return "Pending", "One or more required BCG verification or vaccine details are incomplete."
-            
         # Parse ptb_test_details and eptb_details to determine mctb, cxr, and eptb_status
         ptb_details_raw = participant_data.get("ptb_test_details", "{}")
         try:
@@ -268,11 +251,13 @@ class RulesEngine:
                     pending_list.append("NAAT (MCTB) is pending because clinical testing has not been undergone")
                 else:
                     pending_list.append("NAAT (MCTB) is pending because test result is blank or not recorded")
-            if cxr == "PENDING":
-                if undergone_testing == "No":
-                    pending_list.append("Chest X-Ray is pending because clinical testing has not been undergone")
-                else:
+            if cxr in ["PENDING", "NOT_DONE"]:
+                if cxr_done == "No":
+                    pending_list.append("Chest X-Ray has not been performed")
+                elif not effective_cxr_result:
                     pending_list.append("Chest X-Ray is pending because interpretation findings are blank or not recorded")
+                else:
+                    pending_list.append("Chest X-Ray investigation is pending")
             if eptb_status == "PENDING":
                 if pending_sites:
                     pending_list.append(f"EPTB is pending because investigation results are not recorded for {', '.join(pending_sites)}")

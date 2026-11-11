@@ -194,7 +194,8 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         self.assertEqual(Participant.objects.count(), initial_count + 1)
         p = Participant.objects.latest("created_at")
         self.assertTrue(p.eligible)
-        self.assertEqual(p.classification, "Pending")
+        self.assertEqual(p.classification, "Excluded")
+        self.assertIn("No clinical investigations or active symptoms", p.classification_reason)
         self.assertEqual(p.match_hrg, "Diabetes")
 
     def test_registration_page_post_creates_ineligible_participant_no_hrg(self):
@@ -665,7 +666,8 @@ class QuestionsRoutingAndViewsTestCase(TestCase):
         self.assertTrue(p.ptb_screened)
         self.assertFalse(p.ptb_test_registered)
         self.assertEqual(p.symptoms, "Asymptomatic")
-        self.assertEqual(p.classification, "Pending")
+        self.assertEqual(p.classification, "Excluded")
+        self.assertIn("No clinical investigations or active symptoms", p.classification_reason)
 
     def test_registration_multiple_samples(self):
         self.client.login(username=self.username, password=self.password)
@@ -3362,8 +3364,8 @@ class NewVerificationFieldsTestCase(TestCase):
 
     def test_registration_tpt_regimen_dont_know(self):
         self.client.login(username=self.username, password=self.password)
-        from questions.models import Participant
-        initial_count = Participant.objects.count()
+        from questions.models import TptIndividual
+        initial_count = TptIndividual.objects.count()
 
         response = self.client.post(reverse("questions:registration"), data={
             "first_name": "Tpt",
@@ -3394,14 +3396,14 @@ class NewVerificationFieldsTestCase(TestCase):
             "tpt_regimen": "Don't know"
         })
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(Participant.objects.count(), initial_count + 1)
-        p = Participant.objects.latest("created_at")
+        self.assertEqual(TptIndividual.objects.count(), initial_count + 1)
+        p = TptIndividual.objects.latest("created_at")
         self.assertEqual(p.tpt_regimen, "Don't know")
 
     def test_registration_tpt_regimen_dont_know_with_backtick(self):
         self.client.login(username=self.username, password=self.password)
-        from questions.models import Participant
-        initial_count = Participant.objects.count()
+        from questions.models import TptIndividual
+        initial_count = TptIndividual.objects.count()
 
         response = self.client.post(reverse("questions:registration"), data={
             "first_name": "Tpt",
@@ -3432,8 +3434,8 @@ class NewVerificationFieldsTestCase(TestCase):
             "tpt_regimen": "Don`t know"
         })
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(Participant.objects.count(), initial_count + 1)
-        p = Participant.objects.latest("created_at")
+        self.assertEqual(TptIndividual.objects.count(), initial_count + 1)
+        p = TptIndividual.objects.latest("created_at")
         self.assertEqual(p.tpt_regimen, "Don't know")
 
     def test_registration_form_occupation_others_and_tpt_dont_know_rendered(self):

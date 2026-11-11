@@ -132,20 +132,20 @@ During registration, the rules engine parses clinical test findings to assign a 
 ```mermaid
 graph TD
     A[Start: Evaluate Clinical Inputs] --> B{eligible == False?}
-    B -- Yes --> C[Set classification = "Not Eligible"]
-    B -- No --> D{bcg_complete == False?}
-    D -- Yes --> E[Set classification = "Pending" <br> Reason: Incomplete BCG details]
-    D -- No --> F{is_tpt_bcg == True?}
-    F -- Yes --> G[Set classification = "TPT+BCG" <br> Reason: Eligible for BCG + TPT Cohort]
-    F -- No --> H{CXR == ABNORMAL_NON_TB <br> and NAAT == NEGATIVE?}
-    H -- Yes --> I[Set classification = "Excluded" <br> Reason: Abnormal non-TB CXR + NAAT Neg]
-    H -- No --> J{Record created > 30 days ago <br> and any test PENDING?}
-    J -- Yes --> K[Set classification = "Excluded" <br> Reason: Pending investigation > 1 month]
-    J -- No --> L{NAAT == POSITIVE or CXR == <br> SUGGESTIVE_OF_TB or EPTB == POSITIVE?}
-    L -- Yes --> M[Set classification = "Case"]
+    B -- Yes --> C[Set classification = "Not Eligible" <br> Destination: IneligibleIndividual]
+    B -- No --> D{consent == "No"?}
+    D -- Yes --> E[Set classification = "Excluded" <br> Reason: Consent not provided]
+    D -- No --> F{tpt_undergone == "Yes"?}
+    F -- Yes --> G[Set classification = "TPT" <br> Destination: TptIndividual]
+    F -- No --> H{NAAT == POSITIVE or CXR == <br> SUGGESTIVE_OF_TB or EPTB == POSITIVE?}
+    H -- Yes --> I[Set classification = "Case" <br> Microbiologically Confirmed or Clinically Diagnosed]
+    H -- No --> J{CXR == ABNORMAL_NON_TB <br> and NAAT == NEGATIVE and EPTB == NEGATIVE?}
+    J -- Yes --> K[Set classification = "Excluded" <br> Reason: Non-TB CXR abnormality]
+    J -- No --> L{CXR Not Done and <br> PTB Asymptomatic/Not Done and <br> EPTB Asymptomatic?}
+    L -- Yes --> M[Set classification = "Excluded" <br> Reason: Completely uninvestigated & asymptomatic]
     L -- No --> N{CXR == NORMAL and NAAT == NEGATIVE <br> and EPTB == NEGATIVE?}
-    N -- Yes --> O[Set classification = "Control"]
-    N -- No --> P[Set classification = "Pending" <br> Reason: Awaiting investigation results]
+    N -- Yes --> O[Set classification = "Control" <br> Reason: Healthy / Non-TB Control]
+    N -- No --> P[Set classification = "Pending" <br> Reason: Itemized missing diagnostic tests]
 ```
 
 ### 5.1 Classification Criteria & Rule Matrix

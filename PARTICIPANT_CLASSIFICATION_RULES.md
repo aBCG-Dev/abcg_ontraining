@@ -148,7 +148,8 @@ Applies to regular study participants (`tpt_undergone == "No"`):
 ---
 
 ### Rule 8: Default Fallthrough (`Pending`)
-* **Condition:** Does not meet Case, Excluded, or Control criteria because one or more clinical diagnostic tests are unperformed, blank, or pending.
+* **Condition:** Does not meet Case, Excluded, or Control criteria because one or more clinical diagnostic tests (NAAT, CXR, EPTB) are unperformed, blank, or pending.
+* **BCG Details Safeguard:** Missing or incomplete BCG vaccine details (vaccination date, batch number, or facility) **NEVER** cause a participant to be marked as `Pending`. Participant clinical classification is governed strictly by clinical diagnostic tests and findings.
 * **Duration Policy:** **Indefinite.** Participants remain in `Pending` regardless of time elapsed ($\ge 30$ days, 60 days, etc.) until diagnostic results are submitted or overridden by a doctor.
 * **Assigned Classification:** `Pending`
 * **Dynamic Itemized Reasons Generated:**

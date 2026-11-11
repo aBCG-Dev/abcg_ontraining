@@ -298,10 +298,12 @@ class CentralBackendSyncTests(TestCase):
         }
         classification, reason = RulesEngine.evaluate_classification(p_excluded)
         self.assertEqual(classification, "Excluded")
-        self.assertEqual(reason, "Abnormal CXR not suggestive of TB with NAAT Negative")
+        self.assertEqual(reason, "Abnormal CXR not suggestive of TB with NAAT Negative and Negative EPTB status")
 
-        # Test case: Incomplete BCG Details (bcg_status="Yes" but details missing)
-        p_incomplete_bcg = {
+        # Test case: Participant with bcg_status="Yes" but missing date/batch/facility
+        # Protocol Rule: Incomplete BCG details NEVER cause participant to go to Pending!
+        # Case with MTB Detected must evaluate to Case:
+        p_bcg_case = {
             "age": 45,
             "bmi": 22.0,
             "risk_factors": "Diabetes",
@@ -313,8 +315,31 @@ class CentralBackendSyncTests(TestCase):
                 "final_interpretation": "MTB Detected"
             })
         }
-        classification, reason = RulesEngine.evaluate_classification(p_incomplete_bcg)
-        self.assertEqual(classification, "Pending")
-        self.assertEqual(reason, "One or more required BCG verification or vaccine details are incomplete.")
+        classification, reason = RulesEngine.evaluate_classification(p_bcg_case)
+        self.assertEqual(classification, "Case")
+        self.assertIn("MCTB Positive", reason)
+        self.assertNotIn("BCG verification or vaccine details are incomplete", reason)
+
+        # Control with Normal CXR & Negative NAAT must evaluate to Control even if BCG details are unrecorded:
+        p_bcg_control = {
+            "age": 45,
+            "bmi": 22.0,
+            "risk_factors": "Diabetes",
+            "eligible_bcg_campaign": True,
+            "bcg_eligibility_criteria": "Self-reported diabetes",
+            "bcg_status": "Yes",
+            "ptb_test_details": json.dumps({
+                "undergone_testing": "Yes",
+                "naat_status": "MTB Not Detected",
+                "cxr_done": "Yes",
+                "cxr_result": "Normal"
+            }),
+            "eptb_details": json.dumps({
+                "eptb_q1a": "No"
+            })
+        }
+        classification, reason = RulesEngine.evaluate_classification(p_bcg_control)
+        self.assertEqual(classification, "Control")
+        self.assertNotIn("BCG verification or vaccine details are incomplete", reason)
 
 
