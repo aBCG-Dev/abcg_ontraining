@@ -902,6 +902,7 @@ def registration(request, pk=None):
             details_dict = {
                 "undergone_testing": undergone_testing,
                 "test_reason": test_reason,
+                "test_type": test_type,
                 "predominant_symptom": predominant_symptom,
                 "duration_days": duration_days,
                 "hcp_visits": hcp_visits,
@@ -1594,6 +1595,7 @@ def registration(request, pk=None):
             "recently_changed_address": getattr(participant, "recently_changed_address", "No") or "No",
             "previous_address": getattr(participant, "previous_address", "") or "",
             "address": participant.address,
+            "taluka_block": getattr(participant, "taluka_block", "") or "",
             "state": resolved_st if (getattr(participant, "state", "").upper() == "GLOBAL" or not getattr(participant, "state", "")) else participant.state,
             "district": resolved_dist if (getattr(participant, "district", "").upper() == "ALL DISTRICTS" or not getattr(participant, "district", "")) else participant.district,
             "tb_unit": resolved_tu if (getattr(participant, "tb_unit", "").upper() in ["ALL TB UNITS", "GLOBAL"] or not getattr(participant, "tb_unit", "")) else participant.tb_unit,
@@ -1662,10 +1664,15 @@ def registration(request, pk=None):
             "bcg_vaccine_name": participant.bcg_vaccine_name,
             "bcg_batch_number": participant.bcg_batch_number,
             "bcg_facility": participant.bcg_facility,
+            "bcg_scar": getattr(participant, "bcg_scar", "") or "",
+            "bcg_has_record": getattr(participant, "bcg_has_record", "") or "",
+            "bcg_record_file_name": participant.bcg_record_file.name if getattr(participant, "bcg_record_file", None) else "",
+            "bcg_record_file_url": participant.bcg_record_file.url if getattr(participant, "bcg_record_file", None) else "",
             "cxr_record_file_name": participant.cxr_record_file.name if participant.cxr_record_file else "",
             "cxr_record_file_url": participant.cxr_record_file.url if participant.cxr_record_file else "",
             "bcg_scar_file_name": participant.bcg_scar_file.name if participant.bcg_scar_file else "",
             "bcg_scar_file_url": participant.bcg_scar_file.url if participant.bcg_scar_file else "",
+            "ptb_test_type": getattr(participant, "ptb_test_type", "") or "",
         }
         try:
             participant_data["eptb_details"] = json.loads(participant.eptb_details) if participant.eptb_details else {}
@@ -1675,6 +1682,8 @@ def registration(request, pk=None):
             participant_data["ptb_test_details"] = json.loads(participant.ptb_test_details) if participant.ptb_test_details else {}
         except Exception:
             participant_data["ptb_test_details"] = {}
+        if getattr(participant, "ptb_test_type", None) and not participant_data["ptb_test_details"].get("test_type"):
+            participant_data["ptb_test_details"]["test_type"] = participant.ptb_test_type
             
         participant_json = json.dumps(participant_data)
     elif nikshay_id_param:
@@ -1873,6 +1882,7 @@ def registration(request, pk=None):
         "eptb_sub_questions_json": eptb_sub_questions_json,
         "questions": questions_dict,
         "prefill_id": prefill_id,
+        "cohort": cohort_param or ("tpt" if isinstance(participant, TptIndividual) else ("ineligible" if isinstance(participant, IneligibleIndividual) else "participant")),
     }
     return render(request, "questions/registration.html", context)
 

@@ -66,9 +66,12 @@ class ConsentQuestionTestCase(TestCase):
             "has_bcg_eligibility_criteria_form": "true",
             "bcg_eligibility_criteria": ["Was aged >=60 years during the BCG campaign period"],
             "consent": "Yes",
-            "symptoms": ["Asymptomatic"],
-            "undergone_testing": "No",
-            "cxr_done": "No",
+            "symptoms": ["Cough > 2 weeks"],
+            "undergone_testing": "Yes",
+            "test_reason": "Diagnosis of TB",
+            "test_type": "CBNAAT",
+            "cxr_done": "Yes",
+            "cxr_result": "Suggestive of TB",
             "bcg_status": "No",
         }
         response = self.client.post(reverse("questions:registration"), data=post_data)

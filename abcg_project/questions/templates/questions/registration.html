@@ -549,6 +549,7 @@
                 <input type="hidden" name="participant_id" value="{{ participant.id }}">
                 <input type="hidden" name="original_date_enroll" value="{{ participant.date_enroll|date:'Y-m-d' }}">
                 <input type="hidden" name="participant_study_id" value="{{ participant.study_id }}">
+                <input type="hidden" name="cohort" value="{{ cohort }}">
                 {% endif %}
 
                 <!-- Step 1 Panel: Site Location (Autofilled & Locked) -->
@@ -630,14 +631,14 @@
                                 <option value="">Select Public PHI</option>
                             </select>
                             <input type="text" class="form-control bg-light d-none" id="publicPhiReadonly" readonly style="border-radius: var(--radius); border-color: var(--line);">
-                            <input type="hidden" id="publicPhiHidden" name="public_phi" disabled>
+                            <input type="hidden" id="publicPhiHidden" name="public_phi" value="{{ participant.public_phi|default:'' }}" disabled>
                             <div class="invalid-feedback">Public PHI is required.</div>
                         </div>
 
                         <!-- Conditionally shown Private Facility select -->
                         <div class="col-md-12 d-none" id="privateFacilityContainer">
                             <label for="privateFacility" class="form-label fw-semibold text-muted small">PRIVATE FACILITY *</label>
-                            <input type="text" class="form-control" id="privateFacility" name="private_facility" placeholder="Enter Private Facility" style="border-radius: var(--radius); border-color: var(--line);">
+                            <input type="text" class="form-control" id="privateFacility" name="private_facility" value="{{ participant.private_facility|default:'' }}" placeholder="Enter Private Facility" style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Private Facility is required.</div>
                         </div>
 
@@ -647,11 +648,11 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label for="informantName" class="form-label fw-semibold text-muted small">INFORMANT NAME</label>
-                                    <input type="text" class="form-control" id="informantName" name="informant_name" placeholder="Informant Name" style="border-radius: var(--radius); border-color: var(--line);">
+                                    <input type="text" class="form-control" id="informantName" name="informant_name" value="{{ participant.informant_name|default:'' }}" placeholder="Informant Name" style="border-radius: var(--radius); border-color: var(--line);">
                                 </div>
                                 <div class="col-md-6">
                                     <label for="informantDesignation" class="form-label fw-semibold text-muted small">DESIGNATION</label>
-                                    <input type="text" class="form-control" id="informantDesignation" name="informant_designation" placeholder="e.g. Health Inspector" style="border-radius: var(--radius); border-color: var(--line);">
+                                    <input type="text" class="form-control" id="informantDesignation" name="informant_designation" value="{{ participant.informant_designation|default:'' }}" placeholder="e.g. Health Inspector" style="border-radius: var(--radius); border-color: var(--line);">
                                 </div>
                             </div>
                         </div>
@@ -667,14 +668,14 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="firstName" class="form-label fw-semibold text-muted small">FIRST NAME *</label>
-                            <input type="text" class="form-control" id="firstName" name="first_name"
+                            <input type="text" class="form-control" id="firstName" name="first_name" value="{{ participant.first_name|default:'' }}"
                                 placeholder="First Name" required pattern="[A-Za-z\s]+"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Only English letters are allowed.</div>
                         </div>
                         <div class="col-md-6">
                             <label for="lastName" class="form-label fw-semibold text-muted small">MIDDLE &amp; LAST NAME *</label>
-                            <input type="text" class="form-control" id="lastName" name="last_name"
+                            <input type="text" class="form-control" id="lastName" name="last_name" value="{{ participant.last_name|default:'' }}"
                                 placeholder="Middle &amp; Last Name" required pattern="[A-Za-z\s]+"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Only English letters are allowed.</div>
@@ -682,7 +683,7 @@
                         
                         <div class="col-md-6">
                             <label for="fatherHusbandName" class="form-label fw-semibold text-muted small">FATHER/HUSBAND'S NAME</label>
-                            <input type="text" class="form-control" id="fatherHusbandName" name="father_husband_name"
+                            <input type="text" class="form-control" id="fatherHusbandName" name="father_husband_name" value="{{ participant.father_husband_name|default:'' }}"
                                 placeholder="Father or Husband's Name" pattern="[A-Za-z\s]*"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Only English letters are allowed.</div>
@@ -690,7 +691,7 @@
 
                         <div class="col-md-6">
                             <label for="nikshayId" class="form-label fw-semibold text-muted small">NIKSHAY ID</label>
-                            <input type="text" class="form-control" id="nikshayId" name="nikshay_id"
+                            <input type="text" class="form-control" id="nikshayId" name="nikshay_id" value="{{ participant.nikshay_id|default:'' }}"
                                 placeholder="Nikshay ID"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
@@ -700,13 +701,13 @@
                             <label for="hasGovernmentId" class="form-label fw-semibold text-muted small">Does the participant have any government-issued identification?</label>
                             <select class="form-select" id="hasGovernmentId" name="has_government_id"
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                                <option value="No" selected>No</option>
-                                <option value="Yes">Yes</option>
+                                <option value="No" {% if participant.has_government_id != "Yes" %}selected{% endif %}>No</option>
+                                <option value="Yes" {% if participant.has_government_id == "Yes" %}selected{% endif %}>Yes</option>
                             </select>
                         </div>
                         <div class="col-md-6 d-none" id="governmentIdNameContainer">
                             <label for="governmentIdName" class="form-label fw-semibold text-muted small">Which government-issued ID does the participant have? *</label>
-                            <input type="text" class="form-control" id="governmentIdName" name="government_id_name"
+                            <input type="text" class="form-control" id="governmentIdName" name="government_id_name" value="{{ participant.government_id_name|default:'' }}"
                                 placeholder="e.g. Aadhaar Card, Voter ID, Ration Card, PAN Card"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Please enter the name of the ID card.</div>
@@ -714,14 +715,14 @@
 
                         <div class="col-md-4">
                             <label for="age" class="form-label fw-semibold text-muted small">CURRENT AGE (YEARS) *</label>
-                            <input type="number" class="form-control" id="age" name="age" min="1" max="99"
+                            <input type="number" class="form-control" id="age" name="age" min="1" max="99" value="{{ participant.age|default:'' }}"
                                 placeholder="e.g. 45" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Current age must be between 1 and 99.</div>
                         </div>
                         <div class="col-md-4">
                             <label for="dob" class="form-label fw-semibold text-muted small">DATE OF BIRTH</label>
-                            <input type="date" class="form-control" id="dob" name="dob"
+                            <input type="date" class="form-control" id="dob" name="dob" value="{{ participant.dob|date:'Y-m-d'|default:'' }}"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
                         <div class="col-md-4">
@@ -739,21 +740,21 @@
                         <!-- Height, Weight, BMI -->
                         <div class="col-md-4">
                             <label for="heightCm" class="form-label fw-semibold text-muted small">HEIGHT (CM) *</label>
-                            <input type="number" step="0.1" class="form-control" id="heightCm" name="height_cm" min="50" max="250"
+                            <input type="number" step="0.1" class="form-control" id="heightCm" name="height_cm" min="50" max="250" value="{{ participant.height_cm|default:'' }}"
                                 placeholder="e.g. 165" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Height must be between 50 and 250 cm.</div>
                         </div>
                         <div class="col-md-4">
                             <label for="weightKg" class="form-label fw-semibold text-muted small">WEIGHT (KG) *</label>
-                            <input type="number" step="0.1" class="form-control" id="weightKg" name="weight_kg" min="10" max="250"
+                            <input type="number" step="0.1" class="form-control" id="weightKg" name="weight_kg" min="10" max="250" value="{{ participant.weight_kg|default:'' }}"
                                 placeholder="e.g. 60" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Weight must be between 10 and 250 kg.</div>
                         </div>
                         <div class="col-md-4">
                             <label for="bmiField" class="form-label fw-semibold text-muted small">BMI (BODY MASS INDEX)</label>
-                            <input type="text" class="form-control bg-light" id="bmiField" name="bmi" readonly
+                            <input type="text" class="form-control bg-light" id="bmiField" name="bmi" readonly value="{{ participant.bmi|default:'' }}"
                                 placeholder="Calculated automatically"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
@@ -763,7 +764,7 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted fw-bold"
                                     style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);">+91</span>
-                                <input type="tel" class="form-control" id="primaryPhone" name="primary_phone"
+                                <input type="tel" class="form-control" id="primaryPhone" name="primary_phone" value="{{ participant.contact_number|default:'' }}"
                                     placeholder="10-digit number" required pattern="[1-9][0-9]{9}"
                                     style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
                                 <div class="invalid-feedback">Must be 10 digits without a leading zero.</div>
@@ -785,8 +786,8 @@
                             <label for="recentlyChangedPhone" class="form-label fw-semibold text-muted small">Has the participant changed their phone number after the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period|default:"Jun 2024 - Aug 2024" }}</span>)?</label>
                             <select class="form-select" id="recentlyChangedPhone" name="recently_changed_phone"
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                                <option value="No" selected>No</option>
-                                <option value="Yes">Yes</option>
+                                <option value="No" {% if participant.recently_changed_phone != "Yes" %}selected{% endif %}>No</option>
+                                <option value="Yes" {% if participant.recently_changed_phone == "Yes" %}selected{% endif %}>Yes</option>
                             </select>
                         </div>
                         <div class="col-md-6 d-none" id="previousPhoneContainer">
@@ -794,7 +795,7 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted fw-bold"
                                     style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);">+91</span>
-                                <input type="tel" class="form-control" id="previousPhoneNumber" name="previous_phone_number"
+                                <input type="tel" class="form-control" id="previousPhoneNumber" name="previous_phone_number" value="{{ participant.previous_phone_number|default:'' }}"
                                     placeholder="10-digit previous phone number" pattern="[1-9][0-9]{9}"
                                     style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
                                 <div class="invalid-feedback">Must be a valid 10-digit number without leading zero.</div>
@@ -805,7 +806,7 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted fw-bold"
                                     style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);">+91</span>
-                                <input type="tel" class="form-control" id="secondaryPhone1" name="secondary_phone_1"
+                                <input type="tel" class="form-control" id="secondaryPhone1" name="secondary_phone_1" value="{{ participant.secondary_phone_1|default:'' }}"
                                     placeholder="10-digit number" pattern="[1-9][0-9]{9}"
                                     style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
                                 <div class="invalid-feedback">Must be 10 digits without a leading zero.</div>
@@ -817,7 +818,7 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted fw-bold"
                                     style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);">+91</span>
-                                <input type="tel" class="form-control" id="secondaryPhone2" name="secondary_phone_2"
+                                <input type="tel" class="form-control" id="secondaryPhone2" name="secondary_phone_2" value="{{ participant.secondary_phone_2|default:'' }}"
                                     placeholder="10-digit number" pattern="[1-9][0-9]{9}"
                                     style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
                                 <div class="invalid-feedback">Must be 10 digits without a leading zero.</div>
@@ -828,7 +829,7 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted fw-bold"
                                     style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);">+91</span>
-                                <input type="tel" class="form-control" id="secondaryPhone3" name="secondary_phone_3"
+                                <input type="tel" class="form-control" id="secondaryPhone3" name="secondary_phone_3" value="{{ participant.secondary_phone_3|default:'' }}"
                                     placeholder="10-digit number" pattern="[1-9][0-9]{9}"
                                     style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
                                 <div class="invalid-feedback">Must be 10 digits without a leading zero.</div>
@@ -849,32 +850,32 @@
                         </div>
                         <div class="col-md-12">
                             <label for="address" class="form-label fw-semibold text-muted small">CURRENT STREET ADDRESS / HOUSE DETAIL *</label>
-                            <input type="text" class="form-control" id="address" name="address"
+                            <input type="text" class="form-control" id="address" name="address" value="{{ participant.address|default:'' }}"
                                 placeholder="Street, Door No." required pattern="[A-Za-z0-9\s,\./\-#]+" maxlength="2000"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">Address cannot be empty, cannot exceed 2000 characters and only English letters are allowed</div>
                         </div>
                         <div class="col-md-6">
                             <label for="talukaBlock" class="form-label fw-semibold text-muted small">CURRENT TALUKA / BLOCK</label>
-                            <input type="text" class="form-control" id="talukaBlock" name="taluka_block"
+                            <input type="text" class="form-control" id="talukaBlock" name="taluka_block" value="{{ participant.taluka_block|default:'' }}"
                                 placeholder="Taluka or Block"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
                         <div class="col-md-6">
                             <label for="landmark" class="form-label fw-semibold text-muted small">CURRENT LANDMARK</label>
-                            <input type="text" class="form-control" id="landmark" name="landmark"
+                            <input type="text" class="form-control" id="landmark" name="landmark" value="{{ participant.landmark|default:'' }}"
                                 placeholder="Landmark"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
                         <div class="col-md-6">
                             <label for="village" class="form-label fw-semibold text-muted small">CURRENT VILLAGE / WARD *</label>
-                            <input type="text" class="form-control" id="village" name="village" placeholder="Village"
+                            <input type="text" class="form-control" id="village" name="village" value="{{ participant.village|default:'' }}" placeholder="Village"
                                 required style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">This field is required.</div>
                         </div>
                         <div class="col-md-6">
                             <label for="pincode" class="form-label fw-semibold text-muted small">CURRENT PINCODE *</label>
-                            <input type="text" class="form-control" id="pincode" name="pincode"
+                            <input type="text" class="form-control" id="pincode" name="pincode" value="{{ participant.pincode|default:'' }}"
                                 placeholder="6-digit postal code" required pattern="[0-9]{6}"
                                 style="border-radius: var(--radius); border-color: var(--line);">
                             <div class="invalid-feedback">6 digits.</div>
@@ -885,15 +886,15 @@
                             <label for="recentlyChangedAddress" class="form-label fw-semibold text-muted small">Has the participant changed their residential address after the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period|default:"Jun 2024 - Aug 2024" }}</span>)?</label>
                             <select class="form-select" id="recentlyChangedAddress" name="recently_changed_address"
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                                <option value="No" selected>No</option>
-                                <option value="Yes">Yes</option>
+                                <option value="No" {% if participant.recently_changed_address != "Yes" %}selected{% endif %}>No</option>
+                                <option value="Yes" {% if participant.recently_changed_address == "Yes" %}selected{% endif %}>Yes</option>
                             </select>
                         </div>
                         <div class="col-md-12 d-none" id="previousAddressContainer">
                             <label for="previousAddress" class="form-label fw-semibold text-muted small">PREVIOUS ADDRESS *</label>
                             <textarea class="form-control" id="previousAddress" name="previous_address" rows="2"
                                 placeholder="Please collect and enter previous address"
-                                style="border-radius: var(--radius); border-color: var(--line);"></textarea>
+                                style="border-radius: var(--radius); border-color: var(--line);">{{ participant.previous_address|default:'' }}</textarea>
                             <div class="invalid-feedback">Please enter previous address.</div>
                         </div>
                     </div>
@@ -942,7 +943,7 @@
                             <label for="occupation" class="form-label fw-semibold text-muted small">{{ questions.occupation.question.label }}</label>
                             <select class="form-select select2-like" id="occupation" name="occupation" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                                <option value="Unknown" selected>Unknown</option>
+                                <option value="Unknown" {% if not participant.occupation or participant.occupation == "Unknown" %}selected{% endif %}>Unknown</option>
                                 {% for opt in questions.occupation.options %}
                                 {% if opt.name != "Others" and opt.name != "Other" %}
                                 <option value="{{ opt.name }}">{{ opt.name }}</option>
@@ -952,7 +953,7 @@
                             </select>
                             <div id="occupationOtherContainer" class="d-none mt-2 specify-container">
                                 <label for="occupationOther" class="form-label fw-semibold text-muted small">Please specify *</label>
-                                <input type="text" class="form-control specify-text-input" id="occupationOther" name="occupation_other"
+                                <input type="text" class="form-control specify-text-input" id="occupationOther" name="occupation_other" value="{{ participant.occupation_other|default:'' }}"
                                     placeholder="Please specify"
                                     style="border-radius: var(--radius); border-color: var(--line);">
                                 <div class="invalid-feedback">Please specify.</div>
@@ -967,7 +968,7 @@
                         </div>
                         <div class="col-md-6">
                             <label for="contactPersonName" class="form-label fw-semibold text-muted small">CONTACT PERSON NAME</label>
-                            <input type="text" class="form-control" id="contactPersonName" name="contact_person_name"
+                            <input type="text" class="form-control" id="contactPersonName" name="contact_person_name" value="{{ participant.contact_person_name|default:'' }}"
                                 placeholder="Contact Person Name" style="border-radius: var(--radius); border-color: var(--line);">
                         </div>
                         <div class="col-md-6">
@@ -975,7 +976,7 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted fw-bold"
                                     style="border-radius: var(--radius) 0 0 var(--radius); border-color: var(--line);">+91</span>
-                                <input type="tel" class="form-control" id="contactPersonPhone" name="contact_person_phone"
+                                <input type="tel" class="form-control" id="contactPersonPhone" name="contact_person_phone" value="{{ participant.contact_person_phone|default:'' }}"
                                     placeholder="10-digit number" pattern="[1-9][0-9]{9}"
                                     style="border-radius: 0 var(--radius) var(--radius) 0; border-color: var(--line);">
                                 <div class="invalid-feedback">Must be 10 digits without a leading zero.</div>
@@ -984,7 +985,7 @@
                         <div class="col-md-12">
                             <label for="contactPersonAddress" class="form-label fw-semibold text-muted small">CONTACT PERSON ADDRESS</label>
                             <textarea class="form-control" id="contactPersonAddress" name="contact_person_address" rows="2"
-                                placeholder="Contact Person Address" style="border-radius: var(--radius); border-color: var(--line);"></textarea>
+                                placeholder="Contact Person Address" style="border-radius: var(--radius); border-color: var(--line);">{{ participant.contact_person_address|default:'' }}</textarea>
                         </div>
                     </div>
 
@@ -1034,7 +1035,7 @@
                             </label>
                             <select class="form-select" id="eligibleBcgCampaign" name="eligible_bcg_campaign" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                                <option value="" disabled selected>-- Select Option --</option>
+                                <option value="" disabled {% if not participant.eligible_bcg_campaign %}selected{% endif %}>-- Select Option --</option>
                                 <option value="Yes">Yes</option>
                                 <option value="No">No</option>
                             </select>
@@ -1112,7 +1113,7 @@
                                 </label>
                                 <select class="form-select" id="tptUndergone" name="tpt_undergone"
                                     style="border-radius: var(--radius); border-color: var(--line);">
-                                    <option value="" disabled selected>-- Select Option --</option>
+                                    <option value="" disabled {% if not participant.tpt_undergone %}selected{% endif %}>-- Select Option --</option>
                                     <option value="Yes">Yes</option>
                                     <option value="No">No</option>
                                 </select>
@@ -1162,17 +1163,17 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label for="tptStartDate" class="form-label fw-semibold text-muted small">START DATE</label>
-                                    <input type="date" class="form-control" id="tptStartDate" name="tpt_start_date"
+                                    <input type="date" class="form-control" id="tptStartDate" name="tpt_start_date" value="{{ participant.tpt_start_date|date:'Y-m-d'|default:'' }}"
                                         style="border-radius: var(--radius); border-color: var(--line);">
                                 </div>
                                 <div class="col-md-6">
                                     <label for="tptEndDate" class="form-label fw-semibold text-muted small">END DATE</label>
-                                    <input type="date" class="form-control" id="tptEndDate" name="tpt_end_date"
+                                    <input type="date" class="form-control" id="tptEndDate" name="tpt_end_date" value="{{ participant.tpt_end_date|date:'Y-m-d'|default:'' }}"
                                         style="border-radius: var(--radius); border-color: var(--line);">
                                 </div>
                                 <div class="col-md-6">
                                     <label for="tptDurationMonths" class="form-label fw-semibold text-muted small">DURATION (MONTHS)</label>
-                                    <input type="text" class="form-control bg-light" id="tptDurationMonths" name="tpt_duration_months" readonly
+                                    <input type="text" class="form-control bg-light" id="tptDurationMonths" name="tpt_duration_months" readonly value="{{ participant.tpt_duration_months|default:'' }}"
                                         placeholder="Calculated automatically" style="border-radius: var(--radius); border-color: var(--line);">
                                 </div>
                                 <div class="col-md-6">
@@ -1974,7 +1975,7 @@
                             <label class="form-label fw-bold text-dark small text-uppercase">Were you vaccinated during the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>)? *</label>
                             <select class="form-select mb-3" id="bcgCampaignVaccinated" name="bcg_status" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                                <option value="" disabled selected>-- Select Option --</option>
+                                <option value="" disabled {% if not participant.bcg_status %}selected{% endif %}>-- Select Option --</option>
                                 <option value="Yes" {% if participant.bcg_status == "Yes" or "Yes" in participant.bcg_status %}selected{% endif %}>Yes</option>
                                 <option value="No" {% if participant.bcg_status == "No" %}selected{% endif %}>No</option>
                             </select>
@@ -1984,7 +1985,7 @@
                             <label class="form-label fw-bold text-dark small text-uppercase">Does the participant have a scar on the right upper arm? *</label>
                             <select class="form-select mb-3" id="bcgScar" name="bcg_scar" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                                <option value="" disabled selected>-- Select Option --</option>
+                                <option value="" disabled {% if not participant.bcg_scar %}selected{% endif %}>-- Select Option --</option>
                                 <option value="Yes" {% if participant.bcg_scar == "Yes" %}selected{% endif %}>Yes</option>
                                 <option value="No" {% if participant.bcg_scar == "No" %}selected{% endif %}>No</option>
                             </select>
@@ -2056,7 +2057,7 @@
                             <label class="form-label fw-bold text-dark small text-uppercase">Do you have any records? *</label>
                             <select class="form-select mb-3" id="bcgHasRecord" name="bcg_has_record" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
-                                <option value="" disabled selected>-- Select Option --</option>
+                                <option value="" disabled {% if not participant.bcg_has_record %}selected{% endif %}>-- Select Option --</option>
                                 <option value="Yes" {% if participant.bcg_has_record == "Yes" %}selected{% endif %}>Yes</option>
                                 <option value="No" {% if participant.bcg_has_record == "No" %}selected{% endif %}>No</option>
                             </select>
@@ -2161,67 +2162,67 @@
                                     <!-- Row 1 -->
                                     <div class="col-md-4">
                                         <label for="bcgBeneficiaryIdField" class="form-label fw-semibold text-muted small">BENEFICIARY ID</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgBeneficiaryIdField" name="bcg_beneficiary_id" readonly style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgBeneficiaryIdField" name="bcg_beneficiary_id" value="{{ participant.bcg_beneficiary_id|default:'' }}" readonly style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
                                     <div class="col-md-4">
                                         <label for="bcgFirstNameField" class="form-label fw-semibold text-muted small">FIRST NAME</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgFirstNameField" name="bcg_first_name" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgFirstNameField" name="bcg_first_name" value="{{ participant.bcg_first_name|default:'' }}" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
                                     <div class="col-md-4">
                                         <label for="bcgLastNameField" class="form-label fw-semibold text-muted small">LAST NAME</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgLastNameField" name="bcg_last_name" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgLastNameField" name="bcg_last_name" value="{{ participant.bcg_last_name|default:'' }}" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
 
                                     <!-- Row 2 -->
                                     <div class="col-md-4">
                                         <label for="bcgBenMobileNumberField" class="form-label fw-semibold text-muted small">MOBILE NUMBER</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgBenMobileNumberField" name="bcg_ben_mobile_number" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgBenMobileNumberField" name="bcg_ben_mobile_number" value="{{ participant.bcg_ben_mobile_number|default:'' }}" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
                                     <div class="col-md-4">
                                         <label for="bcgBenGenderField" class="form-label fw-semibold text-muted small">GENDER</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgBenGenderField" name="bcg_ben_gender" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgBenGenderField" name="bcg_ben_gender" value="{{ participant.bcg_ben_gender|default:'' }}" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
                                     <div class="col-md-4">
                                         <label for="bcgDobField" class="form-label fw-semibold text-muted small">DATE OF BIRTH</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgDobField" name="bcg_dob" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgDobField" name="bcg_dob" value="{{ participant.bcg_dob|default:'' }}" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
 
                                     <!-- Row 3 -->
                                     <div class="col-md-6">
                                         <label for="bcgAgeField" class="form-label fw-semibold text-muted small">AGE</label>
-                                        <input type="number" class="form-control bcg-input" id="bcgAgeField" name="bcg_age" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="number" class="form-control bcg-input" id="bcgAgeField" name="bcg_age" value="{{ participant.bcg_age|default:'' }}" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
                                     <div class="col-md-6">
                                         <label for="bcgVaccinationStatusField" class="form-label fw-semibold text-muted small">VACCINATION STATUS</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgVaccinationStatusField" name="bcg_vaccination_status" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgVaccinationStatusField" name="bcg_vaccination_status" value="{{ participant.bcg_vaccination_status|default:'' }}" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
 
                                     <!-- Facility & Pincode -->
                                     <div class="col-md-6">
                                         <label for="bcgFacilityField" class="form-label fw-semibold text-muted small">Where did you receive the vaccination?</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgFacilityField" name="bcg_facility" placeholder="e.g. Primary Health Centre, Hospital Name" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgFacilityField" name="bcg_facility" value="{{ participant.bcg_facility|default:'' }}" placeholder="e.g. Primary Health Centre, Hospital Name" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
                                     <div class="col-md-6">
                                         <label for="bcgPincodeField" class="form-label fw-semibold text-muted small">pincode</label>
-                                        <input type="text" class="form-control bcg-input" id="bcgPincodeField" name="bcg_pincode" placeholder="Pincode" style="border-radius: var(--radius); border-color: var(--line);">
+                                        <input type="text" class="form-control bcg-input" id="bcgPincodeField" name="bcg_pincode" value="{{ participant.bcg_pincode|default:'' }}" placeholder="Pincode" style="border-radius: var(--radius); border-color: var(--line);">
                                     </div>
 
                                     <!-- Facility Address -->
                                     <div class="col-md-12">
                                         <label for="bcgAddressField" class="form-label fw-semibold text-muted small">What is the address of the vaccination facility?</label>
-                                        <textarea class="form-control bcg-input" id="bcgAddressField" name="bcg_address" rows="2" placeholder="Facility address, street, locality" style="border-radius: var(--radius); border-color: var(--line);"></textarea>
+                                        <textarea class="form-control bcg-input" id="bcgAddressField" name="bcg_address" rows="2" placeholder="Facility address, street, locality" style="border-radius: var(--radius); border-color: var(--line);">{{ participant.bcg_address|default:'' }}</textarea>
                                     </div>
 
                                     <!-- Hidden Legacy / Registry Fields for Compatibility -->
-                                    <input type="hidden" id="bcgDateField" name="bcg_date">
-                                    <input type="hidden" id="bcgRegistrationModeField" name="bcg_registration_mode">
-                                    <input type="hidden" id="bcgBeneficiaryTypeNameField" name="bcg_beneficiary_type_name">
-                                    <input type="hidden" id="bcgApprovedByField" name="bcg_approved_by">
-                                    <input type="hidden" id="bcgSiteIdField" name="bcg_site_id">
-                                    <input type="hidden" id="bcgFacilityIdField" name="bcg_facility_id">
-                                    <input type="hidden" id="bcgVaccineNameField" name="bcg_vaccine_name" value="BCG">
-                                    <input type="hidden" id="bcgVaccinationDateField" name="bcg_vaccination_date">
-                                    <input type="hidden" id="bcgBatchNumberField" name="bcg_batch_number">
+                                    <input type="hidden" id="bcgDateField" name="bcg_date" value="{{ participant.bcg_date|default:'' }}">
+                                    <input type="hidden" id="bcgRegistrationModeField" name="bcg_registration_mode" value="{{ participant.bcg_registration_mode|default:'' }}">
+                                    <input type="hidden" id="bcgBeneficiaryTypeNameField" name="bcg_beneficiary_type_name" value="{{ participant.bcg_beneficiary_type_name|default:'' }}">
+                                    <input type="hidden" id="bcgApprovedByField" name="bcg_approved_by" value="{{ participant.bcg_approved_by|default:'' }}">
+                                    <input type="hidden" id="bcgSiteIdField" name="bcg_site_id" value="{{ participant.bcg_site_id|default:'' }}">
+                                    <input type="hidden" id="bcgFacilityIdField" name="bcg_facility_id" value="{{ participant.bcg_facility_id|default:'' }}">
+                                    <input type="hidden" id="bcgVaccineNameField" name="bcg_vaccine_name" value="{{ participant.bcg_vaccine_name|default:'BCG' }}">
+                                    <input type="hidden" id="bcgVaccinationDateField" name="bcg_vaccination_date" value="{{ participant.bcg_vaccination_date|date:'Y-m-d'|default:'' }}">
+                                    <input type="hidden" id="bcgBatchNumberField" name="bcg_batch_number" value="{{ participant.bcg_batch_number|default:'' }}">
 
                                     <!-- Read-only verified info box -->
                                     <div class="col-md-12 d-none" id="bcgInfoCard">
@@ -2844,7 +2845,20 @@
                     opt.value = phi;
                     opt.textContent = phi;
                     publicPhiSelect.appendChild(opt);
-                });
+                });
+                if (typeof draftData !== 'undefined' && draftData && draftData.public_phi) {
+                    let exists = Array.from(publicPhiSelect.options).some(o => o.value === draftData.public_phi);
+                    if (!exists && draftData.public_phi) {
+                        const customOpt = document.createElement("option");
+                        customOpt.value = draftData.public_phi;
+                        customOpt.textContent = draftData.public_phi;
+                        publicPhiSelect.appendChild(customOpt);
+                    }
+                    publicPhiSelect.value = draftData.public_phi;
+                    if (publicPhiReadonly) publicPhiReadonly.value = draftData.public_phi;
+                    if (publicPhiHidden) publicPhiHidden.value = draftData.public_phi;
+                }
+
                 
                 if (phis.length === 1) {
                     publicPhiSelect.value = phis[0];
@@ -3109,22 +3123,27 @@
             }
         }
 
-        function updateTptSectionVisibility() {
-            const contactCb = document.getElementById("bcg_elig_contact");
-            const tptMainContainer = document.getElementById("tpt_main_container");
-            
-            if (contactCb && contactCb.checked) {
-                if (tptMainContainer) tptMainContainer.classList.remove("d-none");
-                if (tptUndergoneSelect) tptUndergoneSelect.setAttribute("required", "required");
-                updateTptVisibility();
-            } else {
-                if (tptMainContainer) tptMainContainer.classList.add("d-none");
-                if (tptUndergoneSelect) {
-                    tptUndergoneSelect.removeAttribute("required");
-                    tptUndergoneSelect.value = "";
-                }
-                updateTptVisibility();
-            }
+        function updateTptSectionVisibility() {
+            const contactCb = document.getElementById("bcg_elig_contact");
+            const tptMainContainer = document.getElementById("tpt_main_container");
+            const hasSavedTpt = (typeof draftData !== 'undefined' && draftData && (draftData.tpt_undergone || draftData.tpt_history));
+            
+            if ((contactCb && contactCb.checked) || hasSavedTpt) {
+                if (tptMainContainer) tptMainContainer.classList.remove("d-none");
+                if (tptUndergoneSelect && contactCb && contactCb.checked) {
+                    tptUndergoneSelect.setAttribute("required", "required");
+                }
+                updateTptVisibility();
+            } else {
+                if (tptMainContainer) tptMainContainer.classList.add("d-none");
+                if (tptUndergoneSelect) {
+                    tptUndergoneSelect.removeAttribute("required");
+                    if (!hasSavedTpt) {
+                        tptUndergoneSelect.value = "";
+                    }
+                }
+                updateTptVisibility();
+            }
         }
 
         function calculateTptDuration() {
@@ -4717,9 +4736,10 @@
                 gender: 'gender',
                 primary_phone: 'primaryPhone',
                 secondary_phone: 'secondaryPhone',
-                secondary_phone_1: 'secondaryPhone_1',
-                secondary_phone_2: 'secondaryPhone_2',
-                secondary_phone_3: 'secondaryPhone_3',
+                secondary_phone_1: 'secondaryPhone1',
+                secondary_phone_2: 'secondaryPhone2',
+                secondary_phone_3: 'secondaryPhone3',
+                taluka_block: 'talukaBlock',
                 has_government_id: 'hasGovernmentId',
                 government_id_name: 'governmentIdName',
                 recently_changed_phone: 'recentlyChangedPhone',
@@ -4756,7 +4776,10 @@
                 tpt_start_date: 'tptStartDate',
                 tpt_end_date: 'tptEndDate',
                 tpt_duration_months: 'tptDurationMonths',
-                tpt_regimen: 'tptRegimen'
+                tpt_regimen: 'tptRegimen',
+                bcg_status: 'bcgCampaignVaccinated',
+                bcg_scar: 'bcgScar',
+                bcg_has_record: 'bcgHasRecord'
             };
 
             for (const [key, val] of Object.entries(draftData)) {
@@ -4781,10 +4804,15 @@
                                 break;
                             }
                         }
-                        if (matchedVal) {
-                            element.value = matchedVal;
-                        } else {
-                            element.value = val;
+                        if (matchedVal) {
+                            element.value = matchedVal;
+                        } else if (val) {
+                            const opt = new Option(val, val, true, true);
+                            element.add(opt);
+                            element.value = val;
+                        }
+                        if (typeof updateSpecifyField === 'function') {
+                            updateSpecifyField(element, true);
                         }
                         if (element === publicPhiSelect) {
                             const publicPhiReadonly = document.getElementById("publicPhiReadonly");
@@ -4953,6 +4981,7 @@
                 });
             } else if (draftData.risk_factors) {
                 // Legacy support: map old risk factors to BCG eligibility criteria
+                const rfStr = (Array.isArray(draftData.risk_factors) ? draftData.risk_factors.join(", ") : String(draftData.risk_factors || "")).toLowerCase();
                 const draftAge = parseInt(draftData.age || document.getElementById("age")?.value || 0) || 0;
                 if (draftAge >= 60) {
                     const cb = document.getElementById("bcg_elig_age");
@@ -5008,9 +5037,13 @@
                         testDetailsContainer.classList.add("open");
                     }
                 }
-                if (test.test_type) {
-                    const el = document.getElementById('testType');
-                    if (el) el.value = test.test_type;
+                const testTypeVal = test.test_type || draftData.ptb_test_type;
+                if (testTypeVal) {
+                    const el = document.getElementById('testType');
+                    if (el) {
+                        el.value = testTypeVal;
+                        el.dispatchEvent(new Event("change"));
+                    }
                 }
                 if (test.cxr_status) {
                     const el = document.getElementById('cxrStatus');
