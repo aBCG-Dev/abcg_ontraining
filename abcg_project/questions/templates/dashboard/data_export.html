@@ -69,65 +69,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Section 2: Daily OPD Attendance Dataset (All Sites) -->
-      <div>
-        <div class="flex items-center justify-between mb-3">
-          <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <i data-lucide="hospital" class="size-3.5 text-sky-600"></i> Daily OPD Attendance &amp; Site Footfall
-          </p>
-          <span class="text-[10px] bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full font-bold border border-sky-200">All Sites</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- OPD Excel Card -->
-          <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between hover:border-sky-500/40 transition-colors" style="background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);">
-            <div class="space-y-2.5">
-              <div class="flex items-center justify-between">
-                <span class="inline-flex items-center justify-center rounded-lg bg-sky-100 p-2 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                  <i data-lucide="table-2" class="size-5"></i>
-                </span>
-                <span class="text-[9px] font-extrabold uppercase tracking-widest text-sky-700 bg-sky-100 px-2 py-0.5 rounded">All-Site Excel</span>
-              </div>
-              <div>
-                <h3 class="font-bold text-sm text-foreground">Daily OPD Attendance Report</h3>
-                <p class="text-[11px] text-muted-foreground mt-0.5">Comprehensive breakdown by age groups (0-14, 15-29, 30-44, 45-59, 60+) and gender</p>
-              </div>
-            </div>
-            <div class="pt-3">
-              <a
-                href="{% url 'questions:export_opd_data' %}?format=excel"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-sky-600 text-white px-4 h-9 text-xs font-bold hover:bg-sky-700 transition-all active:scale-95 shadow-xs text-decoration-none"
-              >
-                <i data-lucide="download" class="size-3.5"></i> Download OPD Excel (.xlsx)
-              </a>
-            </div>
-          </div>
-
-          <!-- OPD CSV Card -->
-          <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between hover:border-cyan-500/40 transition-colors" style="background: linear-gradient(135deg, #ffffff 0%, #ecfeff 100%);">
-            <div class="space-y-2.5">
-              <div class="flex items-center justify-between">
-                <span class="inline-flex items-center justify-center rounded-lg bg-cyan-100 p-2 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300">
-                  <i data-lucide="file-spreadsheet" class="size-5"></i>
-                </span>
-                <span class="text-[9px] font-extrabold uppercase tracking-widest text-cyan-700 bg-cyan-100 px-2 py-0.5 rounded">All-Site CSV</span>
-              </div>
-              <div>
-                <h3 class="font-bold text-sm text-foreground">Daily OPD Attendance (CSV)</h3>
-                <p class="text-[11px] text-muted-foreground mt-0.5">Lightweight CSV dataset with UTF-8 BOM encoding for site yield analysis</p>
-              </div>
-            </div>
-            <div class="pt-3">
-              <a
-                href="{% url 'questions:export_opd_data' %}?format=csv"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-600 text-white px-4 h-9 text-xs font-bold hover:bg-cyan-700 transition-all active:scale-95 shadow-xs text-decoration-none"
-              >
-                <i data-lucide="download" class="size-3.5"></i> Download OPD CSV (.csv)
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Export History Log (Right) -->

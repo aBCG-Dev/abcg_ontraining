@@ -3816,98 +3816,27 @@ class DailyOpdCountTestCase(TestCase):
         self.assertEqual(opd.breakdown["18-24"]["total"], 16)
         self.assertEqual(opd.breakdown["65+"]["total"], 15)
 
-    def test_daily_opd_get_nurse_login(self):
+    def test_daily_opd_get_nurse_login_redirects_to_home(self):
+        """Verifies that accessing retired daily-opd route gracefully redirects to home."""
         self.client.login(username=self.username, password=self.password)
         response = self.client.get(reverse("questions:daily_opd"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Daily OPD")
-        self.assertContains(response, "Tiruvallur TU")
-        self.assertContains(response, "18–24")
-        self.assertContains(response, "65+")
+        self.assertEqual(response.status_code, 301)
+        self.assertRedirects(response, reverse("questions:home"), status_code=301)
 
-    def test_daily_opd_post_nurse_submission(self):
-        self.client.login(username=self.username, password=self.password)
-        payload = {
-            "date": timezone.localdate().isoformat(),
-            "facility": "Primary Health Centre",
-            "18-24_male": "10",
-            "18-24_female": "12",
-            "18-24_other": "0",
-            "25-34_male": "20",
-            "25-34_female": "25",
-            "25-34_other": "0",
-            "35-44_male": "15",
-            "35-44_female": "18",
-            "35-44_other": "0",
-            "45-54_male": "8",
-            "45-54_female": "9",
-            "45-54_other": "0",
-            "55-64_male": "6",
-            "55-64_female": "5",
-            "55-64_other": "0",
-            "65+_male": "14",
-            "65+_female": "16",
-            "65+_other": "1",
-            "remarks": "Normal clinic flow today."
-        }
-        response = self.client.post(reverse("questions:daily_opd"), payload)
-        self.assertEqual(response.status_code, 302)
-
-        opd = DailyOpdCount.objects.filter(tb_unit="Tiruvallur TU", facility="Primary Health Centre").first()
-        self.assertIsNotNone(opd)
-        self.assertEqual(opd.total_male, 73)
-        self.assertEqual(opd.total_female, 85)
-        self.assertEqual(opd.total_other, 1)
-        self.assertEqual(opd.grand_total, 159)
-        self.assertEqual(opd.remarks, "Normal clinic flow today.")
-
-    def test_nurse_home_shows_opd_status(self):
-        DailyOpdCount.objects.create(
-            tb_unit="Tiruvallur TU",
-            facility="Tiruvallur TU PHI",
-            date=timezone.localdate(),
-            breakdown={"18-24": {"male": 50, "female": 50, "other": 0}},
-            entered_by=self.nurse_user
-        )
+    def test_nurse_home_does_not_show_opd_cards(self):
+        """Verifies that OPD attendance entry and stats are removed from nurse home page."""
         self.client.login(username=self.username, password=self.password)
         response = self.client.get(reverse("questions:home"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Today's OPD Count")
-        self.assertContains(response, "100")
-        self.assertContains(response, "Daily OPD Entry")
+        self.assertNotContains(response, "Today's OPD Count")
+        self.assertNotContains(response, "Daily OPD Entry")
 
-    def test_export_opd_excel(self):
-        DailyOpdCount.objects.create(
-            tb_unit="Tiruvallur TU",
-            facility="Tiruvallur PHI",
-            date=timezone.localdate(),
-            breakdown={"65+": {"male": 10, "female": 12, "other": 0}},
-            entered_by=self.nurse_user
-        )
+    def test_export_opd_redirects_to_data_export(self):
+        """Verifies that accessing retired OPD export route redirects to data export."""
         self.client.login(username="admin_test", password="adminpassword")
         response = self.client.get(reverse("questions:export_opd_data") + "?format=excel")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response["Content-Type"],
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        self.assertTrue(len(response.content) > 1000)
-
-    def test_export_opd_csv(self):
-        DailyOpdCount.objects.create(
-            tb_unit="Tiruvallur TU",
-            facility="Tiruvallur PHI",
-            date=timezone.localdate(),
-            breakdown={"18-24": {"male": 5, "female": 5, "other": 0}},
-            entered_by=self.nurse_user
-        )
-        self.client.login(username="admin_test", password="adminpassword")
-        response = self.client.get(reverse("questions:export_opd_data") + "?format=csv")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("text/csv", response["Content-Type"])
-        content = response.content.decode("utf-8-sig")
-        self.assertIn("18-24 Male", content)
-        self.assertIn("Tiruvallur TU", content)
+        self.assertEqual(response.status_code, 301)
+        self.assertRedirects(response, reverse("questions:data_export"), status_code=301)
 
 
 class EPTBAsymptomaticTestCase(TestCase):
