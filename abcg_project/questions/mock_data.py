@@ -43,7 +43,7 @@ HRG_GROUPS = {
     3: 'Diabetes Mellitus',
     4: 'Elderly (>60y)',
     5: 'Smoker / Tobacco',
-    6: 'Low BMI (<18.5)',
+    6: 'Low BMI (<18)',
 }
 
 PTB_FINAL_LABELS = {

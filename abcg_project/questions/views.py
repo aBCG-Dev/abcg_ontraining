@@ -590,7 +590,8 @@ def registration(request, pk=None):
                 elif "contact" in cl:
                     derived_rf.append("Contact of Known TB Patients")
                     derived_rf.append(c)
-                elif "bmi" in cl or "malnourish" in cl:
+                elif "bmi" in cl or "malnourish" in cl or "less than 18" in cl:
+                    derived_rf.append("Individuals with a Body Mass Index of less than 18 kg per sq.mts")
                     derived_rf.append("Undernourished / Malnourished (BMI <18 kg/m2)")
                     derived_rf.append(c)
                 else:
@@ -609,10 +610,11 @@ def registration(request, pk=None):
             or any(">=60" in c or "60 years" in c for c in bcg_eligibility_criteria_list)
         )
         is_malnourished = (
-            "Individuals with a Body Mass Index of less than 18 kg per sq.mts" in risk_factors_list 
-            or "Undernourished / Malnourished (BMI <18.5 kg/m2)" in risk_factors_list 
+            (0 < bmi < 18.0)
+            or "Individuals with a Body Mass Index of less than 18 kg per sq.mts" in risk_factors_list 
             or "Undernourished / Malnourished (BMI <18 kg/m2)" in risk_factors_list
-            or any("bmi < 18" in c.lower() or "bmi <18" in c.lower() or "malnourished" in c.lower() for c in bcg_eligibility_criteria_list)
+            or "Undernourished / Malnourished (BMI <18.5 kg/m2)" in risk_factors_list 
+            or any("bmi < 18" in c.lower() or "bmi <18" in c.lower() or "less than 18" in c.lower() or "malnourished" in c.lower() for c in bcg_eligibility_criteria_list)
         )
         is_contact = (
             "Contacts of current TB patients as well as all those contacts of index TB cases enrolled in Ni-kshay from 1st January 2021" in risk_factors_list 

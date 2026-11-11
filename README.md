@@ -48,7 +48,7 @@ The core registration flow (`/registration/`) guides field nurses through an 8-s
 2. **Step 2: Socio-Demographic Details**: Marital status, socioeconomic classification (APL/BPL), demographic area type, and occupation classification.
 3. **Step 3: Vitals & Nutritional Status**: Standing height (cm) and weight (kg) with real-time Body Mass Index (BMI) computation and clinical nutritional assessment.
 4. **Step 4: Risk Factor Screening**: Identifies 6 core High-Risk Groups (HRGs) defined by the protocol:
-   - Malnutrition (BMI < 18.5 kg/m²)
+   - Malnutrition (BMI < 18 kg/m² / Individuals with a Body Mass Index of less than 18 kg per sq.mts)
    - Elderly (Age &ge; 60 years)
    - Contact of known active TB patients
    - Diabetes mellitus

@@ -1091,7 +1091,7 @@
                                 <div class="metric-label">BMI VALUE</div>
                                 <div class="metric-val">{{ p.bmi|default:"-" }}</div>
                                 {% if p.bmi %}
-                                    {% if p.bmi < 18.5 %}
+                                    {% if p.bmi < 18 %}
                                     <span class="bmi-pill bg-danger bg-opacity-10 text-danger mt-1">Low</span>
                                     {% elif p.bmi >= 25.0 %}
                                     <span class="bmi-pill bg-warning bg-opacity-10 text-warning mt-1">High</span>

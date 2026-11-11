@@ -30,7 +30,7 @@ The engine processes 6 primary input signals before evaluating the decision hier
 
 | Signal | Source Field(s) | Possible Internal Values | Clinical Interpretation |
 | :--- | :--- | :--- | :--- |
-| **1. Screening Eligibility** | Preliminary Screening Steps 1–4 | `True` / `False` | Age $\ge 18$, lives in study site/TB Unit, belongs to target high-risk groups. |
+| **1. Screening Eligibility** | Preliminary Screening Steps 1–4 | `True` / `False` | Age $\ge 18$, lives in study site/TB Unit, and matches target HRGs (Elderly $\ge 60$, Individuals with BMI $< 18\text{ kg/m}^2$, Contacts since 2021, Diabetes, Past TB in 5 years, Tobacco smoker). |
 | **2. Informed Consent** | Step 4: `consent` | `"Yes"` / `"No"` | Whether participant agreed to provide informed consent. |
 | **3. TPT Status** | Step 4: `tpt_undergone` | `"Yes"` / `"No"` | Whether individual has undergone TB Preventive Treatment (TPT). |
 | **4. Pulmonary NAAT (MCTB)** | `final_interpretation` or `naat_status` | `POSITIVE`, `NEGATIVE`, `PENDING` | Quality-assured molecular test (CBNAAT, Truenat, FLLPA, culture). Positive on: `"DETECTED"`, `"POSITIVE"`, `"RIF RESISTANT"`, `"RIF SENSITIVE"`, `"GROWTH OF"`. |
