@@ -59,6 +59,43 @@ def get_state_code(state_name):
     return name[:2] if len(name) >= 2 else "ST"
 
 
+CANONICAL_BCG_CRITERIA = [
+    "Was aged >=60 years during the BCG campaign period",
+    "Past history Of TB from 2019-2024 or prior to the BCG campaign period",
+    "Self-reported diabetes during the BCG campaign period",
+    "Self-reported smoking during the BCG campaign period",
+    "Was a close contact of a TB patient since 2021 or during the campaign period, regardless of TPT status",
+    "Individuals with BMI < 18 during the BCG campaign period",
+]
+
+
+def parse_bcg_eligibility_criteria(raw):
+    """
+    Safely parses bcg_eligibility_criteria strings without splitting internal commas
+    (e.g., 'Was a close contact of a TB patient since 2021 or during the campaign period, regardless of TPT status').
+    """
+    if not raw:
+        return []
+    if isinstance(raw, (list, tuple)):
+        return list(raw)
+    raw_str = str(raw).strip()
+    if not raw_str:
+        return []
+    matched = []
+    remaining = raw_str
+    for crit in CANONICAL_BCG_CRITERIA:
+        if crit in remaining:
+            matched.append(crit)
+            remaining = remaining.replace(crit, "")
+    if matched:
+        for item in remaining.split(","):
+            clean_item = item.strip()
+            if clean_item and clean_item not in matched:
+                matched.append(clean_item)
+        return matched
+    return [c.strip() for c in raw_str.split(",") if c.strip()]
+
+
 def filter_by_jurisdiction(queryset, request_or_user):
     """
     Applies dynamic jurisdictional filtering:
@@ -1570,6 +1607,27 @@ def registration(request, pk=None):
         else:
             participant_symptoms_list = raw_symptoms
 
+        # Safely parse participant BCG eligibility criteria without breaking criteria containing commas
+        saved_bcg_criteria = parse_bcg_eligibility_criteria(getattr(participant, "bcg_eligibility_criteria", None))
+        if not saved_bcg_criteria and getattr(participant, "eligible_bcg_campaign", False):
+            # Fallback derivation for legacy participants
+            rf_str = (getattr(participant, "risk_factors", "") or "").lower()
+            derived_crit = []
+            if (participant.age and participant.age >= 60) or "60 years" in rf_str or "elderly" in rf_str:
+                derived_crit.append("Was aged >=60 years during the BCG campaign period")
+            if "past" in rf_str and "tb" in rf_str:
+                derived_crit.append("Past history Of TB from 2019-2024 or prior to the BCG campaign period")
+            if "diabetes" in rf_str:
+                derived_crit.append("Self-reported diabetes during the BCG campaign period")
+            if "smoking" in rf_str or "smoker" in rf_str or "tobacco" in rf_str:
+                derived_crit.append("Self-reported smoking during the BCG campaign period")
+            if "contact" in rf_str:
+                derived_crit.append("Was a close contact of a TB patient since 2021 or during the campaign period, regardless of TPT status")
+            if "bmi" in rf_str or "less than 18" in rf_str or "malnourish" in rf_str or (participant.bmi and participant.bmi > 0 and participant.bmi < 18):
+                derived_crit.append("Individuals with BMI < 18 during the BCG campaign period")
+            if derived_crit:
+                saved_bcg_criteria = derived_crit
+
         participant_data = {
             "date_enroll": participant.date_enroll.strftime("%Y-%m-%d") if getattr(participant, "date_enroll", None) else "",
             "updated_at": participant.updated_at.strftime("%Y-%m-%d %H:%M:%S") if getattr(participant, "updated_at", None) else "",
@@ -1619,7 +1677,7 @@ def registration(request, pk=None):
             "informant_designation": participant.informant_designation,
             "hiv_status": participant.hiv_status,
             "eligible_bcg_campaign": "Yes" if participant.eligible_bcg_campaign else "No",
-            "bcg_eligibility_criteria": [c.strip() for c in participant.bcg_eligibility_criteria.split(",") if c.strip()] if participant.bcg_eligibility_criteria else [],
+            "bcg_eligibility_criteria": saved_bcg_criteria,
             "symptoms": participant_symptoms_list,
             "has_symptom_conflict": has_symptom_conflict,
             "conflict_original_symptoms": conflict_original_symptoms,
@@ -6682,7 +6740,7 @@ def participant_detail_view(request, study_id):
         symptoms_list = [s.strip() for s in participant.symptoms.split(",") if s.strip()] if getattr(participant, "symptoms", None) else []
         risk_factors_list = [r.strip() for r in participant.risk_factors.split(",") if r.strip()] if getattr(participant, "risk_factors", None) else []
         if (not risk_factors_list or risk_factors_list == ["Not Applicable"]) and getattr(participant, "bcg_eligibility_criteria", None):
-            risk_factors_list = [c.strip() for c in participant.bcg_eligibility_criteria.split(",") if c.strip()]
+            risk_factors_list = parse_bcg_eligibility_criteria(participant.bcg_eligibility_criteria)
         
         # Fetch actual audit trail from AuditLog model
         audit_trail = AuditLog.objects.filter(action__icontains=f"study_id={participant.study_id}").order_by("-timestamp")

@@ -1036,21 +1036,21 @@
                             <select class="form-select" id="eligibleBcgCampaign" name="eligible_bcg_campaign" required
                                 style="border-radius: var(--radius); border-color: var(--line);">
                                 <option value="" disabled {% if not participant.eligible_bcg_campaign %}selected{% endif %}>-- Select Option --</option>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
+                                <option value="Yes" {% if participant.eligible_bcg_campaign %}selected{% endif %}>Yes</option>
+                                <option value="No" {% if participant and not participant.eligible_bcg_campaign and participant.eligible_bcg_campaign is not None %}selected{% endif %}>No</option>
                             </select>
                         </div>
                     </div>
 
                     <!-- Eligibility Criteria for Adult BCG Vaccination -->
-                    <div id="bcg_eligibility_criteria_section" class="mt-4 border-top pt-3 d-none">
+                    <div id="bcg_eligibility_criteria_section" class="mt-4 border-top pt-3 {% if not participant.eligible_bcg_campaign %}d-none{% endif %}">
                         <input type="hidden" name="has_bcg_eligibility_criteria_form" value="true">
                         <span class="summary-label fw-bold d-block text-muted mb-2 text-uppercase">Under which eligibility criteria was the BCG vaccine administered to the participant? (Check all that apply) *</span>
                         <div class="p-3 border rounded bg-light" style="border-radius: var(--radius);">
                             <div class="row g-2">
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_age" value="Was aged >=60 years during the BCG campaign period">
+                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_age" value="Was aged >=60 years during the BCG campaign period" {% if participant.bcg_eligibility_criteria and ">=60" in participant.bcg_eligibility_criteria or "60 years" in participant.bcg_eligibility_criteria or "≥60" in participant.bcg_eligibility_criteria %}checked{% elif not participant.bcg_eligibility_criteria and participant.age and participant.age >= 60 %}checked{% endif %}>
                                         <label class="form-check-label text-dark small" for="bcg_elig_age">
                                             Was aged &gt;=60 years during the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>)
                                         </label>
@@ -1058,7 +1058,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_past_tb" value="Past history Of TB from 2019-2024 or prior to the BCG campaign period">
+                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_past_tb" value="Past history Of TB from 2019-2024 or prior to the BCG campaign period" {% if participant.bcg_eligibility_criteria and "Past history" in participant.bcg_eligibility_criteria or "past tb" in participant.risk_factors|lower or "past history of tb" in participant.risk_factors|lower %}checked{% endif %}>
                                         <label class="form-check-label text-dark small" for="bcg_elig_past_tb">
                                             Past history Of TB from 2019-2024 or prior to the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>)
                                         </label>
@@ -1066,7 +1066,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_diabetes" value="Self-reported diabetes during the BCG campaign period">
+                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_diabetes" value="Self-reported diabetes during the BCG campaign period" {% if participant.bcg_eligibility_criteria and "diabetes" in participant.bcg_eligibility_criteria|lower or "diabetes" in participant.risk_factors|lower %}checked{% endif %}>
                                         <label class="form-check-label text-dark small" for="bcg_elig_diabetes">
                                             Self-reported diabetes during the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>)
                                         </label>
@@ -1074,7 +1074,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_smoking" value="Self-reported smoking during the BCG campaign period">
+                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_smoking" value="Self-reported smoking during the BCG campaign period" {% if participant.bcg_eligibility_criteria and "smoking" in participant.bcg_eligibility_criteria|lower or "smoker" in participant.risk_factors|lower or "tobacco" in participant.risk_factors|lower %}checked{% endif %}>
                                         <label class="form-check-label text-dark small" for="bcg_elig_smoking">
                                             Self-reported smoking during the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>)
                                         </label>
@@ -1082,7 +1082,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_contact" value="Was a close contact of a TB patient since 2021 or during the campaign period, regardless of TPT status">
+                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_contact" value="Was a close contact of a TB patient since 2021 or during the campaign period, regardless of TPT status" {% if participant.bcg_eligibility_criteria and "contact" in participant.bcg_eligibility_criteria|lower or "contact" in participant.risk_factors|lower %}checked{% endif %}>
                                         <label class="form-check-label text-dark small" for="bcg_elig_contact">
                                             Was a close contact of a TB patient since 2021 or during the campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>), regardless of TPT status
                                         </label>
@@ -1090,7 +1090,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_bmi" value="Individuals with BMI < 18 during the BCG campaign period">
+                                        <input class="form-check-input bcg-elig-cb" type="checkbox" name="bcg_eligibility_criteria" id="bcg_elig_bmi" value="Individuals with BMI < 18 during the BCG campaign period" {% if participant.bcg_eligibility_criteria and "BMI < 18" in participant.bcg_eligibility_criteria or "bmi < 18" in participant.bcg_eligibility_criteria|lower or "less than 18" in participant.risk_factors|lower or "malnourished" in participant.risk_factors|lower or participant.bmi and participant.bmi > 0 and participant.bmi < 18 %}checked{% endif %}>
                                         <label class="form-check-label text-dark small" for="bcg_elig_bmi">
                                             Individuals with BMI &lt; 18 during the BCG campaign period (<span class="dynCampaignPeriod">{{ site.campaign_period }}</span>)
                                         </label>
@@ -2748,13 +2748,29 @@
             radio.addEventListener("change", handleConsentChange);
         });
 
-        function updateBcgCampaignVisibility() {
-            if (bcgCriteriaSection) {
-                if (eligibleBcgCampaignSelect && eligibleBcgCampaignSelect.value === "Yes") {
-                    bcgCriteriaSection.classList.remove("d-none");
-                    if (consentSection) {
-                        consentSection.classList.remove("d-none");
-                    }
+        function updateBcgCampaignVisibility() {
+            if (bcgCriteriaSection) {
+                if (eligibleBcgCampaignSelect && eligibleBcgCampaignSelect.value === "Yes") {
+                    bcgCriteriaSection.classList.remove("d-none");
+                    if (consentSection) {
+                        consentSection.classList.remove("d-none");
+                    }
+                    if (typeof updateAgeBcgCriteria === 'function') {
+                        updateAgeBcgCriteria();
+                    }
+                } else if (eligibleBcgCampaignSelect && eligibleBcgCampaignSelect.value === "No") {
+                    bcgCriteriaSection.classList.add("d-none");
+                    if (consentSection) {
+                        consentSection.classList.add("d-none");
+                    }
+                    if (bcgCriteriaCbs) {
+                        bcgCriteriaCbs.forEach(cb => {
+                            cb.checked = false;
+                        });
+                    }
+                }
+            }
+        }
                     if (typeof updateAgeBcgCriteria === 'function') {
                         updateAgeBcgCriteria();
                     }
@@ -3003,15 +3019,26 @@
 
 
         // Auto-check and enforce age criteria for BCG eligibility checklist
-        function updateAgeBcgCriteria() {
-            const ageInput = document.getElementById("age");
-            const age = parseInt(ageInput ? ageInput.value : 0) || 0;
-            const bcgAge = document.getElementById("bcg_elig_age");
-            if (bcgAge) {
-                if (age >= 60) {
-                    bcgAge.checked = true;
-                    bcgAge.disabled = false;
-                } else {
+        function updateAgeBcgCriteria() {
+            const ageInput = document.getElementById("age");
+            const age = parseInt(ageInput ? ageInput.value : 0) || 0;
+            const bcgAge = document.getElementById("bcg_elig_age");
+            if (bcgAge) {
+                const wasSavedChecked = (typeof draftData !== 'undefined' && draftData && 
+                    Array.isArray(draftData.bcg_eligibility_criteria) && 
+                    draftData.bcg_eligibility_criteria.some(c => String(c).includes("60")));
+                
+                if (age >= 60) {
+                    bcgAge.checked = true;
+                    bcgAge.disabled = false;
+                } else if (wasSavedChecked || bcgAge.hasAttribute("data-manually-checked") || bcgAge.checked) {
+                    bcgAge.disabled = false;
+                } else {
+                    bcgAge.checked = false;
+                    bcgAge.disabled = true;
+                }
+            }
+        } else {
                     bcgAge.checked = false;
                     bcgAge.disabled = true;
                 }
@@ -3025,16 +3052,23 @@
         }
 
         // Prevent checking bcg_elig_age manually if participant age < 60
-        const bcgAgeInput = document.getElementById("bcg_elig_age");
-        if (bcgAgeInput) {
-            bcgAgeInput.addEventListener("click", function(e) {
-                const ageInput = document.getElementById("age");
-                const age = parseInt(ageInput ? ageInput.value : 0) || 0;
-                if (age < 60) {
-                    e.preventDefault();
-                    bcgAgeInput.checked = false;
-                    alert("This eligibility criterion is only applicable to individuals aged 60 years or above. The participant's current age is " + (age || "under 60") + ".");
-                }
+        const bcgAgeInput = document.getElementById("bcg_elig_age");
+        if (bcgAgeInput) {
+            bcgAgeInput.addEventListener("click", function(e) {
+                const ageInput = document.getElementById("age");
+                const age = parseInt(ageInput ? ageInput.value : 0) || 0;
+                const wasSavedChecked = (typeof draftData !== 'undefined' && draftData && 
+                    Array.isArray(draftData.bcg_eligibility_criteria) && 
+                    draftData.bcg_eligibility_criteria.some(c => String(c).includes("60")));
+                if (age < 60 && !wasSavedChecked && !bcgAgeInput.hasAttribute("data-manually-checked") && bcgAgeInput.checked) {
+                    e.preventDefault();
+                    bcgAgeInput.checked = false;
+                    alert("This eligibility criterion is only applicable to individuals aged 60 years or above. The participant's current age is " + (age || "under 60") + ".");
+                } else if (bcgAgeInput.checked) {
+                    bcgAgeInput.setAttribute("data-manually-checked", "true");
+                }
+            });
+        }
             });
         }
         updateAgeBcgCriteria(); // Initialize on script load
@@ -3044,27 +3078,38 @@
         const weightInput = document.getElementById("weightKg");
         const bmiInput = document.getElementById("bmiField");
 
-        function calculateBmi() {
-            const h = parseFloat(heightInput.value);
-            const w = parseFloat(weightInput.value);
-            if (h > 0 && w > 0) {
-                const bmi = w / ((h / 100) * (h / 100));
-                bmiInput.value = bmi.toFixed(2);
-                
-                // Auto check malnourished criteria if BMI < 18
-                const bcgBmi = document.getElementById("bcg_elig_bmi");
-                if (bcgBmi) {
-                    bcgBmi.checked = (bmi < 18);
-                }
-            } else {
-                bmiInput.value = "";
-                const bcgBmi = document.getElementById("bcg_elig_bmi");
-                if (bcgBmi) {
-                    bcgBmi.checked = false;
-                }
-            }
-        }
-
+        function calculateBmi() {
+            const h = parseFloat(heightInput.value);
+            const w = parseFloat(weightInput.value);
+            const bcgBmi = document.getElementById("bcg_elig_bmi");
+            const wasSavedBmi = (typeof draftData !== 'undefined' && draftData && 
+                Array.isArray(draftData.bcg_eligibility_criteria) && 
+                draftData.bcg_eligibility_criteria.some(c => {
+                    const cl = String(c).toLowerCase();
+                    return cl.includes("bmi") || cl.includes("18") || cl.includes("malnourish");
+                }));
+
+            if (h > 0 && w > 0) {
+                const bmi = w / ((h / 100) * (h / 100));
+                bmiInput.value = bmi.toFixed(2);
+
+                // Auto check malnourished criteria if BMI < 18
+                if (bcgBmi && (bmi < 18)) {
+                    bcgBmi.checked = true;
+                }
+            } else if (typeof draftData !== 'undefined' && draftData && draftData.bmi) {
+                bmiInput.value = draftData.bmi;
+                if (bcgBmi && parseFloat(draftData.bmi) < 18) {
+                    bcgBmi.checked = true;
+                }
+            } else {
+                bmiInput.value = "";
+                if (bcgBmi && !wasSavedBmi && !bcgBmi.hasAttribute("data-manually-checked") && !bcgBmi.checked) {
+                    bcgBmi.checked = false;
+                }
+            }
+        }
+        
         if (heightInput && weightInput) {
             heightInput.addEventListener("input", calculateBmi);
             weightInput.addEventListener("input", calculateBmi);
@@ -4968,47 +5013,78 @@
                 }
             }
 
-            // Set BCG campaign eligibility criteria checkboxes
-            if (draftData.bcg_eligibility_criteria) {
-                const criteriaList = Array.isArray(draftData.bcg_eligibility_criteria) 
-                    ? draftData.bcg_eligibility_criteria 
-                    : draftData.bcg_eligibility_criteria.split(",").map(c => c.trim()).filter(Boolean);
-                criteriaList.forEach(c => {
-                    const cb = document.querySelector(`input[name="bcg_eligibility_criteria"][value="${c}"]`);
-                    if (cb) {
-                        cb.checked = true;
-                    }
-                });
-            } else if (draftData.risk_factors) {
-                // Legacy support: map old risk factors to BCG eligibility criteria
-                const rfStr = (Array.isArray(draftData.risk_factors) ? draftData.risk_factors.join(", ") : String(draftData.risk_factors || "")).toLowerCase();
-                const draftAge = parseInt(draftData.age || document.getElementById("age")?.value || 0) || 0;
-                if (draftAge >= 60) {
-                    const cb = document.getElementById("bcg_elig_age");
-                    if (cb) cb.checked = true;
-                }
-                if (rfStr.includes("past history of tb") || rfStr.includes("past tb")) {
-                    const cb = document.getElementById("bcg_elig_past_tb");
-                    if (cb) cb.checked = true;
-                }
-                if (rfStr.includes("diabetes")) {
-                    const cb = document.getElementById("bcg_elig_diabetes");
-                    if (cb) cb.checked = true;
-                }
-                if (rfStr.includes("smoking") || rfStr.includes("smoker")) {
-                    const cb = document.getElementById("bcg_elig_smoking");
-                    if (cb) cb.checked = true;
-                }
-                if (rfStr.includes("contact")) {
-                    const cb = document.getElementById("bcg_elig_contact");
-                    if (cb) cb.checked = true;
-                }
-                const draftBmi = parseFloat(draftData.bmi || document.getElementById("bmiField")?.value || 0) || 0;
-                if (rfStr.includes("malnourished") || rfStr.includes("less than 18") || (draftBmi > 0 && draftBmi < 18)) {
-                    const cb = document.getElementById("bcg_elig_bmi");
-                    if (cb) cb.checked = true;
-                }
-            }
+            // Set BCG campaign eligibility criteria checkboxes
+            const criteriaList = Array.isArray(draftData.bcg_eligibility_criteria) 
+                ? draftData.bcg_eligibility_criteria 
+                : (draftData.bcg_eligibility_criteria ? String(draftData.bcg_eligibility_criteria).split(",").map(c => c.trim()).filter(Boolean) : []);
+            
+            if (criteriaList && criteriaList.length > 0) {
+                criteriaList.forEach(c => {
+                    const cLower = String(c).toLowerCase().trim();
+                    let cb = null;
+                    if (cLower.includes("60") || cLower.includes(">=60") || cLower.includes("≥60")) {
+                        cb = document.getElementById("bcg_elig_age");
+                    } else if (cLower.includes("past") && cLower.includes("tb")) {
+                        cb = document.getElementById("bcg_elig_past_tb");
+                    } else if (cLower.includes("diabetes")) {
+                        cb = document.getElementById("bcg_elig_diabetes");
+                    } else if (cLower.includes("smoking") || cLower.includes("smoker") || cLower.includes("tobacco")) {
+                        cb = document.getElementById("bcg_elig_smoking");
+                    } else if (cLower.includes("contact")) {
+                        cb = document.getElementById("bcg_elig_contact");
+                    } else if (cLower.includes("bmi") || cLower.includes("18") || cLower.includes("malnourish")) {
+                        cb = document.getElementById("bcg_elig_bmi");
+                    } else {
+                        document.querySelectorAll('input[name="bcg_eligibility_criteria"]').forEach(inputEl => {
+                            if (inputEl.value === c || inputEl.value.toLowerCase() === cLower) {
+                                cb = inputEl;
+                            }
+                        });
+                    }
+                    if (cb) {
+                        cb.checked = true;
+                        cb.disabled = false;
+                        cb.setAttribute("data-manually-checked", "true");
+                    }
+                });
+            } else if (draftData.risk_factors && (Array.isArray(draftData.risk_factors) ? draftData.risk_factors.length > 0 : String(draftData.risk_factors).trim().length > 0)) {
+                // Legacy support: map old risk factors to BCG eligibility criteria
+                const rfStr = (Array.isArray(draftData.risk_factors) ? draftData.risk_factors.join(", ") : String(draftData.risk_factors || "")).toLowerCase();
+                const draftAge = parseInt(draftData.age || document.getElementById("age")?.value || 0) || 0;
+                if (draftAge >= 60 || rfStr.includes("60 years") || rfStr.includes("elderly")) {
+                    const cb = document.getElementById("bcg_elig_age");
+                    if (cb) {
+                        cb.checked = true;
+                        cb.disabled = false;
+                        cb.setAttribute("data-manually-checked", "true");
+                    }
+                }
+                if (rfStr.includes("past history of tb") || rfStr.includes("past tb")) {
+                    const cb = document.getElementById("bcg_elig_past_tb");
+                    if (cb) cb.checked = true;
+                }
+                if (rfStr.includes("diabetes")) {
+                    const cb = document.getElementById("bcg_elig_diabetes");
+                    if (cb) cb.checked = true;
+                }
+                if (rfStr.includes("smoking") || rfStr.includes("smoker") || rfStr.includes("tobacco")) {
+                    const cb = document.getElementById("bcg_elig_smoking");
+                    if (cb) cb.checked = true;
+                }
+                if (rfStr.includes("contact")) {
+                    const cb = document.getElementById("bcg_elig_contact");
+                    if (cb) cb.checked = true;
+                }
+                const draftBmi = parseFloat(draftData.bmi || document.getElementById("bmiField")?.value || 0) || 0;
+                if (rfStr.includes("malnourished") || rfStr.includes("less than 18") || (draftBmi > 0 && draftBmi < 18)) {
+                    const cb = document.getElementById("bcg_elig_bmi");
+                    if (cb) cb.checked = true;
+                }
+            }
+
+            if (typeof updateTptSectionVisibility === 'function') {
+                updateTptSectionVisibility();
+            }
             if (typeof updateAgeBcgCriteria === 'function') {
                 updateAgeBcgCriteria();
             }
