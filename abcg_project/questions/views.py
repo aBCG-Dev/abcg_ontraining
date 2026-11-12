@@ -6138,14 +6138,12 @@ def data_export_view(request):
             ("Sector", lambda p: p.sector),
             ("Case Finding Type", lambda p: p.case_finding_type),
             ("Public PHI", lambda p: p.public_phi),
-            ("Private Facility", lambda p: p.private_facility),
             ("Informant Name", lambda p: p.informant_name),
             ("Informant Designation", lambda p: p.informant_designation),
 
             # 2. Step 2: Personal Details & Demographics
             ("First Name", lambda p: p.first_name),
             ("Last Name", lambda p: p.last_name),
-            ("Full Name", lambda p: p.full_name),
             ("Father/Husband Name", lambda p: p.father_husband_name),
             ("Does the participant have any government-issued identification?", lambda p: getattr(p, "has_government_id", "No")),
             ("Which government-issued ID does the participant have?", lambda p: getattr(p, "government_id_name", "")),
