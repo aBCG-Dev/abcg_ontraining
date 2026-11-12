@@ -2770,24 +2770,8 @@
                     }
                 }
             }
-        }
-                    if (typeof updateAgeBcgCriteria === 'function') {
-                        updateAgeBcgCriteria();
-                    }
-                } else {
-                    bcgCriteriaSection.classList.add("d-none");
-                    if (consentSection) {
-                        consentSection.classList.add("d-none");
-                    }
-                    if (bcgCriteriaCbs) {
-                        bcgCriteriaCbs.forEach(cb => {
-                            cb.checked = false;
-                        });
-                    }
-                }
-            }
-        }
-
+        }
+
         if (eligibleBcgCampaignSelect) {
             eligibleBcgCampaignSelect.addEventListener("change", updateBcgCampaignVisibility);
             updateBcgCampaignVisibility(); // Run initially
@@ -3018,7 +3002,7 @@
 
 
 
-        // Auto-check and enforce age criteria for BCG eligibility checklist
+        // Auto-check and enforce age criteria for BCG eligibility checklist
         function updateAgeBcgCriteria() {
             const ageInput = document.getElementById("age");
             const age = parseInt(ageInput ? ageInput.value : 0) || 0;
@@ -3038,20 +3022,15 @@
                     bcgAge.disabled = true;
                 }
             }
-        } else {
-                    bcgAge.checked = false;
-                    bcgAge.disabled = true;
-                }
-            }
-        }
-
-        const ageInputEl = document.getElementById("age");
-        if (ageInputEl) {
-            ageInputEl.addEventListener("input", updateAgeBcgCriteria);
-            ageInputEl.addEventListener("change", updateAgeBcgCriteria);
-        }
-
-        // Prevent checking bcg_elig_age manually if participant age < 60
+        }
+
+        const ageInputEl = document.getElementById("age");
+        if (ageInputEl) {
+            ageInputEl.addEventListener("input", updateAgeBcgCriteria);
+            ageInputEl.addEventListener("change", updateAgeBcgCriteria);
+        }
+
+        // Prevent checking bcg_elig_age manually if participant age < 60
         const bcgAgeInput = document.getElementById("bcg_elig_age");
         if (bcgAgeInput) {
             bcgAgeInput.addEventListener("click", function(e) {
@@ -3068,9 +3047,8 @@
                     bcgAgeInput.setAttribute("data-manually-checked", "true");
                 }
             });
-        }
-            });
-        }
+        }
+
         updateAgeBcgCriteria(); // Initialize on script load
 
         // --- BMI calculation & malnourished auto-check logic ---
