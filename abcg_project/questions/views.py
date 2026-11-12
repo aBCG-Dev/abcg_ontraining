@@ -742,6 +742,7 @@ def registration(request, pk=None):
         cxr_status = "Not Done"
         naat_status = ""
         final_interpretation = ""
+        result_availability = "Absent"
 
         if eligible and not consent_declined:
             ptb_screened = True
@@ -6179,16 +6180,9 @@ def data_export_view(request):
             ("Contact Person Address", lambda p: p.contact_person_address),
 
             # 4. Step 4: High Risk Group (HRG) & TPT Eligibility
-            ("Key Population & Risk Factors", lambda p: p.risk_factors),
-            ("Past History of TB", lambda p: getattr(p, "past_tb", False)),
-            ("Diabetes", lambda p: getattr(p, "diabetes", False)),
-            ("Smoker", lambda p: getattr(p, "smoker", False)),
-            ("Close Contact", lambda p: getattr(p, "close_contact", False)),
             ("Eligible for BCG Vaccine during Campaign Period", lambda p: _get_eligible_bcg_campaign(p)),
-            ("Campaign Completion Date", lambda p: _get_ineligible_blank(p, p.campaign_completion_date)),
             ("Under which eligibility criteria was the BCG vaccine administered to the participant?", lambda p: _get_bcg_eligibility_criteria(p)),
             ("Informed Consent", lambda p: getattr(p, "consent", "") or ("No" if getattr(p, "classification", "") == "Excluded" and "consent" in (getattr(p, "classification_reason", "") or "").lower() else "")),
-            ("Exclusion Status", lambda p: "Excluded from Study" if getattr(p, "classification", "") == "Excluded" else ""),
             ("TPT Undergone", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_undergone", "")),
             ("TPT History", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_history", "")),
             ("TPT Risk Factor", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_risk_factor", "")),
@@ -6196,8 +6190,6 @@ def data_export_view(request):
             ("TPT End Date", lambda p: None if _is_clinical_data_blanked(p) else getattr(p, "tpt_end_date", None)),
             ("TPT Duration Months", lambda p: None if _is_clinical_data_blanked(p) else getattr(p, "tpt_duration_months", None)),
             ("TPT Regimen", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_regimen", "")),
-            ("TPT Status", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_status", "")),
-            ("TPT Contact Known", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_contact_known", "")),
 
             # 5. Step 5: PTB Screening
             ("PTB Screened", lambda p: "" if _is_clinical_data_blanked(p) else ("Yes" if getattr(p, "ptb_screened", False) else "No")),

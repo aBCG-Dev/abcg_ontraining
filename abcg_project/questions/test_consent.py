@@ -214,22 +214,18 @@ class ConsentQuestionTestCase(TestCase):
         headers = rows[0]
         
         self.assertIn("Informed Consent", headers)
-        self.assertIn("Exclusion Status", headers)
         self.assertIn("Classification", headers)
 
         consent_idx = headers.index("Informed Consent")
-        excl_idx = headers.index("Exclusion Status")
         class_idx = headers.index("Classification")
         study_id_idx = headers.index("Study ID")
 
         excluded_row = next(r for r in rows[1:] if r[study_id_idx] == "ABCG-TN-TIR-2026-222222")
         self.assertEqual(excluded_row[consent_idx], "No")
-        self.assertEqual(excluded_row[excl_idx], "Excluded from Study")
         self.assertEqual(excluded_row[class_idx], "Excluded")
 
         consented_row = next(r for r in rows[1:] if r[study_id_idx] == "ABCG-TN-TIR-2026-333333")
         self.assertEqual(consented_row[consent_idx], "Yes")
-        self.assertEqual(consented_row[excl_idx], "")
         self.assertEqual(consented_row[class_idx], "Control")
 
     def test_existing_records_preserved_safely(self):
