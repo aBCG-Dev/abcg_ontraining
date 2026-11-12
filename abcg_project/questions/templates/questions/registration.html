@@ -3291,6 +3291,62 @@
             });
         }
 
+        const naatStatusSelect = document.getElementById("naatStatus");
+        const finalInterpretationSelect = document.getElementById("finalInterpretation");
+        if (naatStatusSelect) {
+            naatStatusSelect.addEventListener("change", function () {
+                const resultAvailPresent = document.getElementById("resultAvailPresent");
+                const resultAvailAbsent = document.getElementById("resultAvailAbsent");
+                const testResultsContainer = document.getElementById("testResultsContainer");
+
+                const val = naatStatusSelect.value;
+                if (val === "Pending/Referral") {
+                    if (resultAvailAbsent) {
+                        resultAvailAbsent.checked = true;
+                        resultAvailAbsent.dispatchEvent(new Event("change"));
+                    }
+                    if (finalInterpretationSelect) {
+                        finalInterpretationSelect.value = "";
+                    }
+                    if (testResultsContainer) {
+                        testResultsContainer.classList.add("d-none");
+                    }
+                } else if (val === "MTB Not Detected") {
+                    if (finalInterpretationSelect) {
+                        finalInterpretationSelect.value = "MTB Not Detected";
+                    }
+                } else if (val === "MTB Detected") {
+                    if (finalInterpretationSelect) {
+                        finalInterpretationSelect.value = "MTB Detected";
+                    }
+                } else if (val === "Rif Resistant") {
+                    if (finalInterpretationSelect) {
+                        finalInterpretationSelect.value = "MTB Detected Rif Resistant";
+                    }
+                } else if (val === "Rif Sensitive") {
+                    if (finalInterpretationSelect) {
+                        finalInterpretationSelect.value = "MTB Detected Rif Sensitive";
+                    }
+                }
+            });
+        }
+
+        if (finalInterpretationSelect) {
+            finalInterpretationSelect.addEventListener("change", function () {
+                if (!naatStatusSelect) return;
+                const fiVal = finalInterpretationSelect.value;
+                if (fiVal === "MTB Not Detected") {
+                    naatStatusSelect.value = "MTB Not Detected";
+                } else if (fiVal === "MTB Detected") {
+                    naatStatusSelect.value = "MTB Detected";
+                } else if (fiVal === "MTB Detected Rif Resistant") {
+                    naatStatusSelect.value = "Rif Resistant";
+                } else if (fiVal === "MTB Detected Rif Sensitive") {
+                    naatStatusSelect.value = "Rif Sensitive";
+                }
+            });
+        }
+
         if (toggleAddPtbTestBtn) {
             toggleAddPtbTestBtn.addEventListener("click", function () {
                 const testDetailsContainer = document.getElementById("testDetailsContainer");
@@ -5315,7 +5371,7 @@
                 if (rad) {
                     rad.checked = true;
                 }
-            } else if (draftData.classification === "Excluded") {
+            } else if (draftData.classification === "Excluded" && (draftData.consent === "No" || (draftData.classification_reason && draftData.classification_reason.toLowerCase().includes("consent")))) {
                 const rad = document.querySelector(`input[name="consent"][value="No"]`);
                 if (rad) {
                     rad.checked = true;

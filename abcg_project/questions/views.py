@@ -920,7 +920,14 @@ def registration(request, pk=None):
                 ptb_test_registered = True
                 ptb_test_type = test_type
                 ptb_test_facility = testing_lab
-                ptb_test_result = final_interpretation or naat_status or "Pending"
+                if naat_status == "Pending/Referral" or result_availability == "Absent" or undergone_testing == "Yes, waiting for results":
+                    ptb_test_result = "Pending"
+                    final_interpretation = ""
+                elif naat_status == "MTB Not Detected":
+                    ptb_test_result = "MTB Not Detected"
+                    final_interpretation = "MTB Not Detected"
+                else:
+                    ptb_test_result = final_interpretation or naat_status or "Pending"
             else:
                 ptb_test_registered = False
                 ptb_test_type = None
@@ -1024,7 +1031,12 @@ def registration(request, pk=None):
         questionnaire_answers = json.dumps(qa_dict)
 
         # Eligibility Engine: Case / Control / Pending / Excluded status classification
-        effective_naat = (final_interpretation or naat_status or "").strip()
+        if naat_status == "Pending/Referral" or result_availability == "Absent" or undergone_testing == "Yes, waiting for results":
+            effective_naat = "Pending"
+        elif naat_status == "MTB Not Detected":
+            effective_naat = "MTB Not Detected"
+        else:
+            effective_naat = (final_interpretation or naat_status or "").strip()
         mctb = "PENDING"
         if effective_naat:
             val = effective_naat.upper()
