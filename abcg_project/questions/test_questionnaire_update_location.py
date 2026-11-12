@@ -346,8 +346,8 @@ class QuestionnaireUpdateLocationPreservationTestCase(TestCase):
 
         # Parse Excel file
         wb = openpyxl.load_workbook(io.BytesIO(response.content))
-        self.assertIn("Master Registry", wb.sheetnames)
-        ws = wb["Master Registry"]
+        self.assertIn("Study Participants", wb.sheetnames)
+        ws = wb["Study Participants"]
 
         # Find column indices for State, District, TB Unit
         headers = [cell.value for cell in ws[1]]

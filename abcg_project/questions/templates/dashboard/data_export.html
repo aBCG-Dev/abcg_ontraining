@@ -14,10 +14,10 @@
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
     <!-- Main Export Options (Left) -->
     <div class="lg:col-span-2 space-y-6">
-      <!-- Section 1: Participant Registry Exports -->
+      <!-- Section 1: Study Participants Exports -->
       <div>
         <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-          <i data-lucide="users" class="size-3.5 text-primary"></i> Participant Surveillance Cohort
+          <i data-lucide="users" class="size-3.5 text-primary"></i> Study Data Exports
         </p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Excel Option Card -->
@@ -30,7 +30,7 @@
                 <span class="text-[9px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded dark:bg-indigo-950/40 dark:text-indigo-400">Excel</span>
               </div>
               <div>
-                <h3 class="font-bold text-sm text-foreground">Participant Registry</h3>
+                <h3 class="font-bold text-sm text-foreground">Study Participants</h3>
                 <p class="text-[11px] text-muted-foreground mt-0.5">Line list of all screened, eligible, and control records</p>
               </div>
             </div>
@@ -54,7 +54,7 @@
                 <span class="text-[9px] font-extrabold uppercase tracking-widest text-teal-600 bg-teal-50 px-2 py-0.5 rounded dark:bg-teal-950/40 dark:text-teal-400">CSV</span>
               </div>
               <div>
-                <h3 class="font-bold text-sm text-foreground">Participant Registry</h3>
+                <h3 class="font-bold text-sm text-foreground">Study Participants</h3>
                 <p class="text-[11px] text-muted-foreground mt-0.5">Raw CSV line list for statistical packages &amp; pipeline analysis</p>
               </div>
             </div>
@@ -82,7 +82,7 @@
             <div class="p-3.5 flex items-center justify-between hover:bg-muted/10 transition-colors">
               <div class="space-y-1">
                 <span class="font-mono font-bold text-foreground text-[10px]">{{ item.id }}</span>
-                <div class="font-semibold text-foreground text-[11px]">{{ item.name|default:"Surveillance Dataset" }}</div>
+                <div class="font-semibold text-foreground text-[11px]">{{ item.name|default:"Study Participants" }}</div>
                 <div class="text-[10px] text-muted-foreground font-mono">{{ item.at }} · {{ item.format|upper }}</div>
               </div>
               

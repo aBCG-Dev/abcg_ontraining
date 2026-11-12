@@ -6330,8 +6330,9 @@ def data_export_view(request):
             import csv
             from django.http import HttpResponse
             
+            date_str = timezone.now().strftime("%Y%m%d")
             response = HttpResponse(content_type="text/csv")
-            response["Content-Disposition"] = 'attachment; filename="aBCG_Surveillance_Data.csv"'
+            response["Content-Disposition"] = f'attachment; filename="aBCG_Study_Participants_{date_str}.csv"'
             
             writer = csv.writer(response)
             writer.writerow(headers)
@@ -6340,7 +6341,7 @@ def data_export_view(request):
                 writer.writerow(row_data)
             new_log = {
                 "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"Surveillance Matrix ({len(all_records)} records)",
+                "name": f"Study Participants ({len(all_records)} records)",
                 "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
                 "format": "csv",
                 "status": "ready"
@@ -6360,9 +6361,9 @@ def data_export_view(request):
             from io import BytesIO
             
             wb = openpyxl.Workbook()
-            # Sheet 1: Master Registry
+            # Sheet 1: Study Participants
             ws1 = wb.active
-            ws1.title = "Master Registry"
+            ws1.title = "Study Participants"
             
             # Styles
             header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -6448,16 +6449,17 @@ def data_export_view(request):
             wb.save(stream)
             stream.seek(0)
             
+            date_str = timezone.now().strftime("%Y%m%d")
             response = HttpResponse(
                 stream.getvalue(),
                 content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-            response["Content-Disposition"] = 'attachment; filename="aBCG_Surveillance_Data.xlsx"'
+            response["Content-Disposition"] = f'attachment; filename="aBCG_Study_Participants_{date_str}.xlsx"'
             
             # Record in session export history
             new_log = {
                 "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"Surveillance Matrix ({len(all_records)} records)",
+                "name": f"Study Participants ({len(all_records)} records)",
                 "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
                 "format": "excel",
                 "status": "ready"

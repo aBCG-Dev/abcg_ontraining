@@ -26,7 +26,7 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertEqual(response_excel.status_code, 200)
 
         wb = openpyxl.load_workbook(io.BytesIO(response_excel.content))
-        ws = wb["Master Registry"]
+        ws = wb["Study Participants"]
         excel_headers = [cell.value for cell in ws[1]]
 
         expected_key_headers = [
@@ -114,7 +114,7 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
 
         wb = openpyxl.load_workbook(io.BytesIO(response.content))
-        ws = wb["Master Registry"]
+        ws = wb["Study Participants"]
         headers = [cell.value for cell in ws[1]]
 
         study_id_col = headers.index("Study ID") + 1
@@ -200,7 +200,7 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
 
         wb = openpyxl.load_workbook(io.BytesIO(response.content))
-        ws = wb["Master Registry"]
+        ws = wb["Study Participants"]
         headers = [cell.value for cell in ws[1]]
 
         study_id_col = headers.index("Study ID") + 1
@@ -251,7 +251,7 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
 
         wb = openpyxl.load_workbook(io.BytesIO(response.content))
-        ws = wb["Master Registry"]
+        ws = wb["Study Participants"]
         headers = [cell.value for cell in ws[1]]
 
         study_id_col = headers.index("Study ID") + 1
@@ -290,7 +290,7 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
 
         wb = openpyxl.load_workbook(io.BytesIO(response.content))
-        ws = wb["Master Registry"]
+        ws = wb["Study Participants"]
         headers = [cell.value for cell in ws[1]]
 
         study_id_col = headers.index("Study ID") + 1
