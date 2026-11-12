@@ -6190,14 +6190,13 @@ def data_export_view(request):
             ("TPT Regimen", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_regimen", "")),
 
             # 5. Step 5: PTB Screening
-            ("PTB Screened", lambda p: "" if _is_clinical_data_blanked(p) else ("Yes" if getattr(p, "ptb_screened", False) else "No")),
+            ("PTB Screening Administered", lambda p: "" if _is_clinical_data_blanked(p) else ("Yes" if getattr(p, "ptb_screened", False) else "No")),
             ("Symptoms", lambda p: "" if _is_clinical_data_blanked(p) else p.symptoms),
             ("PTB Undergone Testing", lambda p: _get_ptb_undergone_testing(p)),
             ("PTB Predominant Symptom", lambda p: _get_ptb_predominant_symptom(p)),
             ("PTB Symptom Duration (Days)", lambda p: _get_ptb_duration_days(p)),
             ("PTB HCP Visits", lambda p: _get_ptb_hcp_visits(p)),
             ("PTB Case Type", lambda p: _get_ptb_case_type(p)),
-            ("HIV Status", lambda p: p.hiv_status),
 
             # 6. Step 6: EPTB Screening
             ("EPTB Screened", lambda p: "" if _is_clinical_data_blanked(p) else _get_eptb_screened(p)),

@@ -30,7 +30,7 @@ class ExportSampleDetailsTestCase(TestCase):
         excel_headers = [cell.value for cell in ws[1]]
 
         expected_key_headers = [
-            "PTB Screened", "Symptoms", "PTB Undergone Testing", "PTB Predominant Symptom",
+            "PTB Screening Administered", "Symptoms", "PTB Undergone Testing", "PTB Predominant Symptom",
             "PTB Symptom Duration (Days)", "PTB HCP Visits", "PTB Case Type",
             "EPTB Screened", "EPTB Asymptomatic", "EPTB Symptoms", "EPTB Doctor History",
             "EPTB Lymph Node Swelling", "EPTB Pleural Symptoms", "EPTB CNS / Meningitis Symptoms",
