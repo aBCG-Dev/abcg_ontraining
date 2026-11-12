@@ -213,10 +213,10 @@ class ConsentQuestionTestCase(TestCase):
         rows = list(reader)
         headers = rows[0]
         
-        self.assertIn("Informed Consent", headers)
+        self.assertIn("Did the participant provide informed consent to participate in the study?", headers)
         self.assertIn("Classification", headers)
 
-        consent_idx = headers.index("Informed Consent")
+        consent_idx = headers.index("Did the participant provide informed consent to participate in the study?")
         class_idx = headers.index("Classification")
         study_id_idx = headers.index("Study ID")
 
