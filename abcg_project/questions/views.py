@@ -6330,7 +6330,7 @@ def data_export_view(request):
             import csv
             from django.http import HttpResponse
             
-            date_str = timezone.now().strftime("%Y%m%d")
+            date_str = timezone.now().strftime("%y%m%d")
             response = HttpResponse(content_type="text/csv")
             response["Content-Disposition"] = f'attachment; filename="aBCG_Study_Participants_{date_str}.csv"'
             
@@ -6341,7 +6341,7 @@ def data_export_view(request):
                 writer.writerow(row_data)
             new_log = {
                 "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"Study Participants ({len(all_records)} records)",
+                "name": f"aBCG_Study_Participants_{date_str} ({len(all_records)} records)",
                 "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
                 "format": "csv",
                 "status": "ready"
@@ -6360,10 +6360,11 @@ def data_export_view(request):
             from django.http import HttpResponse
             from io import BytesIO
             
+            date_str = timezone.now().strftime("%y%m%d")
             wb = openpyxl.Workbook()
-            # Sheet 1: Study Participants
+            # Sheet 1: aBCG_Study_Participants_YYMMDD
             ws1 = wb.active
-            ws1.title = "Study Participants"
+            ws1.title = f"aBCG_Study_Participants_{date_str}"
             
             # Styles
             header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -6449,7 +6450,6 @@ def data_export_view(request):
             wb.save(stream)
             stream.seek(0)
             
-            date_str = timezone.now().strftime("%Y%m%d")
             response = HttpResponse(
                 stream.getvalue(),
                 content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -6459,7 +6459,7 @@ def data_export_view(request):
             # Record in session export history
             new_log = {
                 "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"Study Participants ({len(all_records)} records)",
+                "name": f"aBCG_Study_Participants_{date_str} ({len(all_records)} records)",
                 "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
                 "format": "excel",
                 "status": "ready"
