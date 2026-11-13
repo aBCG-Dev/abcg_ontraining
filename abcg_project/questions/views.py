@@ -5644,6 +5644,26 @@ def data_export_view(request):
                     seen_roots.add(root)
                     unique_records.append(all_records[i])
             all_records = unique_records
+
+        # Cohort selection: primary (TPT = NO) vs secondary (TPT = YES)
+        cohort = (request.GET.get("cohort") or "primary").strip().lower()
+        if cohort not in ["primary", "secondary"]:
+            cohort = "primary"
+        
+        date_str = timezone.now().strftime("%y%m%d")
+        
+        def _is_tpt_record(p):
+            if isinstance(p, TptIndividual):
+                return True
+            val = str(getattr(p, "tpt_undergone", "") or "").strip().lower()
+            return val in ["yes", "true", "1"]
+        
+        if cohort == "secondary":
+            all_records = [r for r in all_records if _is_tpt_record(r)]
+            base_export_name = f"abcg_secondary_data_{date_str}"
+        else:
+            all_records = [r for r in all_records if not _is_tpt_record(r)]
+            base_export_name = f"abcg_primary_data_{date_str}"
         
         import json
 
@@ -6330,9 +6350,8 @@ def data_export_view(request):
             import csv
             from django.http import HttpResponse
             
-            date_str = timezone.now().strftime("%y%m%d")
             response = HttpResponse(content_type="text/csv")
-            response["Content-Disposition"] = f'attachment; filename="aBCG_Study_Participants_{date_str}.csv"'
+            response["Content-Disposition"] = f'attachment; filename="{base_export_name}.csv"'
             
             writer = csv.writer(response)
             writer.writerow(headers)
@@ -6341,7 +6360,7 @@ def data_export_view(request):
                 writer.writerow(row_data)
             new_log = {
                 "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"aBCG_Study_Participants_{date_str} ({len(all_records)} records)",
+                "name": f"{base_export_name} ({len(all_records)} records)",
                 "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
                 "format": "csv",
                 "status": "ready"
@@ -6360,11 +6379,10 @@ def data_export_view(request):
             from django.http import HttpResponse
             from io import BytesIO
             
-            date_str = timezone.now().strftime("%y%m%d")
             wb = openpyxl.Workbook()
-            # Sheet 1: aBCG_Study_Participants_YYMMDD
+            # Sheet 1: Matches workbook name exactly (abcg_primary_data_yymmdd / abcg_secondary_data_yymmdd)
             ws1 = wb.active
-            ws1.title = f"aBCG_Study_Participants_{date_str}"
+            ws1.title = base_export_name
             
             # Styles
             header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -6406,25 +6424,16 @@ def data_export_view(request):
                 
             # Sheet 2: Summary Stats
             ws2 = wb.create_sheet(title="Summary Statistics")
-            ws2.append(["aBCG VE Study Summary Statistics"])
+            title_text = "aBCG VE Study Secondary Data (TPT = Yes) Summary Statistics" if cohort == "secondary" else "aBCG VE Study Primary Data (TPT = No) Summary Statistics"
+            ws2.append([title_text])
             ws2.cell(row=1, column=1).font = Font(name="Calibri", size=16, bold=True, color="1F4E79")
             ws2.append([])
             
-            # Calculate summary metrics across all models
-            total_cases = (
-                Participant.objects.filter(classification="Case").count() +
-                TptIndividual.objects.filter(classification="Case").count() +
-                IneligibleIndividual.objects.filter(classification="Case").count()
-            )
-            total_controls = (
-                Participant.objects.filter(classification="Control").count() +
-                TptIndividual.objects.filter(classification="Control").count() +
-                IneligibleIndividual.objects.filter(classification="Control").count()
-            )
+            total_cases = sum(1 for r in all_records if getattr(r, "classification", "") == "Case")
+            total_controls = sum(1 for r in all_records if getattr(r, "classification", "") == "Control")
+            total_pending = sum(1 for r in all_records if getattr(r, "classification", "") == "Pending")
+            total_excluded = sum(1 for r in all_records if getattr(r, "classification", "") in ["Excluded", "Not Eligible"])
             total_screened = len(all_records)
-            total_participants = Participant.objects.count()
-            total_tpts = TptIndividual.objects.count()
-            total_ineligibles = IneligibleIndividual.objects.count()
             
             ws2.append(["Metric", "Count"])
             ws2.cell(row=3, column=1).font = bold_font
@@ -6432,18 +6441,18 @@ def data_export_view(request):
             ws2.cell(row=3, column=1).fill = accent_fill
             ws2.cell(row=3, column=2).fill = accent_fill
             
+            cohort_label = "Secondary Cohort (TPT = YES)" if cohort == "secondary" else "Primary Cohort (TPT = NO)"
             metrics = [
-                ("Total Registered (Screened)", total_screened),
+                (f"Total Exported Records ({cohort_label})", total_screened),
                 ("Confirmed TB Cases", total_cases),
                 ("Matched Controls", total_controls),
-                ("Eligible Study Participants", total_participants),
-                ("TPT+BCG Cohort", total_tpts),
-                ("Ineligible Individuals", total_ineligibles)
+                ("Pending Adjudication / Verification", total_pending),
+                ("Ineligible / Excluded Individuals", total_excluded)
             ]
             for m, val in metrics:
                 ws2.append([m, val])
                 
-            ws2.column_dimensions['A'].width = 30
+            ws2.column_dimensions['A'].width = 45
             ws2.column_dimensions['B'].width = 15
             
             stream = BytesIO()
@@ -6454,12 +6463,12 @@ def data_export_view(request):
                 stream.getvalue(),
                 content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-            response["Content-Disposition"] = f'attachment; filename="aBCG_Study_Participants_{date_str}.xlsx"'
+            response["Content-Disposition"] = f'attachment; filename="{base_export_name}.xlsx"'
             
             # Record in session export history
             new_log = {
                 "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"aBCG_Study_Participants_{date_str} ({len(all_records)} records)",
+                "name": f"{base_export_name} ({len(all_records)} records)",
                 "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
                 "format": "excel",
                 "status": "ready"
@@ -6471,9 +6480,23 @@ def data_export_view(request):
             
             return response
             
+    tpt_yes_count = (
+        TptIndividual.objects.count() +
+        Participant.objects.filter(tpt_undergone="Yes").count() +
+        IneligibleIndividual.objects.filter(tpt_undergone="Yes").count()
+    )
+    tpt_no_count = (
+        Participant.objects.exclude(tpt_undergone="Yes").count() +
+        IneligibleIndividual.objects.exclude(tpt_undergone="Yes").count()
+    )
+    date_str = timezone.now().strftime("%y%m%d")
+
     return render(request, "dashboard/data_export.html", {
         "history": request.session.get("export_history", []),
-        "page": "data_export"
+        "page": "data_export",
+        "primary_count": tpt_no_count,
+        "secondary_count": tpt_yes_count,
+        "date_str": date_str,
     })
 
 

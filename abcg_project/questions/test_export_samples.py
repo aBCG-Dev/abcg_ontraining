@@ -27,7 +27,7 @@ class ExportSampleDetailsTestCase(TestCase):
 
         wb = openpyxl.load_workbook(io.BytesIO(response_excel.content))
         ws = wb.active
-        self.assertTrue(ws.title.startswith("aBCG_Study_Participants_"))
+        self.assertTrue(ws.title.startswith("abcg_primary_data_"))
         self.assertLessEqual(len(ws.title), 31)
         excel_headers = [cell.value for cell in ws[1]]
 
@@ -308,4 +308,89 @@ class ExportSampleDetailsTestCase(TestCase):
                 self.assertIn(ws.cell(row=r, column=eptb_avail_col).value, ["", None])
                 self.assertIn(ws.cell(row=r, column=eptb_res_col).value, ["", None])
                 break
+
+    def test_06_primary_and_secondary_cohort_separation_and_naming(self):
+        """Verifies TPT=NO (Primary) and TPT=YES (Secondary) are exported into distinct workbooks with matching tab names."""
+        from django.utils import timezone
+        from questions.models import TptIndividual
+        yymmdd = timezone.now().strftime("%y%m%d")
+
+        # 1. Create a distinct Primary participant (TPT=No)
+        p_prim = Participant.objects.create(
+            first_name="Primary",
+            last_name="Participant",
+            study_id="PRIM-TEST-001",
+            age=30,
+            gender="Male",
+            date_enroll=datetime.date(2026, 4, 10),
+            tpt_undergone="No"
+        )
+
+        # 2. Create a distinct Secondary participant (TPT=Yes)
+        p_sec = TptIndividual.objects.create(
+            first_name="Secondary",
+            last_name="Participant",
+            study_id="SEC-TEST-001",
+            age=32,
+            gender="Female",
+            date_enroll=datetime.date(2026, 4, 10),
+            tpt_undergone="Yes"
+        )
+
+        # --- TEST PRIMARY EXPORT (TPT = NO) ---
+        resp_prim_excel = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=primary")
+        self.assertEqual(resp_prim_excel.status_code, 200)
+        expected_prim_name = f"abcg_primary_data_{yymmdd}"
+        self.assertIn(f'filename="{expected_prim_name}.xlsx"', resp_prim_excel["Content-Disposition"])
+
+        wb_prim = openpyxl.load_workbook(io.BytesIO(resp_prim_excel.content))
+        self.assertEqual(wb_prim.sheetnames[0], expected_prim_name)
+        self.assertLessEqual(len(wb_prim.sheetnames[0]), 31)
+
+        ws_prim = wb_prim.active
+        prim_headers = [c.value for c in ws_prim[1]]
+        sid_col = prim_headers.index("Study ID") + 1
+        prim_sids = [ws_prim.cell(row=r, column=sid_col).value for r in range(2, ws_prim.max_row + 1)]
+        self.assertIn("PRIM-TEST-001", prim_sids)
+        self.assertNotIn("SEC-TEST-001", prim_sids)
+
+        # Primary CSV
+        resp_prim_csv = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=primary")
+        self.assertEqual(resp_prim_csv.status_code, 200)
+        self.assertIn(f'filename="{expected_prim_name}.csv"', resp_prim_csv["Content-Disposition"])
+        self.assertIn("PRIM-TEST-001", resp_prim_csv.content.decode("utf-8"))
+        self.assertNotIn("SEC-TEST-001", resp_prim_csv.content.decode("utf-8"))
+
+        # --- TEST SECONDARY EXPORT (TPT = YES) ---
+        resp_sec_excel = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=secondary")
+        self.assertEqual(resp_sec_excel.status_code, 200)
+        expected_sec_name = f"abcg_secondary_data_{yymmdd}"
+        self.assertIn(f'filename="{expected_sec_name}.xlsx"', resp_sec_excel["Content-Disposition"])
+
+        wb_sec = openpyxl.load_workbook(io.BytesIO(resp_sec_excel.content))
+        self.assertEqual(wb_sec.sheetnames[0], expected_sec_name)
+        self.assertLessEqual(len(wb_sec.sheetnames[0]), 31)
+
+        ws_sec = wb_sec.active
+        sec_headers = [c.value for c in ws_sec[1]]
+        sec_sid_col = sec_headers.index("Study ID") + 1
+        sec_sids = [ws_sec.cell(row=r, column=sec_sid_col).value for r in range(2, ws_sec.max_row + 1)]
+        self.assertIn("SEC-TEST-001", sec_sids)
+        self.assertNotIn("PRIM-TEST-001", sec_sids)
+
+        # Secondary CSV
+        resp_sec_csv = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=secondary")
+        self.assertEqual(resp_sec_csv.status_code, 200)
+        self.assertIn(f'filename="{expected_sec_name}.csv"', resp_sec_csv["Content-Disposition"])
+        self.assertIn("SEC-TEST-001", resp_sec_csv.content.decode("utf-8"))
+        self.assertNotIn("PRIM-TEST-001", resp_sec_csv.content.decode("utf-8"))
+
+        # --- EDGE CASE: Missing cohort parameter defaults to primary ---
+        resp_default = self.client.get(reverse("questions:data_export") + "?format=excel")
+        self.assertIn(f'filename="{expected_prim_name}.xlsx"', resp_default["Content-Disposition"])
+
+        # --- EDGE CASE: Unknown cohort parameter defaults to primary ---
+        resp_unknown = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=invalid_cohort")
+        self.assertIn(f'filename="{expected_prim_name}.xlsx"', resp_unknown["Content-Disposition"])
+
 

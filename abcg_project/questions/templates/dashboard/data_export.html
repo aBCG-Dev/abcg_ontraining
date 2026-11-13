@@ -14,54 +14,140 @@
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
     <!-- Main Export Options (Left) -->
     <div class="lg:col-span-2 space-y-6">
-      <!-- Section 1: Study Participants Exports -->
-      <div>
-        <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-          <i data-lucide="users" class="size-3.5 text-primary"></i> Study Data Exports
-        </p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Excel Option Card -->
-          <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between hover:border-indigo-500/40 transition-colors">
-            <div class="space-y-2.5">
+      <!-- Section 1: Primary Data Exports (TPT = NO) -->
+      <div class="rounded-xl border border-border bg-card p-5 shadow-xs space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-border/40">
+          <div class="flex items-center gap-2.5">
+            <span class="inline-flex items-center justify-center rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <i data-lucide="shield-check" class="size-5"></i>
+            </span>
+            <div>
+              <h2 class="text-sm font-bold text-foreground flex items-center gap-2">
+                Primary Study Data
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 px-2 py-0.5 rounded-full">TPT = NO</span>
+              </h2>
+              <p class="text-[11px] text-muted-foreground mt-0.5">Line list of participants with no history of TPT (<code class="text-[10px] text-primary font-mono">abcg_primary_data_{{ date_str|default:"yymmdd" }}</code>)</p>
+            </div>
+          </div>
+          {% if primary_count is not None %}
+          <span class="text-xs font-semibold text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-md">{{ primary_count }} records</span>
+          {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Primary Excel Option Card -->
+          <div class="rounded-lg border border-border bg-muted/10 p-4 flex flex-col justify-between hover:border-indigo-500/40 transition-colors">
+            <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <span class="inline-flex items-center justify-center rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
-                  <i data-lucide="file-spreadsheet" class="size-5"></i>
+                <span class="inline-flex items-center justify-center rounded-md bg-indigo-50 p-1.5 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+                  <i data-lucide="file-spreadsheet" class="size-4"></i>
                 </span>
                 <span class="text-[9px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded dark:bg-indigo-950/40 dark:text-indigo-400">Excel</span>
               </div>
               <div>
-                <h3 class="font-bold text-sm text-foreground">Study Participants</h3>
-                <p class="text-[11px] text-muted-foreground mt-0.5">Line list of all screened, eligible, and control records</p>
+                <h3 class="font-bold text-xs text-foreground">abcg_primary_data_{{ date_str|default:"yymmdd" }}.xlsx</h3>
+                <p class="text-[10px] text-muted-foreground mt-0.5">Worksheet tab: <span class="font-mono text-primary font-semibold">abcg_primary_data_{{ date_str|default:"yymmdd" }}</span></p>
               </div>
             </div>
             <div class="pt-3">
               <a
-                href="?format=excel"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 text-white px-4 h-9 text-xs font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-xs text-decoration-none"
+                href="?format=excel&cohort=primary"
+                class="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 text-white px-3 h-8 text-xs font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-xs text-decoration-none"
               >
                 <i data-lucide="download" class="size-3.5"></i> Download Excel (.xlsx)
               </a>
             </div>
           </div>
 
-          <!-- CSV Option Card -->
-          <div class="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between hover:border-teal-500/40 transition-colors">
-            <div class="space-y-2.5">
+          <!-- Primary CSV Option Card -->
+          <div class="rounded-lg border border-border bg-muted/10 p-4 flex flex-col justify-between hover:border-teal-500/40 transition-colors">
+            <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <span class="inline-flex items-center justify-center rounded-lg bg-teal-50 p-2 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400">
-                  <i data-lucide="file-text" class="size-5"></i>
+                <span class="inline-flex items-center justify-center rounded-md bg-teal-50 p-1.5 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400">
+                  <i data-lucide="file-text" class="size-4"></i>
                 </span>
                 <span class="text-[9px] font-extrabold uppercase tracking-widest text-teal-600 bg-teal-50 px-2 py-0.5 rounded dark:bg-teal-950/40 dark:text-teal-400">CSV</span>
               </div>
               <div>
-                <h3 class="font-bold text-sm text-foreground">Study Participants</h3>
-                <p class="text-[11px] text-muted-foreground mt-0.5">Raw CSV line list for statistical packages &amp; pipeline analysis</p>
+                <h3 class="font-bold text-xs text-foreground">abcg_primary_data_{{ date_str|default:"yymmdd" }}.csv</h3>
+                <p class="text-[10px] text-muted-foreground mt-0.5">Flat CSV line list for statistical pipeline analysis</p>
               </div>
             </div>
             <div class="pt-3">
               <a
-                href="?format=csv"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 text-white px-4 h-9 text-xs font-bold hover:bg-teal-700 transition-all active:scale-95 shadow-xs text-decoration-none"
+                href="?format=csv&cohort=primary"
+                class="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-600 text-white px-3 h-8 text-xs font-bold hover:bg-teal-700 transition-all active:scale-95 shadow-xs text-decoration-none"
+              >
+                <i data-lucide="download" class="size-3.5"></i> Download CSV (.csv)
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Secondary Data Exports (TPT = YES) -->
+      <div class="rounded-xl border border-border bg-card p-5 shadow-xs space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-border/40">
+          <div class="flex items-center gap-2.5">
+            <span class="inline-flex items-center justify-center rounded-lg bg-amber-50 p-2 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+              <i data-lucide="pill" class="size-5"></i>
+            </span>
+            <div>
+              <h2 class="text-sm font-bold text-foreground flex items-center gap-2">
+                Secondary Study Data
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-full">TPT = YES</span>
+              </h2>
+              <p class="text-[11px] text-muted-foreground mt-0.5">Line list of participants with history of TPT (<code class="text-[10px] text-primary font-mono">abcg_secondary_data_{{ date_str|default:"yymmdd" }}</code>)</p>
+            </div>
+          </div>
+          {% if secondary_count is not None %}
+          <span class="text-xs font-semibold text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-md">{{ secondary_count }} records</span>
+          {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Secondary Excel Option Card -->
+          <div class="rounded-lg border border-border bg-muted/10 p-4 flex flex-col justify-between hover:border-indigo-500/40 transition-colors">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="inline-flex items-center justify-center rounded-md bg-indigo-50 p-1.5 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+                  <i data-lucide="file-spreadsheet" class="size-4"></i>
+                </span>
+                <span class="text-[9px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded dark:bg-indigo-950/40 dark:text-indigo-400">Excel</span>
+              </div>
+              <div>
+                <h3 class="font-bold text-xs text-foreground">abcg_secondary_data_{{ date_str|default:"yymmdd" }}.xlsx</h3>
+                <p class="text-[10px] text-muted-foreground mt-0.5">Worksheet tab: <span class="font-mono text-primary font-semibold">abcg_secondary_data_{{ date_str|default:"yymmdd" }}</span></p>
+              </div>
+            </div>
+            <div class="pt-3">
+              <a
+                href="?format=excel&cohort=secondary"
+                class="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 text-white px-3 h-8 text-xs font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-xs text-decoration-none"
+              >
+                <i data-lucide="download" class="size-3.5"></i> Download Excel (.xlsx)
+              </a>
+            </div>
+          </div>
+
+          <!-- Secondary CSV Option Card -->
+          <div class="rounded-lg border border-border bg-muted/10 p-4 flex flex-col justify-between hover:border-teal-500/40 transition-colors">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="inline-flex items-center justify-center rounded-md bg-teal-50 p-1.5 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400">
+                  <i data-lucide="file-text" class="size-4"></i>
+                </span>
+                <span class="text-[9px] font-extrabold uppercase tracking-widest text-teal-600 bg-teal-50 px-2 py-0.5 rounded dark:bg-teal-950/40 dark:text-teal-400">CSV</span>
+              </div>
+              <div>
+                <h3 class="font-bold text-xs text-foreground">abcg_secondary_data_{{ date_str|default:"yymmdd" }}.csv</h3>
+                <p class="text-[10px] text-muted-foreground mt-0.5">Flat CSV line list for statistical pipeline analysis</p>
+              </div>
+            </div>
+            <div class="pt-3">
+              <a
+                href="?format=csv&cohort=secondary"
+                class="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-600 text-white px-3 h-8 text-xs font-bold hover:bg-teal-700 transition-all active:scale-95 shadow-xs text-decoration-none"
               >
                 <i data-lucide="download" class="size-3.5"></i> Download CSV (.csv)
               </a>
