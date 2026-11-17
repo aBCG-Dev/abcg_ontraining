@@ -3,19 +3,13 @@
 {% block title %}Data Export - aBCG Dashboard{% endblock %}
 
 {% block content %}
-<div class="space-y-5 max-w-7xl mx-auto">
-  <!-- Page Header & Active Scope Indicator -->
+<div class="space-y-5 max-w-5xl mx-auto">
+  <!-- Page Header & Simplified Active Scope Line -->
   <div class="space-y-1.5 pb-2 border-b border-slate-200/80">
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold tracking-tight text-slate-900">Data Export</h1>
-      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium text-slate-500 bg-slate-100 border border-slate-200/60">
-        <span class="size-1.5 rounded-full bg-emerald-500"></span>
-        <span>Audit Trail Active</span>
-      </span>
-    </div>
+    <h1 class="text-xl font-bold tracking-tight text-slate-900">Data Export</h1>
     
-    <!-- Live Scope Indicator Bar -->
-    <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+    <!-- Simplified Active Scope Line -->
+    <div class="flex items-center gap-1.5 text-xs text-slate-500">
       <span class="inline-flex items-center gap-1.5 font-medium text-slate-700">
         <i data-lucide="layers" class="size-3.5 text-slate-400"></i>
         <span>Active Scope:</span>
@@ -23,210 +17,113 @@
       <span class="text-slate-600 font-normal">
         {{ selected_state|default:"All States" }} &middot; {{ selected_district|default:"All Districts" }} &middot; {{ selected_tb_unit|default:"All TB Units" }}
       </span>
-      <span class="text-slate-300">&middot;</span>
-      <span class="tabular-nums font-medium text-slate-700">
-        ({{ total_records|default:"1,732" }} total records)
-      </span>
     </div>
   </div>
 
-  <!-- Main 2-Column Asymmetric Layout (~68% Left / ~32% Right) -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+  <!-- Unified Export Container with Shared Column Grid (1fr 220px 340px) -->
+  <div class="bg-white rounded-lg border border-slate-200 overflow-hidden divide-y divide-slate-200">
     
-    <!-- 1. Left Column: Dataset Export Console (~68%) -->
-    <div class="lg:col-span-8 space-y-4">
-      <div class="bg-white rounded-lg border border-slate-200 overflow-hidden divide-y divide-slate-200">
-        
-        <!-- Row 1: Primary Study Data (TPT = NO) -->
-        <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:bg-slate-50/40">
-          <div class="space-y-1 min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <h2 class="text-sm font-bold text-slate-900 tracking-tight">Primary Study Data</h2>
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-600 bg-slate-100 border border-slate-200/80">TPT = NO</span>
-            </div>
-            <p class="text-xs text-slate-500 leading-relaxed">
-              Line list of eligible study participants; multi-sheet Excel includes screened ineligible cohort
-            </p>
-            <div class="flex items-center gap-2 pt-0.5 text-[11px] text-slate-400 font-mono">
-              <i data-lucide="file-code" class="size-3 text-slate-400"></i>
-              <span class="tabular-nums">abcg_primary_data_{{ date_str|default:"261117" }}</span>
-            </div>
-          </div>
-
-          <!-- Metrics -->
-          <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap px-1 md:px-3">
-            <span class="tabular-nums font-semibold text-slate-900">{{ primary_count|default:"1,322" }}</span>
-            <span class="text-slate-500 font-normal">eligible</span>
-            <span class="text-slate-300">&middot;</span>
-            <span class="tabular-nums font-semibold text-slate-700">{{ ineligible_count|default:"382" }}</span>
-            <span class="text-slate-500 font-normal">ineligible</span>
-          </div>
-
-          <!-- Inline Actions -->
-          <div class="flex items-center gap-2 shrink-0">
-            <!-- Primary Navy Excel Action -->
-            <a
-              href="?format=excel&cohort=primary"
-              onclick="handleDownloadFeedback('abcg_primary_data_{{ date_str|default:'261117' }}.xlsx')"
-              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-semibold text-white transition-all select-none cursor-pointer text-decoration-none shadow-xs"
-              style="background-color: #0F2942;"
-              onmouseover="this.style.backgroundColor='#183B5C'"
-              onmouseout="this.style.backgroundColor='#0F2942'"
-              title="Multi-sheet Excel workbook (Sheet 1: Primary, Sheet 2: Ineligible, Sheet 3: Summary)"
-            >
-              <i data-lucide="download" class="size-3.5 text-slate-300"></i>
-              <span>Excel (.xlsx)</span>
-            </a>
-
-            <!-- Secondary CSV Action -->
-            <a
-              href="?format=csv&cohort=primary"
-              onclick="handleDownloadFeedback('abcg_primary_data_{{ date_str|default:'261117' }}.csv')"
-              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none"
-              title="Flat CSV line list of eligible study participants"
-            >
-              <i data-lucide="file-text" class="size-3.5 text-slate-400"></i>
-              <span>CSV (.csv)</span>
-            </a>
-
-            <!-- Ineligible CSV Action -->
-            <a
-              href="?format=csv&cohort=ineligible"
-              onclick="handleDownloadFeedback('abcg_ineligible_data_{{ date_str|default:'261117' }}.csv')"
-              class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-[6px] text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none"
-              title="Download screened ineligible cohort CSV"
-            >
-              <i data-lucide="user-x" class="size-3.5 text-slate-400"></i>
-              <span>Ineligible CSV</span>
-            </a>
-          </div>
+    <!-- Row 1: Primary Study Data -->
+    <div class="p-5 grid grid-cols-1 md:grid-cols-[1fr_220px_340px] items-center gap-4 transition-colors hover:bg-slate-50/40">
+      <!-- Col 1: Title & Monospace Filename -->
+      <div>
+        <h2 class="text-sm font-bold text-slate-900 tracking-tight">Primary Study Data</h2>
+        <div class="text-[11px] text-slate-400 font-mono mt-0.5 tabular-nums">
+          abcg_primary_data_{{ date_str|default:"261117" }}
         </div>
-
-        <!-- Row 2: Secondary Study Data (TPT = YES) -->
-        <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:bg-slate-50/40">
-          <div class="space-y-1 min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <h2 class="text-sm font-bold text-slate-900 tracking-tight">Secondary Study Data</h2>
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-600 bg-slate-100 border border-slate-200/80">TPT = YES</span>
-            </div>
-            <p class="text-xs text-slate-500 leading-relaxed">
-              Line list of participants with documented history of TPT
-            </p>
-            <div class="flex items-center gap-2 pt-0.5 text-[11px] text-slate-400 font-mono">
-              <i data-lucide="file-code" class="size-3 text-slate-400"></i>
-              <span class="tabular-nums">abcg_secondary_data_{{ date_str|default:"261117" }}</span>
-            </div>
-          </div>
-
-          <!-- Metrics -->
-          <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap px-1 md:px-3">
-            <span class="tabular-nums font-semibold text-slate-900">{{ secondary_count|default:"28" }}</span>
-            <span class="text-slate-500 font-normal">records</span>
-          </div>
-
-          <!-- Inline Actions -->
-          <div class="flex items-center gap-2 shrink-0">
-            <!-- Primary Navy Excel Action -->
-            <a
-              href="?format=excel&cohort=secondary"
-              onclick="handleDownloadFeedback('abcg_secondary_data_{{ date_str|default:'261117' }}.xlsx')"
-              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-semibold text-white transition-all select-none cursor-pointer text-decoration-none shadow-xs"
-              style="background-color: #0F2942;"
-              onmouseover="this.style.backgroundColor='#183B5C'"
-              onmouseout="this.style.backgroundColor='#0F2942'"
-              title="Secondary TPT cohort workbook"
-            >
-              <i data-lucide="download" class="size-3.5 text-slate-300"></i>
-              <span>Excel (.xlsx)</span>
-            </a>
-
-            <!-- Secondary CSV Action -->
-            <a
-              href="?format=csv&cohort=secondary"
-              onclick="handleDownloadFeedback('abcg_secondary_data_{{ date_str|default:'261117' }}.csv')"
-              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none"
-              title="Flat CSV line list of TPT cohort participants"
-            >
-              <i data-lucide="file-text" class="size-3.5 text-slate-400"></i>
-              <span>CSV (.csv)</span>
-            </a>
-          </div>
-        </div>
-
       </div>
-      
-      <!-- Subtle Spec / Architecture Footnote -->
-      <div class="flex items-center justify-between text-[11px] text-slate-400 px-1 font-mono">
-        <span>Standard ISO-8601 timestamps &middot; UTF-8 encoded &middot; RFC 4180 CSV compliance</span>
-        <span class="tabular-nums">Max tab length: 31 chars</span>
+
+      <!-- Col 2: Metrics -->
+      <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap">
+        <span class="tabular-nums font-semibold text-slate-900">{{ primary_count|default:"1,326" }}</span>
+        <span class="text-slate-500 font-normal">eligible</span>
+        <span class="text-slate-300">&middot;</span>
+        <span class="tabular-nums font-semibold text-slate-700">{{ ineligible_count|default:"381" }}</span>
+        <span class="text-slate-500 font-normal">ineligible</span>
+      </div>
+
+      <!-- Col 3: Action Buttons (Aligned to Match Row 2) -->
+      <div class="flex items-center gap-2">
+        <!-- Excel Action -->
+        <a
+          href="?format=excel&cohort=primary"
+          onclick="handleDownloadFeedback('abcg_primary_data_{{ date_str|default:'261117' }}.xlsx')"
+          class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-semibold text-white transition-all select-none cursor-pointer text-decoration-none shadow-xs shrink-0"
+          style="background-color: #0F2942;"
+          onmouseover="this.style.backgroundColor='#183B5C'"
+          onmouseout="this.style.backgroundColor='#0F2942'"
+          title="Multi-sheet Excel workbook (Sheet 1: Primary, Sheet 2: Ineligible, Sheet 3: Summary)"
+        >
+          <i data-lucide="download" class="size-3.5 text-slate-300"></i>
+          <span>Excel (.xlsx)</span>
+        </a>
+
+        <!-- CSV Action -->
+        <a
+          href="?format=csv&cohort=primary"
+          onclick="handleDownloadFeedback('abcg_primary_data_{{ date_str|default:'261117' }}.csv')"
+          class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none shrink-0"
+          title="Flat CSV line list of eligible study participants"
+        >
+          <i data-lucide="file-text" class="size-3.5 text-slate-400"></i>
+          <span>CSV (.csv)</span>
+        </a>
+
+        <!-- Ineligible CSV Action -->
+        <a
+          href="?format=csv&cohort=ineligible"
+          onclick="handleDownloadFeedback('abcg_ineligible_data_{{ date_str|default:'261117' }}.csv')"
+          class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-[6px] text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none shrink-0"
+          title="Download screened ineligible cohort CSV"
+        >
+          <i data-lucide="user-x" class="size-3.5 text-slate-400"></i>
+          <span>Ineligible CSV</span>
+        </a>
       </div>
     </div>
 
-    <!-- 2. Right Column: Export Audit Ledger (~32%) -->
-    <div class="lg:col-span-4 space-y-2">
-      <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        
-        <!-- Ledger Header -->
-        <div class="px-4 py-3 border-b border-slate-200 bg-white flex items-center justify-between">
-          <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Export Log History</h2>
-          <span class="text-[10px] text-slate-400 font-mono tabular-nums font-medium">{{ history|length }} entries</span>
+    <!-- Row 2: Secondary Study Data -->
+    <div class="p-5 grid grid-cols-1 md:grid-cols-[1fr_220px_340px] items-center gap-4 transition-colors hover:bg-slate-50/40">
+      <!-- Col 1: Title & Monospace Filename -->
+      <div>
+        <h2 class="text-sm font-bold text-slate-900 tracking-tight">Secondary Study Data</h2>
+        <div class="text-[11px] text-slate-400 font-mono mt-0.5 tabular-nums">
+          abcg_secondary_data_{{ date_str|default:"261117" }}
         </div>
+      </div>
 
-        <!-- Ledger Entries -->
-        <div class="divide-y divide-slate-100 bg-white text-xs">
-          {% if history %}
-            {% for item in history %}
-              <div class="group px-4 py-2.5 transition-colors hover:bg-slate-50/80 flex items-start justify-between gap-3">
-                <div class="space-y-1 min-w-0 flex-1">
-                  <!-- Top line: Filename -->
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-[13px] font-medium text-slate-900 truncate font-mono tracking-tight" title="{{ item.filename|default:item.name }}">
-                      {{ item.filename|default:item.name }}
-                    </span>
-                  </div>
-                  
-                  <!-- Second line: Export ID in 11px monospace + record count -->
-                  <div class="flex items-center gap-2 text-[11px] text-slate-500 font-mono tabular-nums">
-                    <span class="text-slate-600 font-semibold">{{ item.id|default:"EXP-261117" }}</span>
-                    <span class="text-slate-300">&middot;</span>
-                    <span>{{ item.rows|default:1278 }} rows</span>
-                  </div>
+      <!-- Col 2: Metrics -->
+      <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap">
+        <span class="tabular-nums font-semibold text-slate-900">{{ secondary_count|default:"28" }}</span>
+        <span class="text-slate-500 font-normal">records</span>
+      </div>
 
-                  <!-- Third line: Timestamp · Exporter · Subtle 6px Status Dot -->
-                  <div class="flex items-center gap-2 text-[11px] text-slate-400 font-normal">
-                    <span class="tabular-nums">{{ item.at }}</span>
-                    <span class="text-slate-300">&middot;</span>
-                    <span class="text-slate-600">@{{ item.by|default:"Dr.sriram" }}</span>
-                    <span class="text-slate-300">&middot;</span>
-                    <span class="inline-flex items-center gap-1.5 text-slate-600 font-medium">
-                      <span class="size-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                      <span>Ready</span>
-                    </span>
-                  </div>
-                </div>
+      <!-- Col 3: Action Buttons (Columns in Exact Alignment with Row 1) -->
+      <div class="flex items-center gap-2">
+        <!-- Excel Action -->
+        <a
+          href="?format=excel&cohort=secondary"
+          onclick="handleDownloadFeedback('abcg_secondary_data_{{ date_str|default:'261117' }}.xlsx')"
+          class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-semibold text-white transition-all select-none cursor-pointer text-decoration-none shadow-xs shrink-0"
+          style="background-color: #0F2942;"
+          onmouseover="this.style.backgroundColor='#183B5C'"
+          onmouseout="this.style.backgroundColor='#0F2942'"
+          title="Secondary TPT cohort workbook"
+        >
+          <i data-lucide="download" class="size-3.5 text-slate-300"></i>
+          <span>Excel (.xlsx)</span>
+        </a>
 
-                <!-- Right-aligned Interactive Download Icon Button -->
-                <div class="shrink-0 pt-0.5">
-                  <a
-                    href="?format={{ item.format|default:'csv' }}&cohort={{ item.cohort|default:'primary' }}"
-                    onclick="handleDownloadFeedback('{{ item.filename|default:item.name }}')"
-                    class="size-7 grid place-items-center rounded-[5px] text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors text-decoration-none cursor-pointer"
-                    title="Re-download file"
-                    aria-label="Re-download {{ item.filename|default:item.name }}"
-                  >
-                    <i data-lucide="download" class="size-3.5"></i>
-                  </a>
-                </div>
-              </div>
-            {% endfor %}
-          {% else %}
-            <div class="p-8 text-center text-slate-400 space-y-1.5">
-              <i data-lucide="inbox" class="size-6 mx-auto stroke-[1.5] text-slate-300"></i>
-              <p class="text-xs font-medium text-slate-600">No export history</p>
-              <p class="text-[11px] text-slate-400">Downloaded datasets will be recorded here.</p>
-            </div>
-          {% endif %}
-        </div>
+        <!-- CSV Action -->
+        <a
+          href="?format=csv&cohort=secondary"
+          onclick="handleDownloadFeedback('abcg_secondary_data_{{ date_str|default:'261117' }}.csv')"
+          class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none shrink-0"
+          title="Flat CSV line list of TPT cohort participants"
+        >
+          <i data-lucide="file-text" class="size-3.5 text-slate-400"></i>
+          <span>CSV (.csv)</span>
+        </a>
       </div>
     </div>
 
@@ -241,8 +138,8 @@
 
 <script>
   function handleDownloadFeedback(filename) {
-    const toast = document.getElementById('download-feedback-toast');
-    const msg = document.getElementById('download-toast-msg');
+    var toast = document.getElementById('download-feedback-toast');
+    var msg = document.getElementById('download-toast-msg');
     if (!toast || !msg) return;
 
     msg.textContent = 'Generating ' + filename + '...';
