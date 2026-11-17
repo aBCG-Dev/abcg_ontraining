@@ -269,7 +269,7 @@ class ExportSampleDetailsTestCase(TestCase):
                 break
 
     def test_05_ineligible_records_have_blanked_clinical_sample_data(self):
-        """Verifies ineligible participants have clinical sample available and results blanked."""
+        """Verifies ineligible participants have clinical sample available and results blanked on dedicated Sheet 2."""
         inel = IneligibleIndividual.objects.create(
             first_name="Ineligible",
             last_name="Individual",
@@ -278,6 +278,7 @@ class ExportSampleDetailsTestCase(TestCase):
             gender="Male",
             date_enroll=datetime.date(2026, 4, 9),
             classification="Not Eligible",
+            classification_reason="Age criteria not met",
             ptb_test_details=json.dumps({
                 "sample_availability": "Present",
                 "final_interpretation": "MTB Detected"
@@ -292,22 +293,37 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
 
         wb = openpyxl.load_workbook(io.BytesIO(response.content))
-        ws = wb.active
-        headers = [cell.value for cell in ws[1]]
+        # 1. Primary Sheet 1 must NOT contain ineligible individual
+        ws1 = wb.active
+        s1_headers = [cell.value for cell in ws1[1]]
+        s1_sid_col = s1_headers.index("Study ID") + 1
+        s1_sids = [ws1.cell(row=r, column=s1_sid_col).value for r in range(2, ws1.max_row + 1)]
+        self.assertNotIn("INEL-001", s1_sids)
+
+        # 2. Dedicated Sheet 2 (abcg_ineligible_data) MUST contain ineligible record with reason and blanked clinicals
+        self.assertIn("abcg_ineligible_data", wb.sheetnames)
+        ws2 = wb["abcg_ineligible_data"]
+        headers = [cell.value for cell in ws2[1]]
 
         study_id_col = headers.index("Study ID") + 1
+        inel_reason_col = headers.index("Ineligibility Reason") + 1
         ptb_avail_col = headers.index("PTB Sample Available") + 1
         ptb_res_col = headers.index("PTB Sample Results") + 1
         eptb_avail_col = headers.index("EPTB Sample Available") + 1
         eptb_res_col = headers.index("EPTB Sample Results") + 1
 
-        for r in range(2, ws.max_row + 1):
-            if ws.cell(row=r, column=study_id_col).value == "INEL-001":
-                self.assertIn(ws.cell(row=r, column=ptb_avail_col).value, ["", None])
-                self.assertIn(ws.cell(row=r, column=ptb_res_col).value, ["", None])
-                self.assertIn(ws.cell(row=r, column=eptb_avail_col).value, ["", None])
-                self.assertIn(ws.cell(row=r, column=eptb_res_col).value, ["", None])
+        inel_row = None
+        for r in range(2, ws2.max_row + 1):
+            if ws2.cell(row=r, column=study_id_col).value == "INEL-001":
+                inel_row = r
                 break
+
+        self.assertIsNotNone(inel_row)
+        self.assertEqual(ws2.cell(row=inel_row, column=inel_reason_col).value, "Age criteria not met")
+        self.assertIn(ws2.cell(row=inel_row, column=ptb_avail_col).value, ["", None])
+        self.assertIn(ws2.cell(row=inel_row, column=ptb_res_col).value, ["", None])
+        self.assertIn(ws2.cell(row=inel_row, column=eptb_avail_col).value, ["", None])
+        self.assertIn(ws2.cell(row=inel_row, column=eptb_res_col).value, ["", None])
 
     def test_06_primary_and_secondary_cohort_separation_and_naming(self):
         """Verifies TPT=NO (Primary) and TPT=YES (Secondary) are exported into distinct workbooks with matching tab names."""
@@ -344,8 +360,10 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertIn(f'filename="{expected_prim_name}.xlsx"', resp_prim_excel["Content-Disposition"])
 
         wb_prim = openpyxl.load_workbook(io.BytesIO(resp_prim_excel.content))
-        self.assertEqual(wb_prim.sheetnames[0], expected_prim_name)
+        # Primary workbook has 3 sheets: primary, ineligible, summary
+        self.assertEqual(wb_prim.sheetnames, [expected_prim_name, "abcg_ineligible_data", "Summary Statistics"])
         self.assertLessEqual(len(wb_prim.sheetnames[0]), 31)
+        self.assertLessEqual(len(wb_prim.sheetnames[1]), 31)
 
         ws_prim = wb_prim.active
         prim_headers = [c.value for c in ws_prim[1]]
@@ -368,7 +386,8 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertIn(f'filename="{expected_sec_name}.xlsx"', resp_sec_excel["Content-Disposition"])
 
         wb_sec = openpyxl.load_workbook(io.BytesIO(resp_sec_excel.content))
-        self.assertEqual(wb_sec.sheetnames[0], expected_sec_name)
+        # Secondary workbook has 2 sheets: secondary, summary
+        self.assertEqual(wb_sec.sheetnames, [expected_sec_name, "Summary Statistics"])
         self.assertLessEqual(len(wb_sec.sheetnames[0]), 31)
 
         ws_sec = wb_sec.active
@@ -392,5 +411,60 @@ class ExportSampleDetailsTestCase(TestCase):
         # --- EDGE CASE: Unknown cohort parameter defaults to primary ---
         resp_unknown = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=invalid_cohort")
         self.assertIn(f'filename="{expected_prim_name}.xlsx"', resp_unknown["Content-Disposition"])
+
+    def test_07_ineligible_csv_export_and_per_cohort_dedup(self):
+        """Verifies dedicated ineligible CSV export and checks that dedup does not swallow records across cohorts."""
+        from django.utils import timezone
+        yymmdd = timezone.now().strftime("%y%m%d")
+
+        # Create two individuals with identical phone number: one eligible primary, one ineligible
+        p_shared = Participant.objects.create(
+            first_name="EligibleUser",
+            last_name="Primary",
+            study_id="DEDUP-PRIM-001",
+            contact_number="9876543210",
+            age=35,
+            gender="Male",
+            date_enroll=datetime.date(2026, 4, 11),
+            tpt_undergone="No"
+        )
+        inel_shared = IneligibleIndividual.objects.create(
+            first_name="IneligibleUser",
+            last_name="Screened",
+            study_id="DEDUP-INEL-001",
+            contact_number="9876543210",
+            age=16,
+            gender="Female",
+            date_enroll=datetime.date(2026, 4, 10),
+            classification="Not Eligible",
+            classification_reason="Age < 18"
+        )
+
+        # Ineligible CSV download
+        resp_inel_csv = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=ineligible")
+        self.assertEqual(resp_inel_csv.status_code, 200)
+        expected_inel_name = f"abcg_ineligible_data_{yymmdd}"
+        self.assertIn(f'filename="{expected_inel_name}.csv"', resp_inel_csv["Content-Disposition"])
+        inel_csv_content = resp_inel_csv.content.decode("utf-8")
+        self.assertIn("DEDUP-INEL-001", inel_csv_content)
+        self.assertNotIn("DEDUP-PRIM-001", inel_csv_content)
+
+        # Primary Excel export with dedup=unique:
+        # Both must survive because dedup is scoped within each cohort!
+        resp_excel = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=primary&dedup=unique")
+        self.assertEqual(resp_excel.status_code, 200)
+        wb = openpyxl.load_workbook(io.BytesIO(resp_excel.content))
+        ws_prim = wb.active
+        ws_inel = wb["abcg_ineligible_data"]
+
+        prim_headers = [c.value for c in ws_prim[1]]
+        prim_sid_col = prim_headers.index("Study ID") + 1
+        prim_sids = [ws_prim.cell(row=r, column=prim_sid_col).value for r in range(2, ws_prim.max_row + 1)]
+        self.assertIn("DEDUP-PRIM-001", prim_sids)
+
+        inel_headers = [c.value for c in ws_inel[1]]
+        inel_sid_col = inel_headers.index("Study ID") + 1
+        inel_sids = [ws_inel.cell(row=r, column=inel_sid_col).value for r in range(2, ws_inel.max_row + 1)]
+        self.assertIn("DEDUP-INEL-001", inel_sids)
 
 

@@ -206,7 +206,8 @@ class ConsentQuestionTestCase(TestCase):
         profile.role = "Super Admin"
         profile.save()
 
-        csv_resp = self.client.get(reverse("questions:data_export") + "?format=csv")
+        # 1. Primary CSV export verifies consented control participant
+        csv_resp = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=primary")
         self.assertEqual(csv_resp.status_code, 200)
         csv_content = csv_resp.content.decode("utf-8")
         reader = csv.reader(io.StringIO(csv_content))
@@ -220,13 +221,28 @@ class ConsentQuestionTestCase(TestCase):
         class_idx = headers.index("Classification")
         study_id_idx = headers.index("Study ID")
 
-        excluded_row = next(r for r in rows[1:] if r[study_id_idx] == "ABCG-TN-TIR-2026-222222")
-        self.assertEqual(excluded_row[consent_idx], "No")
-        self.assertEqual(excluded_row[class_idx], "Excluded")
-
         consented_row = next(r for r in rows[1:] if r[study_id_idx] == "ABCG-TN-TIR-2026-333333")
         self.assertEqual(consented_row[consent_idx], "Yes")
         self.assertEqual(consented_row[class_idx], "Control")
+
+        # 2. Ineligible CSV export verifies excluded participant
+        csv_inel_resp = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=ineligible")
+        self.assertEqual(csv_inel_resp.status_code, 200)
+        inel_reader = csv.reader(io.StringIO(csv_inel_resp.content.decode("utf-8")))
+        inel_rows = list(inel_reader)
+        excluded_row = next(r for r in inel_rows[1:] if r[study_id_idx] == "ABCG-TN-TIR-2026-222222")
+        self.assertEqual(excluded_row[consent_idx], "No")
+        self.assertEqual(excluded_row[class_idx], "Excluded")
+
+        # 3. Excel export contains both across Sheet 1 (Primary) and Sheet 2 (abcg_ineligible_data)
+        excel_resp = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=primary")
+        self.assertEqual(excel_resp.status_code, 200)
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(excel_resp.content))
+        ws_prim = wb.active
+        ws_inel = wb["abcg_ineligible_data"]
+        self.assertIn("ABCG-TN-TIR-2026-333333", [ws_prim.cell(row=r, column=study_id_idx + 1).value for r in range(2, ws_prim.max_row + 1)])
+        self.assertIn("ABCG-TN-TIR-2026-222222", [ws_inel.cell(row=r, column=study_id_idx + 1).value for r in range(2, ws_inel.max_row + 1)])
 
     def test_existing_records_preserved_safely(self):
         """6. Existing records with consent=None are safely preserved without errors."""

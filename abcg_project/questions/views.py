@@ -488,7 +488,7 @@ def registration(request, pk=None):
         bmi = float(bmi_str) if bmi_str else 0.0
 
         # TPT fields
-        tpt_undergone = request.POST.get("tpt_undergone", "No").strip()
+        tpt_undergone = (request.POST.get("tpt_undergone", "") or "").strip() or "No"
         tpt_status = None
         tpt_contact_known = None
         tpt_history = request.POST.get("tpt_history", "").strip() or None
@@ -5604,23 +5604,36 @@ def data_export_view(request):
     # Check if download format is requested
     export_format = request.GET.get("format")
     if export_format in ["excel", "csv"]:
-        participants = Participant.objects.all().order_by("-date_enroll")
-        tpts = TptIndividual.objects.all().order_by("-date_enroll")
-        ineligibles = IneligibleIndividual.objects.all().order_by("-date_enroll")
-        
-        all_records = list(participants) + list(tpts) + list(ineligibles)
-        # Sort combined list by date_enroll descending
-        all_records.sort(key=lambda x: x.date_enroll if x.date_enroll else timezone.localdate(), reverse=True)
+        participants = list(Participant.objects.all().order_by("-date_enroll"))
+        tpts = list(TptIndividual.objects.all().order_by("-date_enroll"))
+        ineligibles = list(IneligibleIndividual.objects.all().order_by("-date_enroll"))
 
-        export_dedup = request.GET.get("dedup", "unique")
-        if export_dedup == "unique" and len(all_records) > 1:
+        def _is_tpt_record(p):
+            if isinstance(p, TptIndividual):
+                return True
+            val = str(getattr(p, "tpt_undergone", "") or "").strip().lower()
+            return val in ["yes", "true", "1"]
+
+        def _is_ineligible_record(p):
+            if isinstance(p, IneligibleIndividual):
+                return True
+            if getattr(p, "eligible", True) is False:
+                return True
+            cls = str(getattr(p, "classification", "") or "").strip().lower()
+            if cls in ["not eligible", "excluded", "ineligible"]:
+                return True
+            return False
+
+        def _dedup_records(records):
+            if not records or len(records) <= 1:
+                return records
             from questions.deduplication import match_participant_records, DisjointSetUnion
             from collections import defaultdict
             dsu = DisjointSetUnion()
-            n = len(all_records)
+            n = len(records)
             phone_map = defaultdict(list)
             nik_map = defaultdict(list)
-            for i, r in enumerate(all_records):
+            for i, r in enumerate(records):
                 ph = getattr(r, "contact_number", None) or getattr(r, "primary_phone", None)
                 if ph and len(str(ph).strip()) >= 10:
                     phone_map[str(ph).strip()[-10:]].append(i)
@@ -5633,7 +5646,7 @@ def data_export_view(request):
             for indices in phone_map.values():
                 for a_idx in range(len(indices)):
                     for b_idx in range(a_idx + 1, len(indices)):
-                        m, _, _ = match_participant_records(all_records[indices[a_idx]], all_records[indices[b_idx]])
+                        m, _, _ = match_participant_records(records[indices[a_idx]], records[indices[b_idx]])
                         if m:
                             dsu.union(indices[a_idx], indices[b_idx])
             seen_roots = set()
@@ -5642,28 +5655,46 @@ def data_export_view(request):
                 root = dsu.find(i)
                 if root not in seen_roots:
                     seen_roots.add(root)
-                    unique_records.append(all_records[i])
-            all_records = unique_records
+                    unique_records.append(records[i])
+            return unique_records
 
-        # Cohort selection: primary (TPT = NO) vs secondary (TPT = YES)
+        raw_all = participants + tpts + ineligibles
+        raw_all.sort(key=lambda x: x.date_enroll if x.date_enroll else timezone.localdate(), reverse=True)
+
+        primary_records = []
+        secondary_records = []
+        ineligible_records = []
+
+        for r in raw_all:
+            if _is_ineligible_record(r):
+                ineligible_records.append(r)
+            elif _is_tpt_record(r):
+                secondary_records.append(r)
+            else:
+                primary_records.append(r)
+
+        export_dedup = request.GET.get("dedup", "unique")
+        if export_dedup == "unique":
+            primary_records = _dedup_records(primary_records)
+            secondary_records = _dedup_records(secondary_records)
+            ineligible_records = _dedup_records(ineligible_records)
+
+        # Cohort selection: primary (TPT = NO) vs secondary (TPT = YES) vs ineligible
         cohort = (request.GET.get("cohort") or "primary").strip().lower()
-        if cohort not in ["primary", "secondary"]:
+        if cohort not in ["primary", "secondary", "ineligible"]:
             cohort = "primary"
         
         date_str = timezone.now().strftime("%y%m%d")
         
-        def _is_tpt_record(p):
-            if isinstance(p, TptIndividual):
-                return True
-            val = str(getattr(p, "tpt_undergone", "") or "").strip().lower()
-            return val in ["yes", "true", "1"]
-        
         if cohort == "secondary":
-            all_records = [r for r in all_records if _is_tpt_record(r)]
             base_export_name = f"abcg_secondary_data_{date_str}"
+            export_records = secondary_records
+        elif cohort == "ineligible":
+            base_export_name = f"abcg_ineligible_data_{date_str}"
+            export_records = ineligible_records
         else:
-            all_records = [r for r in all_records if not _is_tpt_record(r)]
             base_export_name = f"abcg_primary_data_{date_str}"
+            export_records = primary_records
         
         import json
 
@@ -5682,11 +5713,19 @@ def data_export_view(request):
             cls = str(getattr(p, "classification", "") or "").strip().lower()
             if cls in ["not eligible", "excluded", "ineligible"]:
                 return True
-            if p.__class__.__name__ == "IneligibleIndividual":
+            if isinstance(p, IneligibleIndividual) or p.__class__.__name__ == "IneligibleIndividual":
                 return True
             if getattr(p, "eligible", None) is False:
                 return True
             return False
+
+        def _get_ineligibility_reason(p):
+            if isinstance(p, IneligibleIndividual):
+                return getattr(p, "classification_reason", "") or "Ineligible under screening criteria"
+            cls = str(getattr(p, "classification", "") or "").strip()
+            if cls.lower() in ["not eligible", "excluded", "ineligible"] or getattr(p, "eligible", True) is False:
+                return getattr(p, "classification_reason", "") or "Excluded from Study Cohort"
+            return ""
 
         def _is_not_eligible(p):
             cls = str(getattr(p, "classification", "") or "").strip().lower()
@@ -6201,7 +6240,8 @@ def data_export_view(request):
             ("Was this participant eligible for an adult BCG vaccination campaign in the district during the campaign period?", lambda p: _get_eligible_bcg_campaign(p)),
             ("Under which eligibility criteria was the BCG vaccine administered to the participant?", lambda p: _get_bcg_eligibility_criteria(p)),
             ("Did the participant provide informed consent to participate in the study?", lambda p: getattr(p, "consent", "") or ("No" if getattr(p, "classification", "") == "Excluded" and "consent" in (getattr(p, "classification_reason", "") or "").lower() else "")),
-            ("Have you taken TPT?", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_undergone", "")),
+            ("Ineligibility Reason", lambda p: _get_ineligibility_reason(p)),
+            ("Have you taken TPT?", lambda p: "" if _is_clinical_data_blanked(p) else (getattr(p, "tpt_undergone", "") or "No")),
             ("History of TB Preventive Treatment / Chemoprophylaxis", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_history", "")),
             ("What risk factor were you given TPT?", lambda p: "" if _is_clinical_data_blanked(p) else getattr(p, "tpt_risk_factor", "")),
             ("TPT Start Date", lambda p: None if _is_clinical_data_blanked(p) else getattr(p, "tpt_start_date", None)),
@@ -6355,12 +6395,12 @@ def data_export_view(request):
             
             writer = csv.writer(response)
             writer.writerow(headers)
-            for p in all_records:
+            for p in export_records:
                 row_data = [clean_val(item[1](p)) for item in fields_map]
                 writer.writerow(row_data)
             new_log = {
                 "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"{base_export_name} ({len(all_records)} records)",
+                "name": f"{base_export_name} ({len(export_records)} records)",
                 "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
                 "format": "csv",
                 "status": "ready"
@@ -6380,9 +6420,6 @@ def data_export_view(request):
             from io import BytesIO
             
             wb = openpyxl.Workbook()
-            # Sheet 1: Matches workbook name exactly (abcg_primary_data_yymmdd / abcg_secondary_data_yymmdd)
-            ws1 = wb.active
-            ws1.title = base_export_name
             
             # Styles
             header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -6398,63 +6435,126 @@ def data_export_view(request):
                 top=Side(style='thin', color='D9D9D9'),
                 bottom=Side(style='thin', color='D9D9D9')
             )
-            
-            ws1.append(headers)
-            # Style headers
-            for col_idx in range(1, len(headers) + 1):
-                cell = ws1.cell(row=1, column=col_idx)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-            
-            for p in all_records:
-                row_data = [clean_val(item[1](p)) for item in fields_map]
-                ws1.append(row_data)
+
+            def _populate_sheet(ws, title, records):
+                ws.title = title
+                ws.append(headers)
+                # Style headers
+                for col_idx in range(1, len(headers) + 1):
+                    cell = ws.cell(row=1, column=col_idx)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
                 
-            # Apply borders and auto-fit columns
-            for row in ws1.iter_rows(min_row=2, max_row=ws1.max_row, min_col=1, max_col=len(headers)):
-                for cell in row:
-                    cell.font = normal_font
-                    cell.border = thin_border
+                for p in records:
+                    row_data = [clean_val(item[1](p)) for item in fields_map]
+                    ws.append(row_data)
                     
-            for col in ws1.columns:
-                max_len = max(len(str(cell.value or '')) for cell in col)
-                col_letter = openpyxl.utils.get_column_letter(col[0].column)
-                ws1.column_dimensions[col_letter].width = max(max_len + 3, 12)
+                # Apply borders
+                for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+                    for cell in row:
+                        cell.font = normal_font
+                        cell.border = thin_border
+                        
+                # Auto-fit columns
+                for col in ws.columns:
+                    max_len = max(len(str(cell.value or '')) for cell in col)
+                    col_letter = openpyxl.utils.get_column_letter(col[0].column)
+                    ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+
+            if cohort == "secondary":
+                ws1 = wb.active
+                _populate_sheet(ws1, base_export_name, secondary_records)
                 
-            # Sheet 2: Summary Stats
-            ws2 = wb.create_sheet(title="Summary Statistics")
-            title_text = "aBCG VE Study Secondary Data (TPT = Yes) Summary Statistics" if cohort == "secondary" else "aBCG VE Study Primary Data (TPT = No) Summary Statistics"
-            ws2.append([title_text])
-            ws2.cell(row=1, column=1).font = Font(name="Calibri", size=16, bold=True, color="1F4E79")
-            ws2.append([])
-            
-            total_cases = sum(1 for r in all_records if getattr(r, "classification", "") == "Case")
-            total_controls = sum(1 for r in all_records if getattr(r, "classification", "") == "Control")
-            total_pending = sum(1 for r in all_records if getattr(r, "classification", "") == "Pending")
-            total_excluded = sum(1 for r in all_records if getattr(r, "classification", "") in ["Excluded", "Not Eligible"])
-            total_screened = len(all_records)
-            
-            ws2.append(["Metric", "Count"])
-            ws2.cell(row=3, column=1).font = bold_font
-            ws2.cell(row=3, column=2).font = bold_font
-            ws2.cell(row=3, column=1).fill = accent_fill
-            ws2.cell(row=3, column=2).fill = accent_fill
-            
-            cohort_label = "Secondary Cohort (TPT = YES)" if cohort == "secondary" else "Primary Cohort (TPT = NO)"
-            metrics = [
-                (f"Total Exported Records ({cohort_label})", total_screened),
-                ("Confirmed TB Cases", total_cases),
-                ("Matched Controls", total_controls),
-                ("Pending Adjudication / Verification", total_pending),
-                ("Ineligible / Excluded Individuals", total_excluded)
-            ]
-            for m, val in metrics:
-                ws2.append([m, val])
+                # Sheet 2: Summary Stats
+                ws2 = wb.create_sheet(title="Summary Statistics")
+                ws2.append(["aBCG VE Study Secondary Data (TPT = Yes) Summary Statistics"])
+                ws2.cell(row=1, column=1).font = Font(name="Calibri", size=16, bold=True, color="1F4E79")
+                ws2.append([])
                 
-            ws2.column_dimensions['A'].width = 45
-            ws2.column_dimensions['B'].width = 15
-            
+                total_cases = sum(1 for r in secondary_records if getattr(r, "classification", "") == "Case")
+                total_controls = sum(1 for r in secondary_records if getattr(r, "classification", "") == "Control")
+                total_pending = sum(1 for r in secondary_records if getattr(r, "classification", "") == "Pending")
+                total_secondary = len(secondary_records)
+                
+                ws2.append(["Metric", "Count"])
+                ws2.cell(row=3, column=1).font = bold_font
+                ws2.cell(row=3, column=2).font = bold_font
+                ws2.cell(row=3, column=1).fill = accent_fill
+                ws2.cell(row=3, column=2).fill = accent_fill
+                
+                metrics = [
+                    ("Total Secondary Participants (TPT = YES)", total_secondary),
+                    ("Confirmed TB Cases", total_cases),
+                    ("Matched Controls", total_controls),
+                    ("Pending Adjudication / Verification", total_pending),
+                ]
+                for m, val in metrics:
+                    ws2.append([m, val])
+                    
+                ws2.column_dimensions['A'].width = 45
+                ws2.column_dimensions['B'].width = 15
+                log_name = f"{base_export_name} ({len(secondary_records)} records)"
+
+            elif cohort == "ineligible":
+                ws1 = wb.active
+                _populate_sheet(ws1, base_export_name, ineligible_records)
+                
+                ws2 = wb.create_sheet(title="Summary Statistics")
+                ws2.append(["aBCG VE Study Ineligible Individuals Summary Statistics"])
+                ws2.cell(row=1, column=1).font = Font(name="Calibri", size=16, bold=True, color="1F4E79")
+                ws2.append([])
+                ws2.append(["Metric", "Count"])
+                ws2.cell(row=3, column=1).font = bold_font
+                ws2.cell(row=3, column=2).font = bold_font
+                ws2.cell(row=3, column=1).fill = accent_fill
+                ws2.cell(row=3, column=2).fill = accent_fill
+                ws2.append(["Total Ineligible Individuals Screened", len(ineligible_records)])
+                ws2.column_dimensions['A'].width = 45
+                ws2.column_dimensions['B'].width = 15
+                log_name = f"{base_export_name} ({len(ineligible_records)} records)"
+
+            else:
+                # Primary cohort: Sheet 1 (Primary Participants) + Sheet 2 (Ineligible Individuals) + Sheet 3 (Summary Statistics)
+                ws1 = wb.active
+                _populate_sheet(ws1, base_export_name, primary_records)
+                
+                ws2 = wb.create_sheet(title="abcg_ineligible_data")
+                _populate_sheet(ws2, "abcg_ineligible_data", ineligible_records)
+                
+                ws3 = wb.create_sheet(title="Summary Statistics")
+                ws3.append(["aBCG VE Study Primary Data Summary Statistics"])
+                ws3.cell(row=1, column=1).font = Font(name="Calibri", size=16, bold=True, color="1F4E79")
+                ws3.append([])
+                
+                total_cases = sum(1 for r in primary_records if getattr(r, "classification", "") == "Case")
+                total_controls = sum(1 for r in primary_records if getattr(r, "classification", "") == "Control")
+                total_pending = sum(1 for r in primary_records if getattr(r, "classification", "") == "Pending")
+                total_primary = len(primary_records)
+                total_ineligible = len(ineligible_records)
+                total_screened = total_primary + total_ineligible
+                
+                ws3.append(["Metric", "Count"])
+                ws3.cell(row=3, column=1).font = bold_font
+                ws3.cell(row=3, column=2).font = bold_font
+                ws3.cell(row=3, column=1).fill = accent_fill
+                ws3.cell(row=3, column=2).fill = accent_fill
+                
+                metrics = [
+                    ("Total Primary Study Participants (Sheet 1)", total_primary),
+                    ("Confirmed TB Cases (Primary)", total_cases),
+                    ("Matched Controls (Primary)", total_controls),
+                    ("Pending Adjudication (Primary)", total_pending),
+                    ("Ineligible / Excluded Individuals (Sheet 2: abcg_ineligible_data)", total_ineligible),
+                    ("Total Screened Individuals (Primary + Ineligible)", total_screened),
+                ]
+                for m, val in metrics:
+                    ws3.append([m, val])
+                    
+                ws3.column_dimensions['A'].width = 65
+                ws3.column_dimensions['B'].width = 15
+                log_name = f"{base_export_name} ({len(primary_records)} primary, {len(ineligible_records)} ineligible)"
+                
             stream = BytesIO()
             wb.save(stream)
             stream.seek(0)
@@ -6468,7 +6568,7 @@ def data_export_view(request):
             # Record in session export history
             new_log = {
                 "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"{base_export_name} ({len(all_records)} records)",
+                "name": log_name,
                 "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
                 "format": "excel",
                 "status": "ready"
@@ -6482,20 +6582,23 @@ def data_export_view(request):
             
     tpt_yes_count = (
         TptIndividual.objects.count() +
-        Participant.objects.filter(tpt_undergone="Yes").count() +
-        IneligibleIndividual.objects.filter(tpt_undergone="Yes").count()
+        Participant.objects.filter(tpt_undergone="Yes").exclude(classification__in=["Not Eligible", "Excluded"]).count()
     )
-    tpt_no_count = (
-        Participant.objects.exclude(tpt_undergone="Yes").count() +
-        IneligibleIndividual.objects.exclude(tpt_undergone="Yes").count()
+    ineligible_count = (
+        IneligibleIndividual.objects.count() +
+        Participant.objects.filter(classification__in=["Not Eligible", "Excluded"]).count()
+    )
+    primary_count = (
+        Participant.objects.exclude(tpt_undergone="Yes").exclude(classification__in=["Not Eligible", "Excluded"]).count()
     )
     date_str = timezone.now().strftime("%y%m%d")
 
     return render(request, "dashboard/data_export.html", {
         "history": request.session.get("export_history", []),
         "page": "data_export",
-        "primary_count": tpt_no_count,
+        "primary_count": primary_count,
         "secondary_count": tpt_yes_count,
+        "ineligible_count": ineligible_count,
         "date_str": date_str,
     })
 
