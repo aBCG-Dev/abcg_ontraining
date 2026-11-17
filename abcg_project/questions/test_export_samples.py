@@ -342,7 +342,7 @@ class ExportSampleDetailsTestCase(TestCase):
             tpt_undergone="No"
         )
 
-        # 2. Create a distinct Secondary participant (TPT=Yes)
+        # 2. Create a distinct Secondary participant (TPT=Yes, Eligible)
         p_sec = TptIndividual.objects.create(
             first_name="Secondary",
             last_name="Participant",
@@ -351,6 +351,19 @@ class ExportSampleDetailsTestCase(TestCase):
             gender="Female",
             date_enroll=datetime.date(2026, 4, 10),
             tpt_undergone="Yes"
+        )
+
+        # 3. Create a distinct Secondary participant (TPT=Yes, Ineligible)
+        p_sec_inel = TptIndividual.objects.create(
+            first_name="SecondaryIneligible",
+            last_name="Participant",
+            study_id="SEC-INEL-001",
+            age=35,
+            gender="Female",
+            date_enroll=datetime.date(2026, 4, 10),
+            tpt_undergone="Yes",
+            classification="Not Eligible",
+            classification_reason="Contraindicated"
         )
 
         # --- TEST PRIMARY EXPORT (TPT = NO) ---
@@ -371,6 +384,7 @@ class ExportSampleDetailsTestCase(TestCase):
         prim_sids = [ws_prim.cell(row=r, column=sid_col).value for r in range(2, ws_prim.max_row + 1)]
         self.assertIn("PRIM-TEST-001", prim_sids)
         self.assertNotIn("SEC-TEST-001", prim_sids)
+        self.assertNotIn("SEC-INEL-001", prim_sids)
 
         # Primary CSV
         resp_prim_csv = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=primary")
@@ -378,6 +392,7 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertIn(f'filename="{expected_prim_name}.csv"', resp_prim_csv["Content-Disposition"])
         self.assertIn("PRIM-TEST-001", resp_prim_csv.content.decode("utf-8"))
         self.assertNotIn("SEC-TEST-001", resp_prim_csv.content.decode("utf-8"))
+        self.assertNotIn("SEC-INEL-001", resp_prim_csv.content.decode("utf-8"))
 
         # --- TEST SECONDARY EXPORT (TPT = YES) ---
         resp_sec_excel = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=secondary")
@@ -386,16 +401,28 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertIn(f'filename="{expected_sec_name}.xlsx"', resp_sec_excel["Content-Disposition"])
 
         wb_sec = openpyxl.load_workbook(io.BytesIO(resp_sec_excel.content))
-        # Secondary workbook has 2 sheets: secondary, summary
-        self.assertEqual(wb_sec.sheetnames, [expected_sec_name, "Summary Statistics"])
+        # Secondary workbook now has 3 sheets: secondary (eligible), ineligible, summary
+        self.assertEqual(wb_sec.sheetnames, [expected_sec_name, "abcg_ineligible_data", "Summary Statistics"])
         self.assertLessEqual(len(wb_sec.sheetnames[0]), 31)
+        self.assertLessEqual(len(wb_sec.sheetnames[1]), 31)
 
+        # Sheet 1: secondary eligible
         ws_sec = wb_sec.active
         sec_headers = [c.value for c in ws_sec[1]]
         sec_sid_col = sec_headers.index("Study ID") + 1
         sec_sids = [ws_sec.cell(row=r, column=sec_sid_col).value for r in range(2, ws_sec.max_row + 1)]
         self.assertIn("SEC-TEST-001", sec_sids)
+        self.assertNotIn("SEC-INEL-001", sec_sids)
         self.assertNotIn("PRIM-TEST-001", sec_sids)
+
+        # Sheet 2: secondary ineligible
+        ws_sec_inel = wb_sec["abcg_ineligible_data"]
+        sec_inel_headers = [c.value for c in ws_sec_inel[1]]
+        sec_inel_sid_col = sec_inel_headers.index("Study ID") + 1
+        sec_inel_reason_col = sec_inel_headers.index("Ineligibility Reason") + 1
+        sec_inel_sids = [ws_sec_inel.cell(row=r, column=sec_inel_sid_col).value for r in range(2, ws_sec_inel.max_row + 1)]
+        self.assertIn("SEC-INEL-001", sec_inel_sids)
+        self.assertNotIn("SEC-TEST-001", sec_inel_sids)
 
         # Secondary CSV
         resp_sec_csv = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=secondary")

@@ -35,10 +35,10 @@
 
       <!-- Col 2: Metrics -->
       <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap">
-        <span class="tabular-nums font-semibold text-slate-900">{{ primary_count|default:"1,326" }}</span>
+        <span class="tabular-nums font-semibold text-slate-900">{{ primary_eligible_count|default:primary_count|default:"1,326" }}</span>
         <span class="text-slate-500 font-normal">eligible</span>
         <span class="text-slate-300">&middot;</span>
-        <span class="tabular-nums font-semibold text-slate-700">{{ ineligible_count|default:"381" }}</span>
+        <span class="tabular-nums font-semibold text-slate-700">{{ primary_ineligible_count|default:ineligible_count|default:"381" }}</span>
         <span class="text-slate-500 font-normal">ineligible</span>
       </div>
 
@@ -68,17 +68,6 @@
           <i data-lucide="file-text" class="size-3.5 text-slate-400"></i>
           <span>CSV (.csv)</span>
         </a>
-
-        <!-- Ineligible CSV Action -->
-        <a
-          href="?format=csv&cohort=ineligible"
-          onclick="handleDownloadFeedback('abcg_ineligible_data_{{ date_str|default:'261117' }}.csv')"
-          class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-[6px] text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none shrink-0"
-          title="Download screened ineligible cohort CSV"
-        >
-          <i data-lucide="user-x" class="size-3.5 text-slate-400"></i>
-          <span>Ineligible CSV</span>
-        </a>
       </div>
     </div>
 
@@ -94,8 +83,11 @@
 
       <!-- Col 2: Metrics -->
       <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap">
-        <span class="tabular-nums font-semibold text-slate-900">{{ secondary_count|default:"28" }}</span>
-        <span class="text-slate-500 font-normal">records</span>
+        <span class="tabular-nums font-semibold text-slate-900">{{ secondary_eligible_count|default:secondary_count|default:"28" }}</span>
+        <span class="text-slate-500 font-normal">eligible</span>
+        <span class="text-slate-300">&middot;</span>
+        <span class="tabular-nums font-semibold text-slate-700">{{ secondary_ineligible_count|default:"0" }}</span>
+        <span class="text-slate-500 font-normal">ineligible</span>
       </div>
 
       <!-- Col 3: Action Buttons (Columns in Exact Alignment with Row 1) -->
@@ -108,7 +100,7 @@
           style="background-color: #0F2942;"
           onmouseover="this.style.backgroundColor='#183B5C'"
           onmouseout="this.style.backgroundColor='#0F2942'"
-          title="Secondary TPT cohort workbook"
+          title="Multi-sheet Excel workbook (Sheet 1: Secondary, Sheet 2: Ineligible, Sheet 3: Summary)"
         >
           <i data-lucide="download" class="size-3.5 text-slate-300"></i>
           <span>Excel (.xlsx)</span>
@@ -119,7 +111,7 @@
           href="?format=csv&cohort=secondary"
           onclick="handleDownloadFeedback('abcg_secondary_data_{{ date_str|default:'261117' }}.csv')"
           class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none shrink-0"
-          title="Flat CSV line list of TPT cohort participants"
+          title="Flat CSV line list of eligible secondary cohort participants"
         >
           <i data-lucide="file-text" class="size-3.5 text-slate-400"></i>
           <span>CSV (.csv)</span>

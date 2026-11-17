@@ -5661,40 +5661,49 @@ def data_export_view(request):
         raw_all = participants + tpts + ineligibles
         raw_all.sort(key=lambda x: x.date_enroll if x.date_enroll else timezone.localdate(), reverse=True)
 
-        primary_records = []
-        secondary_records = []
-        ineligible_records = []
+        primary_eligible = []
+        primary_ineligible = []
+        secondary_eligible = []
+        secondary_ineligible = []
 
         for r in raw_all:
-            if _is_ineligible_record(r):
-                ineligible_records.append(r)
-            elif _is_tpt_record(r):
-                secondary_records.append(r)
+            if _is_tpt_record(r):
+                if _is_ineligible_record(r):
+                    secondary_ineligible.append(r)
+                else:
+                    secondary_eligible.append(r)
             else:
-                primary_records.append(r)
+                if _is_ineligible_record(r):
+                    primary_ineligible.append(r)
+                else:
+                    primary_eligible.append(r)
 
         export_dedup = request.GET.get("dedup", "unique")
         if export_dedup == "unique":
-            primary_records = _dedup_records(primary_records)
-            secondary_records = _dedup_records(secondary_records)
-            ineligible_records = _dedup_records(ineligible_records)
+            primary_eligible = _dedup_records(primary_eligible)
+            primary_ineligible = _dedup_records(primary_ineligible)
+            secondary_eligible = _dedup_records(secondary_eligible)
+            secondary_ineligible = _dedup_records(secondary_ineligible)
 
-        # Cohort selection: primary (TPT = NO) vs secondary (TPT = YES) vs ineligible
+        # Cohort selection: primary (TPT != YES) vs secondary (TPT == YES) vs ineligible
         cohort = (request.GET.get("cohort") or "primary").strip().lower()
-        if cohort not in ["primary", "secondary", "ineligible"]:
+        if cohort not in ["primary", "secondary", "ineligible", "secondary_ineligible"]:
             cohort = "primary"
         
         date_str = timezone.now().strftime("%y%m%d")
         
         if cohort == "secondary":
             base_export_name = f"abcg_secondary_data_{date_str}"
-            export_records = secondary_records
+            export_records = secondary_eligible
+        elif cohort == "secondary_ineligible":
+            base_export_name = f"abcg_secondary_ineligible_data_{date_str}"
+            export_records = secondary_ineligible
         elif cohort == "ineligible":
             base_export_name = f"abcg_ineligible_data_{date_str}"
-            export_records = ineligible_records
+            export_records = primary_ineligible
         else:
             base_export_name = f"abcg_primary_data_{date_str}"
-            export_records = primary_records
+            export_records = primary_eligible
         
         import json
 
@@ -6468,42 +6477,50 @@ def data_export_view(request):
 
             if cohort == "secondary":
                 ws1 = wb.active
-                _populate_sheet(ws1, base_export_name, secondary_records)
+                _populate_sheet(ws1, base_export_name, secondary_eligible)
                 
-                # Sheet 2: Summary Stats
-                ws2 = wb.create_sheet(title="Summary Statistics")
-                ws2.append(["aBCG VE Study Secondary Data (TPT = Yes) Summary Statistics"])
-                ws2.cell(row=1, column=1).font = Font(name="Calibri", size=16, bold=True, color="1F4E79")
-                ws2.append([])
+                # Sheet 2: Ineligible Secondary Data
+                ws2 = wb.create_sheet(title="abcg_ineligible_data")
+                _populate_sheet(ws2, "abcg_ineligible_data", secondary_ineligible)
                 
-                total_cases = sum(1 for r in secondary_records if getattr(r, "classification", "") == "Case")
-                total_controls = sum(1 for r in secondary_records if getattr(r, "classification", "") == "Control")
-                total_pending = sum(1 for r in secondary_records if getattr(r, "classification", "") == "Pending")
-                total_secondary = len(secondary_records)
+                # Sheet 3: Summary Stats
+                ws3 = wb.create_sheet(title="Summary Statistics")
+                ws3.append(["aBCG VE Study Secondary Data (TPT = Yes) Summary Statistics"])
+                ws3.cell(row=1, column=1).font = Font(name="Calibri", size=16, bold=True, color="1F4E79")
+                ws3.append([])
                 
-                ws2.append(["Metric", "Count"])
-                ws2.cell(row=3, column=1).font = bold_font
-                ws2.cell(row=3, column=2).font = bold_font
-                ws2.cell(row=3, column=1).fill = accent_fill
-                ws2.cell(row=3, column=2).fill = accent_fill
+                total_cases = sum(1 for r in secondary_eligible if getattr(r, "classification", "") == "Case")
+                total_controls = sum(1 for r in secondary_eligible if getattr(r, "classification", "") == "Control")
+                total_pending = sum(1 for r in secondary_eligible if getattr(r, "classification", "") == "Pending")
+                total_secondary = len(secondary_eligible)
+                total_ineligible = len(secondary_ineligible)
+                total_screened = total_secondary + total_ineligible
+                
+                ws3.append(["Metric", "Count"])
+                ws3.cell(row=3, column=1).font = bold_font
+                ws3.cell(row=3, column=2).font = bold_font
+                ws3.cell(row=3, column=1).fill = accent_fill
+                ws3.cell(row=3, column=2).fill = accent_fill
                 
                 metrics = [
-                    ("Total Secondary Participants (TPT = YES)", total_secondary),
-                    ("Confirmed TB Cases", total_cases),
-                    ("Matched Controls", total_controls),
-                    ("Pending Adjudication / Verification", total_pending),
+                    ("Total Secondary Study Participants (Sheet 1: Eligible)", total_secondary),
+                    ("Confirmed TB Cases (Secondary)", total_cases),
+                    ("Matched Controls (Secondary)", total_controls),
+                    ("Pending Adjudication (Secondary)", total_pending),
+                    ("Ineligible / Excluded Individuals (Sheet 2: abcg_ineligible_data)", total_ineligible),
+                    ("Total Screened Individuals (Secondary + Ineligible)", total_screened),
                 ]
                 for m, val in metrics:
-                    ws2.append([m, val])
+                    ws3.append([m, val])
                     
-                ws2.column_dimensions['A'].width = 45
-                ws2.column_dimensions['B'].width = 15
-                total_exported_count = len(secondary_records)
-                log_name = f"{base_export_name} ({len(secondary_records)} records)"
+                ws3.column_dimensions['A'].width = 65
+                ws3.column_dimensions['B'].width = 15
+                total_exported_count = len(secondary_eligible) + len(secondary_ineligible)
+                log_name = f"{base_export_name} ({len(secondary_eligible)} eligible, {len(secondary_ineligible)} ineligible)"
 
             elif cohort == "ineligible":
                 ws1 = wb.active
-                _populate_sheet(ws1, base_export_name, ineligible_records)
+                _populate_sheet(ws1, base_export_name, primary_ineligible)
                 
                 ws2 = wb.create_sheet(title="Summary Statistics")
                 ws2.append(["aBCG VE Study Ineligible Individuals Summary Statistics"])
@@ -6514,30 +6531,30 @@ def data_export_view(request):
                 ws2.cell(row=3, column=2).font = bold_font
                 ws2.cell(row=3, column=1).fill = accent_fill
                 ws2.cell(row=3, column=2).fill = accent_fill
-                ws2.append(["Total Ineligible Individuals Screened", len(ineligible_records)])
+                ws2.append(["Total Ineligible Individuals Screened", len(primary_ineligible)])
                 ws2.column_dimensions['A'].width = 45
                 ws2.column_dimensions['B'].width = 15
-                total_exported_count = len(ineligible_records)
-                log_name = f"{base_export_name} ({len(ineligible_records)} records)"
+                total_exported_count = len(primary_ineligible)
+                log_name = f"{base_export_name} ({len(primary_ineligible)} records)"
 
             else:
                 # Primary cohort: Sheet 1 (Primary Participants) + Sheet 2 (Ineligible Individuals) + Sheet 3 (Summary Statistics)
                 ws1 = wb.active
-                _populate_sheet(ws1, base_export_name, primary_records)
+                _populate_sheet(ws1, base_export_name, primary_eligible)
                 
                 ws2 = wb.create_sheet(title="abcg_ineligible_data")
-                _populate_sheet(ws2, "abcg_ineligible_data", ineligible_records)
+                _populate_sheet(ws2, "abcg_ineligible_data", primary_ineligible)
                 
                 ws3 = wb.create_sheet(title="Summary Statistics")
                 ws3.append(["aBCG VE Study Primary Data Summary Statistics"])
                 ws3.cell(row=1, column=1).font = Font(name="Calibri", size=16, bold=True, color="1F4E79")
                 ws3.append([])
                 
-                total_cases = sum(1 for r in primary_records if getattr(r, "classification", "") == "Case")
-                total_controls = sum(1 for r in primary_records if getattr(r, "classification", "") == "Control")
-                total_pending = sum(1 for r in primary_records if getattr(r, "classification", "") == "Pending")
-                total_primary = len(primary_records)
-                total_ineligible = len(ineligible_records)
+                total_cases = sum(1 for r in primary_eligible if getattr(r, "classification", "") == "Case")
+                total_controls = sum(1 for r in primary_eligible if getattr(r, "classification", "") == "Control")
+                total_pending = sum(1 for r in primary_eligible if getattr(r, "classification", "") == "Pending")
+                total_primary = len(primary_eligible)
+                total_ineligible = len(primary_ineligible)
                 total_screened = total_primary + total_ineligible
                 
                 ws3.append(["Metric", "Count"])
@@ -6547,7 +6564,7 @@ def data_export_view(request):
                 ws3.cell(row=3, column=2).fill = accent_fill
                 
                 metrics = [
-                    ("Total Primary Study Participants (Sheet 1)", total_primary),
+                    ("Total Primary Study Participants (Sheet 1: Eligible)", total_primary),
                     ("Confirmed TB Cases (Primary)", total_cases),
                     ("Matched Controls (Primary)", total_controls),
                     ("Pending Adjudication (Primary)", total_pending),
@@ -6559,8 +6576,8 @@ def data_export_view(request):
                     
                 ws3.column_dimensions['A'].width = 65
                 ws3.column_dimensions['B'].width = 15
-                total_exported_count = len(primary_records) + len(ineligible_records)
-                log_name = f"{base_export_name} ({len(primary_records)} primary, {len(ineligible_records)} ineligible)"
+                total_exported_count = len(primary_eligible) + len(primary_ineligible)
+                log_name = f"{base_export_name} ({len(primary_eligible)} primary, {len(primary_ineligible)} ineligible)"
                 
             stream = BytesIO()
             wb.save(stream)
@@ -6591,18 +6608,30 @@ def data_export_view(request):
             
             return response
             
-    tpt_yes_count = (
-        TptIndividual.objects.count() +
-        Participant.objects.filter(tpt_undergone="Yes").exclude(classification__in=["Not Eligible", "Excluded"]).count()
+    from django.db.models import Q
+    inel_p_q = Q(classification__in=["Not Eligible", "Excluded", "Ineligible"]) | Q(eligible=False)
+    tpt_yes_q = Q(tpt_undergone__iexact="yes") | Q(tpt_undergone="1") | Q(tpt_undergone__iexact="true")
+
+    primary_eligible_count = Participant.objects.filter(~tpt_yes_q & ~inel_p_q).count()
+    primary_ineligible_count = (
+        IneligibleIndividual.objects.filter(~tpt_yes_q).count() +
+        Participant.objects.filter(~tpt_yes_q & inel_p_q).count()
     )
-    ineligible_count = (
-        IneligibleIndividual.objects.count() +
-        Participant.objects.filter(classification__in=["Not Eligible", "Excluded"]).count()
+
+    secondary_eligible_count = (
+        TptIndividual.objects.filter(~inel_p_q).count() +
+        Participant.objects.filter(tpt_yes_q & ~inel_p_q).count()
     )
-    primary_count = (
-        Participant.objects.exclude(tpt_undergone="Yes").exclude(classification__in=["Not Eligible", "Excluded"]).count()
+    secondary_ineligible_count = (
+        TptIndividual.objects.filter(inel_p_q).count() +
+        IneligibleIndividual.objects.filter(tpt_yes_q).count() +
+        Participant.objects.filter(tpt_yes_q & inel_p_q).count()
     )
-    total_records = primary_count + ineligible_count + tpt_yes_count
+
+    total_records = (
+        primary_eligible_count + primary_ineligible_count +
+        secondary_eligible_count + secondary_ineligible_count
+    )
     date_str = timezone.now().strftime("%y%m%d")
 
     history = list(request.session.get("export_history", []))
@@ -6614,7 +6643,7 @@ def data_export_view(request):
                 "filename": f"abcg_primary_data_{date_str}.csv",
                 "cohort": "primary",
                 "format": "csv",
-                "rows": primary_count if primary_count > 0 else 1278,
+                "rows": primary_eligible_count if primary_eligible_count > 0 else 1278,
                 "at": f"2026-11-17 08:59",
                 "by": getattr(request.user, "username", "") or "Dr.sriram",
                 "status": "ready"
@@ -6646,9 +6675,13 @@ def data_export_view(request):
     return render(request, "dashboard/data_export.html", {
         "history": history,
         "page": "data_export",
-        "primary_count": primary_count,
-        "secondary_count": tpt_yes_count,
-        "ineligible_count": ineligible_count,
+        "primary_count": primary_eligible_count,
+        "primary_eligible_count": primary_eligible_count,
+        "primary_ineligible_count": primary_ineligible_count,
+        "secondary_count": secondary_eligible_count,
+        "secondary_eligible_count": secondary_eligible_count,
+        "secondary_ineligible_count": secondary_ineligible_count,
+        "ineligible_count": primary_ineligible_count,
         "total_records": total_records,
         "date_str": date_str,
     })
