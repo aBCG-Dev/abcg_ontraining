@@ -429,6 +429,7 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertEqual(resp_sec_csv.status_code, 200)
         self.assertIn(f'filename="{expected_sec_name}.csv"', resp_sec_csv["Content-Disposition"])
         self.assertIn("SEC-TEST-001", resp_sec_csv.content.decode("utf-8"))
+        self.assertIn("SEC-INEL-001", resp_sec_csv.content.decode("utf-8"))
         self.assertNotIn("PRIM-TEST-001", resp_sec_csv.content.decode("utf-8"))
 
         # --- EDGE CASE: Missing cohort parameter defaults to primary ---

@@ -5687,13 +5687,16 @@ def data_export_view(request):
 
         # Cohort selection: primary (TPT != YES) vs secondary (TPT == YES) vs ineligible
         cohort = (request.GET.get("cohort") or "primary").strip().lower()
-        if cohort not in ["primary", "secondary", "ineligible", "secondary_ineligible"]:
+        if cohort not in ["primary", "secondary", "ineligible", "secondary_ineligible", "eligible", "primary_eligible", "secondary_eligible"]:
             cohort = "primary"
         
         date_str = timezone.now().strftime("%y%m%d")
         
         if cohort == "secondary":
             base_export_name = f"abcg_secondary_data_{date_str}"
+            export_records = secondary_eligible + secondary_ineligible
+        elif cohort == "secondary_eligible":
+            base_export_name = f"abcg_secondary_eligible_data_{date_str}"
             export_records = secondary_eligible
         elif cohort == "secondary_ineligible":
             base_export_name = f"abcg_secondary_ineligible_data_{date_str}"
@@ -5701,9 +5704,12 @@ def data_export_view(request):
         elif cohort == "ineligible":
             base_export_name = f"abcg_ineligible_data_{date_str}"
             export_records = primary_ineligible
+        elif cohort in ["eligible", "primary_eligible"]:
+            base_export_name = f"abcg_primary_eligible_data_{date_str}"
+            export_records = primary_eligible
         else:
             base_export_name = f"abcg_primary_data_{date_str}"
-            export_records = primary_eligible
+            export_records = primary_eligible + primary_ineligible
         
         import json
 
