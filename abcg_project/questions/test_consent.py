@@ -206,10 +206,13 @@ class ConsentQuestionTestCase(TestCase):
         profile.role = "Super Admin"
         profile.save()
 
-        # 1. Primary CSV export verifies consented control participant
+        # 1. Primary CSV export (ZIP archive containing separate eligible and ineligible CSVs)
         csv_resp = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=primary")
         self.assertEqual(csv_resp.status_code, 200)
-        csv_content = csv_resp.content.decode("utf-8")
+        import zipfile
+        zf = zipfile.ZipFile(io.BytesIO(csv_resp.content))
+        prim_csv_name = [n for n in zf.namelist() if n.startswith("abcg_primary_data_")][0]
+        csv_content = zf.read(prim_csv_name).decode("utf-8")
         reader = csv.reader(io.StringIO(csv_content))
         rows = list(reader)
         headers = rows[0]
@@ -225,14 +228,22 @@ class ConsentQuestionTestCase(TestCase):
         self.assertEqual(consented_row[consent_idx], "Yes")
         self.assertEqual(consented_row[class_idx], "Control")
 
-        # 2. Ineligible CSV export verifies excluded participant
-        csv_inel_resp = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=ineligible")
-        self.assertEqual(csv_inel_resp.status_code, 200)
-        inel_reader = csv.reader(io.StringIO(csv_inel_resp.content.decode("utf-8")))
+        # 2. Ineligible CSV: verified from the separate ineligible CSV inside the ZIP
+        inel_csv_name = [n for n in zf.namelist() if "ineligible" in n][0]
+        inel_reader = csv.reader(io.StringIO(zf.read(inel_csv_name).decode("utf-8")))
         inel_rows = list(inel_reader)
         excluded_row = next(r for r in inel_rows[1:] if r[study_id_idx] == "ABCG-TN-TIR-2026-222222")
         self.assertEqual(excluded_row[consent_idx], "No")
         self.assertEqual(excluded_row[class_idx], "Excluded")
+
+        # Also verify dedicated cohort=ineligible flat CSV download
+        csv_inel_resp = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=ineligible")
+        self.assertEqual(csv_inel_resp.status_code, 200)
+        inel_flat_reader = csv.reader(io.StringIO(csv_inel_resp.content.decode("utf-8")))
+        inel_flat_rows = list(inel_flat_reader)
+        flat_excluded_row = next(r for r in inel_flat_rows[1:] if r[study_id_idx] == "ABCG-TN-TIR-2026-222222")
+        self.assertEqual(flat_excluded_row[consent_idx], "No")
+        self.assertEqual(flat_excluded_row[class_idx], "Excluded")
 
         # 3. Excel export contains both across Sheet 1 (Primary) and Sheet 2 (abcg_ineligible_data)
         excel_resp = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=primary")

@@ -52,12 +52,12 @@
         <!-- CSV Action -->
         <a
           href="?format=csv&cohort=primary"
-          onclick="handleDownloadFeedback('abcg_primary_data_{{ date_str|default:'261117' }}.csv')"
+          onclick="handleDownloadFeedback('abcg_primary_data_{{ date_str|default:'261117' }}.zip')"
           class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none shrink-0"
-          title="Flat CSV line list of eligible study participants"
+          title="ZIP archive containing separate eligible and ineligible CSV files"
         >
-          <i data-lucide="file-text" class="size-3.5 text-slate-400"></i>
-          <span>CSV (.csv)</span>
+          <i data-lucide="file-archive" class="size-3.5 text-slate-400"></i>
+          <span>CSV (.zip)</span>
         </a>
       </div>
     </div>
@@ -91,12 +91,12 @@
         <!-- CSV Action -->
         <a
           href="?format=csv&cohort=secondary"
-          onclick="handleDownloadFeedback('abcg_secondary_data_{{ date_str|default:'261117' }}.csv')"
+          onclick="handleDownloadFeedback('abcg_secondary_data_{{ date_str|default:'261117' }}.zip')"
           class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[6px] text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all select-none cursor-pointer text-decoration-none shrink-0"
-          title="Flat CSV line list of eligible secondary cohort participants"
+          title="ZIP archive containing separate eligible and ineligible CSV files"
         >
-          <i data-lucide="file-text" class="size-3.5 text-slate-400"></i>
-          <span>CSV (.csv)</span>
+          <i data-lucide="file-archive" class="size-3.5 text-slate-400"></i>
+          <span>CSV (.zip)</span>
         </a>
       </div>
     </div>

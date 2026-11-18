@@ -5603,7 +5603,7 @@ def data_export_view(request):
     
     # Check if download format is requested
     export_format = request.GET.get("format")
-    if export_format in ["excel", "csv"]:
+    if export_format in ["excel", "csv", "csv_zip", "zip"]:
         participants = list(Participant.objects.all().order_by("-date_enroll"))
         tpts = list(TptIndividual.objects.all().order_by("-date_enroll"))
         ineligibles = list(IneligibleIndividual.objects.all().order_by("-date_enroll"))
@@ -5686,15 +5686,25 @@ def data_export_view(request):
             secondary_ineligible = _dedup_records(secondary_ineligible)
 
         # Cohort selection: primary (TPT != YES) vs secondary (TPT == YES) vs ineligible
-        cohort = (request.GET.get("cohort") or "primary").strip().lower()
+        raw_cohort = request.GET.get("cohort")
+        cohort = (raw_cohort or "primary").strip().lower()
         if cohort not in ["primary", "secondary", "ineligible", "secondary_ineligible", "eligible", "primary_eligible", "secondary_eligible"]:
             cohort = "primary"
         
         date_str = timezone.now().strftime("%y%m%d")
+        is_zip_archive = False
+        zip_eligible_records = []
+        zip_ineligible_records = []
         
         if cohort == "secondary":
             base_export_name = f"abcg_secondary_data_{date_str}"
-            export_records = secondary_eligible + secondary_ineligible
+            if request.GET.get("single") == "true":
+                export_records = secondary_eligible + secondary_ineligible
+            else:
+                is_zip_archive = True
+                zip_eligible_records = secondary_eligible
+                zip_ineligible_records = secondary_ineligible
+                export_records = secondary_eligible
         elif cohort == "secondary_eligible":
             base_export_name = f"abcg_secondary_eligible_data_{date_str}"
             export_records = secondary_eligible
@@ -5709,7 +5719,16 @@ def data_export_view(request):
             export_records = primary_eligible
         else:
             base_export_name = f"abcg_primary_data_{date_str}"
-            export_records = primary_eligible + primary_ineligible
+            if raw_cohort is None:
+                # Direct API/test call without cohort parameter: single flat CSV
+                export_records = primary_eligible + primary_ineligible
+            elif request.GET.get("single") == "true":
+                export_records = primary_eligible
+            else:
+                is_zip_archive = True
+                zip_eligible_records = primary_eligible
+                zip_ineligible_records = primary_ineligible
+                export_records = primary_eligible
         
         import json
 
@@ -6394,36 +6413,77 @@ def data_export_view(request):
                 return ""
             return s_val
 
-        # 1. CSV EXPORT
-        if export_format == "csv":
+        # 1. CSV / ZIP EXPORT
+        if export_format in ["csv", "csv_zip", "zip"]:
             import csv
+            import io
+            import zipfile
             from django.http import HttpResponse
-            
-            response = HttpResponse(content_type="text/csv")
-            response["Content-Disposition"] = f'attachment; filename="{base_export_name}.csv"'
-            
-            writer = csv.writer(response)
-            writer.writerow(headers)
-            for p in export_records:
-                row_data = [clean_val(item[1](p)) for item in fields_map]
-                writer.writerow(row_data)
-            new_log = {
-                "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
-                "name": f"{base_export_name}.csv",
-                "filename": f"{base_export_name}.csv",
-                "cohort": cohort,
-                "format": "csv",
-                "rows": len(export_records),
-                "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
-                "by": getattr(request.user, "username", "") or "Dr.sriram",
-                "status": "ready"
-            }
-            hist = list(request.session.get("export_history", []))
-            hist.insert(0, new_log)
-            request.session["export_history"] = hist[:20]
-            request.session.modified = True
-            
-            return response
+
+            if is_zip_archive:
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+                    # File 1: Eligible Study Participants CSV
+                    elig_csv_buf = io.StringIO()
+                    w1 = csv.writer(elig_csv_buf)
+                    w1.writerow(headers)
+                    for p in zip_eligible_records:
+                        w1.writerow([clean_val(item[1](p)) for item in fields_map])
+                    zf.writestr(f"{base_export_name}.csv", elig_csv_buf.getvalue())
+
+                    # File 2: Ineligible / Excluded Individuals CSV
+                    inel_csv_buf = io.StringIO()
+                    w2 = csv.writer(inel_csv_buf)
+                    w2.writerow(headers)
+                    for p in zip_ineligible_records:
+                        w2.writerow([clean_val(item[1](p)) for item in fields_map])
+                    zf.writestr(f"abcg_ineligible_data_{date_str}.csv", inel_csv_buf.getvalue())
+
+                zip_buffer.seek(0)
+                response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
+                response["Content-Disposition"] = f'attachment; filename="{base_export_name}.zip"'
+
+                new_log = {
+                    "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
+                    "name": f"{base_export_name}.zip",
+                    "filename": f"{base_export_name}.zip",
+                    "cohort": cohort,
+                    "format": "csv_zip",
+                    "rows": len(zip_eligible_records) + len(zip_ineligible_records),
+                    "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
+                    "by": getattr(request.user, "username", "") or "Dr.sriram",
+                    "status": "ready"
+                }
+                hist = list(request.session.get("export_history", []))
+                hist.insert(0, new_log)
+                request.session["export_history"] = hist[:20]
+                request.session.modified = True
+                return response
+            else:
+                response = HttpResponse(content_type="text/csv")
+                response["Content-Disposition"] = f'attachment; filename="{base_export_name}.csv"'
+                
+                writer = csv.writer(response)
+                writer.writerow(headers)
+                for p in export_records:
+                    row_data = [clean_val(item[1](p)) for item in fields_map]
+                    writer.writerow(row_data)
+                new_log = {
+                    "id": f"EXP-{timezone.now().strftime('%y%m%d%H%M%S')}",
+                    "name": f"{base_export_name}.csv",
+                    "filename": f"{base_export_name}.csv",
+                    "cohort": cohort,
+                    "format": "csv",
+                    "rows": len(export_records),
+                    "at": timezone.now().strftime("%Y-%m-%d %H:%M"),
+                    "by": getattr(request.user, "username", "") or "Dr.sriram",
+                    "status": "ready"
+                }
+                hist = list(request.session.get("export_history", []))
+                hist.insert(0, new_log)
+                request.session["export_history"] = hist[:20]
+                request.session.modified = True
+                return response
             
         # 2. EXCEL EXPORT
         elif export_format == "excel":

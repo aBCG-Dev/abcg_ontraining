@@ -386,13 +386,18 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertNotIn("SEC-TEST-001", prim_sids)
         self.assertNotIn("SEC-INEL-001", prim_sids)
 
-        # Primary CSV
+        # Primary CSV (ZIP archive containing separate eligible and ineligible CSVs)
         resp_prim_csv = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=primary")
         self.assertEqual(resp_prim_csv.status_code, 200)
-        self.assertIn(f'filename="{expected_prim_name}.csv"', resp_prim_csv["Content-Disposition"])
-        self.assertIn("PRIM-TEST-001", resp_prim_csv.content.decode("utf-8"))
-        self.assertNotIn("SEC-TEST-001", resp_prim_csv.content.decode("utf-8"))
-        self.assertNotIn("SEC-INEL-001", resp_prim_csv.content.decode("utf-8"))
+        self.assertIn(f'filename="{expected_prim_name}.zip"', resp_prim_csv["Content-Disposition"])
+        import zipfile
+        zf_prim = zipfile.ZipFile(io.BytesIO(resp_prim_csv.content))
+        self.assertIn(f"{expected_prim_name}.csv", zf_prim.namelist())
+        self.assertIn(f"abcg_ineligible_data_{yymmdd}.csv", zf_prim.namelist())
+        prim_csv_text = zf_prim.read(f"{expected_prim_name}.csv").decode("utf-8")
+        self.assertIn("PRIM-TEST-001", prim_csv_text)
+        self.assertNotIn("SEC-TEST-001", prim_csv_text)
+        self.assertNotIn("SEC-INEL-001", prim_csv_text)
 
         # --- TEST SECONDARY EXPORT (TPT = YES) ---
         resp_sec_excel = self.client.get(reverse("questions:data_export") + "?format=excel&cohort=secondary")
@@ -424,13 +429,18 @@ class ExportSampleDetailsTestCase(TestCase):
         self.assertIn("SEC-INEL-001", sec_inel_sids)
         self.assertNotIn("SEC-TEST-001", sec_inel_sids)
 
-        # Secondary CSV
+        # Secondary CSV (ZIP archive containing separate eligible and ineligible CSVs)
         resp_sec_csv = self.client.get(reverse("questions:data_export") + "?format=csv&cohort=secondary")
         self.assertEqual(resp_sec_csv.status_code, 200)
-        self.assertIn(f'filename="{expected_sec_name}.csv"', resp_sec_csv["Content-Disposition"])
-        self.assertIn("SEC-TEST-001", resp_sec_csv.content.decode("utf-8"))
-        self.assertIn("SEC-INEL-001", resp_sec_csv.content.decode("utf-8"))
-        self.assertNotIn("PRIM-TEST-001", resp_sec_csv.content.decode("utf-8"))
+        self.assertIn(f'filename="{expected_sec_name}.zip"', resp_sec_csv["Content-Disposition"])
+        zf_sec = zipfile.ZipFile(io.BytesIO(resp_sec_csv.content))
+        self.assertIn(f"{expected_sec_name}.csv", zf_sec.namelist())
+        self.assertIn(f"abcg_ineligible_data_{yymmdd}.csv", zf_sec.namelist())
+        sec_csv_text = zf_sec.read(f"{expected_sec_name}.csv").decode("utf-8")
+        sec_inel_text = zf_sec.read(f"abcg_ineligible_data_{yymmdd}.csv").decode("utf-8")
+        self.assertIn("SEC-TEST-001", sec_csv_text)
+        self.assertIn("SEC-INEL-001", sec_inel_text)
+        self.assertNotIn("PRIM-TEST-001", sec_csv_text)
 
         # --- EDGE CASE: Missing cohort parameter defaults to primary ---
         resp_default = self.client.get(reverse("questions:data_export") + "?format=excel")
