@@ -7,27 +7,27 @@ Defines sidebar visibility, module descriptions, and module-to-URL mappings.
 SIDEBAR_CONFIG = {
     "Super Admin": [
         "dashboard", "participants", "classification", "cases", "controls", "matching",
-        "adjudication", "analytics", "photos_gallery", "data_quality", "study_site",
+        "adjudication", "analytics", "data_quality", "study_site",
         "daily_opd", "sync_telemetry", "data_export", "settings", "audit_logs",
         "user_management", "rbac_matrix"
     ],
     "Admin": [
         "dashboard", "participants", "registration", "daily_opd", "classification", "cases", "controls",
-        "matching", "analytics", "photos_gallery", "data_quality", "study_site",
+        "matching", "analytics", "data_quality", "study_site",
         "sync_telemetry", "data_export", "settings", "audit_logs",
         "user_management"
     ],
     "Nodal Officer": [
         "dashboard", "participants", "classification", "cases", "controls",
-        "matching", "analytics", "photos_gallery", "data_quality", "study_site",
+        "matching", "analytics", "data_quality", "study_site",
         "daily_opd", "sync_telemetry", "audit_logs"
     ],
     "Doctor": [
         "dashboard", "participants", "classification", "cases", "controls",
-        "matching", "adjudication", "doctor_queue", "photos_gallery"
+        "matching", "adjudication", "doctor_queue"
     ],
     "Project Nurse": [
-        "dashboard", "daily_opd", "registration", "search", "photos_gallery", "sync_telemetry"
+        "dashboard", "daily_opd", "registration", "search", "sync_telemetry"
     ]
 }
 
