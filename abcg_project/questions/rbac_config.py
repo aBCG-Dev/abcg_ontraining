@@ -8,11 +8,11 @@ SIDEBAR_CONFIG = {
     "Super Admin": [
         "dashboard", "participants", "classification", "cases", "controls", "matching",
         "adjudication", "analytics", "data_quality", "study_site",
-        "daily_opd", "sync_telemetry", "data_export", "settings", "audit_logs",
+        "sync_telemetry", "data_export", "settings", "audit_logs",
         "user_management", "rbac_matrix"
     ],
     "Admin": [
-        "dashboard", "participants", "registration", "daily_opd", "classification", "cases", "controls",
+        "dashboard", "participants", "registration", "classification", "cases", "controls",
         "matching", "analytics", "data_quality", "study_site",
         "sync_telemetry", "data_export", "settings", "audit_logs",
         "user_management"
@@ -20,14 +20,14 @@ SIDEBAR_CONFIG = {
     "Nodal Officer": [
         "dashboard", "participants", "classification", "cases", "controls",
         "matching", "analytics", "data_quality", "study_site",
-        "daily_opd", "sync_telemetry", "audit_logs"
+        "sync_telemetry", "audit_logs"
     ],
     "Doctor": [
         "dashboard", "participants", "classification", "cases", "controls",
         "matching", "adjudication", "doctor_queue"
     ],
     "Project Nurse": [
-        "dashboard", "daily_opd", "registration", "search", "sync_telemetry"
+        "dashboard", "registration", "search", "sync_telemetry"
     ]
 }
 
