@@ -5719,13 +5719,7 @@ def data_export_view(request):
             return {}
 
         def _is_clinical_data_blanked(p):
-            cls = str(getattr(p, "classification", "") or "").strip().lower()
-            if cls in ["not eligible", "excluded", "ineligible"]:
-                return True
-            if isinstance(p, IneligibleIndividual) or p.__class__.__name__ == "IneligibleIndividual":
-                return True
-            if getattr(p, "eligible", None) is False:
-                return True
+            # Retain all filled clinical, screening, diagnostic, and BCG details for all participants (including excluded)
             return False
 
         def _get_ineligibility_reason(p):

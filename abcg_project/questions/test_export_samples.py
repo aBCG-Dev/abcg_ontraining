@@ -268,8 +268,8 @@ class ExportSampleDetailsTestCase(TestCase):
                 self.assertIn("MTB Not Detected", res_val)
                 break
 
-    def test_05_ineligible_records_have_blanked_clinical_sample_data(self):
-        """Verifies ineligible participants have clinical sample available and results blanked on dedicated Sheet 2."""
+    def test_05_ineligible_and_excluded_records_preserve_all_filled_details(self):
+        """Verifies ineligible/excluded participants preserve all filled clinical and screening details on dedicated Sheet 2."""
         inel = IneligibleIndividual.objects.create(
             first_name="Ineligible",
             last_name="Individual",
@@ -300,7 +300,7 @@ class ExportSampleDetailsTestCase(TestCase):
         s1_sids = [ws1.cell(row=r, column=s1_sid_col).value for r in range(2, ws1.max_row + 1)]
         self.assertNotIn("INEL-001", s1_sids)
 
-        # 2. Dedicated Sheet 2 (abcg_ineligible_data) MUST contain ineligible record with reason and blanked clinicals
+        # 2. Dedicated Sheet 2 (abcg_ineligible_data) MUST contain ineligible record with reason and all filled clinicals
         self.assertIn("abcg_ineligible_data", wb.sheetnames)
         ws2 = wb["abcg_ineligible_data"]
         headers = [cell.value for cell in ws2[1]]
@@ -320,10 +320,10 @@ class ExportSampleDetailsTestCase(TestCase):
 
         self.assertIsNotNone(inel_row)
         self.assertEqual(ws2.cell(row=inel_row, column=inel_reason_col).value, "Age criteria not met")
-        self.assertIn(ws2.cell(row=inel_row, column=ptb_avail_col).value, ["", None])
-        self.assertIn(ws2.cell(row=inel_row, column=ptb_res_col).value, ["", None])
-        self.assertIn(ws2.cell(row=inel_row, column=eptb_avail_col).value, ["", None])
-        self.assertIn(ws2.cell(row=inel_row, column=eptb_res_col).value, ["", None])
+        self.assertEqual(ws2.cell(row=inel_row, column=ptb_avail_col).value, "Present")
+        self.assertEqual(ws2.cell(row=inel_row, column=ptb_res_col).value, "MTB Detected")
+        self.assertEqual(ws2.cell(row=inel_row, column=eptb_avail_col).value, "Present")
+        self.assertEqual(ws2.cell(row=inel_row, column=eptb_res_col).value, "MTB Detected")
 
     def test_06_primary_and_secondary_cohort_separation_and_naming(self):
         """Verifies TPT=NO (Primary) and TPT=YES (Secondary) are exported into distinct workbooks with matching tab names."""
