@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.http import JsonResponse
+from django.db.models import Q, Count, Max, Min, Avg, Sum
 from .models import (
     Participant, Symptom, RiskFactor, Question, Option, BcgVaccination,
     TptIndividual, IneligibleIndividual, DeviceSyncLog, NikshayRecord, sync_nikshay_record,
@@ -2130,9 +2131,31 @@ def reconcile_match_api(request):
     if not nikshay_name and not nikshay_phone:
         return JsonResponse({"error": "No matching parameters provided"}, status=400)
         
-    participants = list(Participant.objects.all())
-    tpts = list(TptIndividual.objects.all())
-    ineligibles = list(IneligibleIndividual.objects.all())
+    rec_fields = [
+        "id", "study_id", "screening_id", "nikshay_id", "full_name",
+        "contact_number", "age", "gender", "district", "date_enroll",
+        "classification", "questionnaire_answers"
+    ]
+    clean_p = normalize_phone(nikshay_phone)
+    filter_q = None
+    if clean_p and len(clean_p) >= 5:
+        filter_q = Q(contact_number__icontains=clean_p[-10:])
+        if nikshay_name:
+            first_tok = nikshay_name.split()[0] if nikshay_name.split() else nikshay_name
+            if len(first_tok) >= 3:
+                filter_q = filter_q | Q(full_name__icontains=first_tok)
+    elif nikshay_name:
+        first_tok = nikshay_name.split()[0] if nikshay_name.split() else nikshay_name
+        filter_q = Q(full_name__icontains=first_tok) if len(first_tok) >= 3 else Q(full_name__icontains=nikshay_name)
+
+    if filter_q:
+        participants = list(Participant.objects.filter(filter_q).only(*rec_fields))
+        tpts = list(TptIndividual.objects.filter(filter_q).only(*rec_fields))
+        ineligibles = list(IneligibleIndividual.objects.filter(filter_q).only(*rec_fields))
+    else:
+        participants = list(Participant.objects.only(*rec_fields)[:100])
+        tpts = list(TptIndividual.objects.only(*rec_fields)[:50])
+        ineligibles = list(IneligibleIndividual.objects.only(*rec_fields)[:50])
     
     exact_matches = []
     partial_matches = []
@@ -2446,8 +2469,13 @@ def search(request):
         elif type_filter == "Registered":
             pass
 
-    # Combine lists
-    participants = list(participants_qs) + list(tpt_qs) + list(ineligible_qs)
+    # Combine lists with selective column projection (avoids transferring massive JSON dumps across WAN)
+    search_fields = [
+        'id', 'full_name', 'village', 'district', 'synced', 'eligible',
+        'study_id', 'screening_id', 'nikshay_id', 'age', 'gender',
+        'created_at', 'reconciliation_status', 'classification'
+    ]
+    participants = list(participants_qs.only(*search_fields)) + list(tpt_qs.only(*search_fields)) + list(ineligible_qs.only(*search_fields))
     
     # Compute Statistics Summary Counts
     total_count = len(participants)
@@ -3866,24 +3894,41 @@ def dashboard_home(request):
         "total_matches": study_controls // 4,
     }
     
-    # 3. Dynamic State Performance Table
+    # 3. Dynamic State Performance Table (Optimized SQL Aggregation)
     from questions.context_processors import get_location_hierarchy
+    from django.db.models import Max
     hierarchy = get_location_hierarchy()
     states_performance = []
+
+    p_state_stats = {
+        s["state"]: s for s in Participant.objects.values("state").annotate(
+            total=Count("id"),
+            cases=Count("id", filter=Q(classification="Case")),
+            controls=Count("id", filter=Q(classification="Control")),
+            pending=Count("id", filter=Q(classification="Pending"))
+        ) if s["state"]
+    }
+    t_state_stats = {
+        s["state"]: s["total"] for s in TptIndividual.objects.values("state").annotate(total=Count("id")) if s["state"]
+    }
+    i_state_stats = {
+        s["state"]: s["total"] for s in IneligibleIndividual.objects.values("state").annotate(total=Count("id")) if s["state"]
+    }
     
     for state_name in sorted(hierarchy.keys()):
-        p_state = Participant.objects.filter(state=state_name)
-        t_state = TptIndividual.objects.filter(state=state_name)
-        i_state = IneligibleIndividual.objects.filter(state=state_name)
+        p_data = p_state_stats.get(state_name, {})
+        p_cnt = p_data.get("total", 0)
+        t_cnt = t_state_stats.get(state_name, 0)
+        i_cnt = i_state_stats.get(state_name, 0)
         
         districts_count = len(hierarchy[state_name].keys())
         tb_units_count = sum(len(tus) for tus in hierarchy[state_name].values())
         
-        screened_count = p_state.count() + t_state.count() + i_state.count()
-        eligible_count = p_state.count() + t_state.count()
-        cases_count = p_state.filter(classification="Case").count()
-        controls_count = p_state.filter(classification="Control").count()
-        pending_count = p_state.filter(classification="Pending").count()
+        screened_count = p_cnt + t_cnt + i_cnt
+        eligible_count = p_cnt + t_cnt
+        cases_count = p_data.get("cases", 0)
+        controls_count = p_data.get("controls", 0)
+        pending_count = p_data.get("pending", 0)
         enrolled_count = cases_count + controls_count
         
         status = "Active" if screened_count > 0 or state_name == "Tamil Nadu" else "Pending"
@@ -3901,57 +3946,77 @@ def dashboard_home(request):
             "status": status
         })
 
-    # 4. Dynamic Site Performance Table
+    # 4. Dynamic Site Performance Table (Optimized SQL Aggregation without full-table serialization)
     sites_performance = []
     active_sites_data = {}
-    
-    for p in participants_filtered:
-        state = p.state or "Unknown"
-        district = p.district or "Unknown"
-        tb_unit = p.tb_unit or "Unknown"
-        key = (state, district, tb_unit)
-        if key not in active_sites_data:
-            active_sites_data[key] = {"screened": 0, "eligible": 0, "enrolled": 0, "last_activity": None}
-        active_sites_data[key]["screened"] += 1
-        active_sites_data[key]["eligible"] += 1
-        if p.classification in ["Case", "Control"]:
-            active_sites_data[key]["enrolled"] += 1
-        if not active_sites_data[key]["last_activity"] or (p.created_at and p.created_at > active_sites_data[key]["last_activity"]):
-            active_sites_data[key]["last_activity"] = p.created_at
 
-    for t in tpt_filtered:
-        state = t.state or "Unknown"
-        district = t.district or "Unknown"
-        tb_unit = t.tb_unit or "Unknown"
-        key = (state, district, tb_unit)
-        if key not in active_sites_data:
-            active_sites_data[key] = {"screened": 0, "eligible": 0, "enrolled": 0, "last_activity": None}
-        active_sites_data[key]["screened"] += 1
-        active_sites_data[key]["eligible"] += 1
-        if not active_sites_data[key]["last_activity"] or (t.created_at and t.created_at > active_sites_data[key]["last_activity"]):
-            active_sites_data[key]["last_activity"] = t.created_at
+    p_site_aggs = participants_filtered.values('state', 'district', 'tb_unit').annotate(
+        screened=Count('id'),
+        enrolled=Count('id', filter=Q(classification__in=['Case', 'Control'])),
+        last_activity=Max('created_at')
+    )
+    for row in p_site_aggs:
+        key = (row['state'] or 'Unknown', row['district'] or 'Unknown', row['tb_unit'] or 'Unknown')
+        active_sites_data[key] = {
+            "screened": row['screened'],
+            "eligible": row['screened'],
+            "enrolled": row['enrolled'],
+            "last_activity": row['last_activity']
+        }
 
-    for i in ineligible_filtered:
-        state = i.state or "Unknown"
-        district = i.district or "Unknown"
-        tb_unit = i.tb_unit or "Unknown"
-        key = (state, district, tb_unit)
+    t_site_aggs = tpt_filtered.values('state', 'district', 'tb_unit').annotate(
+        screened=Count('id'),
+        last_activity=Max('created_at')
+    )
+    for row in t_site_aggs:
+        key = (row['state'] or 'Unknown', row['district'] or 'Unknown', row['tb_unit'] or 'Unknown')
         if key not in active_sites_data:
             active_sites_data[key] = {"screened": 0, "eligible": 0, "enrolled": 0, "last_activity": None}
-        active_sites_data[key]["screened"] += 1
-        if not active_sites_data[key]["last_activity"] or (i.created_at and i.created_at > active_sites_data[key]["last_activity"]):
-            active_sites_data[key]["last_activity"] = i.created_at
+        active_sites_data[key]["screened"] += row['screened']
+        active_sites_data[key]["eligible"] += row['screened']
+        if not active_sites_data[key]["last_activity"] or (row['last_activity'] and row['last_activity'] > active_sites_data[key]["last_activity"]):
+            active_sites_data[key]["last_activity"] = row['last_activity']
+
+    i_site_aggs = ineligible_filtered.values('state', 'district', 'tb_unit').annotate(
+        screened=Count('id'),
+        last_activity=Max('created_at')
+    )
+    for row in i_site_aggs:
+        key = (row['state'] or 'Unknown', row['district'] or 'Unknown', row['tb_unit'] or 'Unknown')
+        if key not in active_sites_data:
+            active_sites_data[key] = {"screened": 0, "eligible": 0, "enrolled": 0, "last_activity": None}
+        active_sites_data[key]["screened"] += row['screened']
+        if not active_sites_data[key]["last_activity"] or (row['last_activity'] and row['last_activity'] > active_sites_data[key]["last_activity"]):
+            active_sites_data[key]["last_activity"] = row['last_activity']
+
+    # Pre-aggregate unsynced and pending verification counts across sites in 4 grouped queries instead of N queries per site
+    unsynced_p = {
+        (s['state'], s['district'], s['tb_unit']): s['cnt']
+        for s in Participant.objects.filter(synced=False).values('state', 'district', 'tb_unit').annotate(cnt=Count('id'))
+    }
+    unsynced_t = {
+        (s['state'], s['district'], s['tb_unit']): s['cnt']
+        for s in TptIndividual.objects.filter(synced=False).values('state', 'district', 'tb_unit').annotate(cnt=Count('id'))
+    }
+    unsynced_i = {
+        (s['state'], s['district'], s['tb_unit']): s['cnt']
+        for s in IneligibleIndividual.objects.filter(synced=False).values('state', 'district', 'tb_unit').annotate(cnt=Count('id'))
+    }
+    pending_v = {
+        (s['state'], s['district'], s['tb_unit']): s['cnt']
+        for s in Participant.objects.filter(classification="Pending").values('state', 'district', 'tb_unit').annotate(cnt=Count('id'))
+    }
 
     for key, data in active_sites_data.items():
         state, district, tb_unit = key
         unsynced_count = (
-            Participant.objects.filter(state=state, district=district, tb_unit=tb_unit, synced=False).count() +
-            TptIndividual.objects.filter(state=state, district=district, tb_unit=tb_unit, synced=False).count() +
-            IneligibleIndividual.objects.filter(state=state, district=district, tb_unit=tb_unit, synced=False).count()
+            unsynced_p.get(key, 0) +
+            unsynced_t.get(key, 0) +
+            unsynced_i.get(key, 0)
         )
         sync_status = "Healthy" if unsynced_count == 0 else f"{unsynced_count} Pending"
         
-        pending_verif = Participant.objects.filter(state=state, district=district, tb_unit=tb_unit, classification="Pending").count()
+        pending_verif = pending_v.get(key, 0)
         dq_status = "Healthy" if pending_verif == 0 else f"{pending_verif} Action Required"
         
         last_act_str = data["last_activity"].strftime("%Y-%m-%d %H:%M") if data["last_activity"] else "—"
@@ -4051,22 +4116,34 @@ def dashboard_home(request):
         "sync_status": sync_status
     }
 
-    # 8. Recruitment trend (7 Days)
+    # 8. Recruitment trend (7 Days) - Optimized with grouped date queries
     trend_days = []
     trend_registrations = []
     trend_cases = []
-    
-    has_trend_data = False
+    start_trend_date = today - timedelta(days=6)
+
+    p_trend = {
+        item['date_enroll']: item
+        for item in participants_filtered.filter(date_enroll__gte=start_trend_date).values('date_enroll').annotate(
+            total=Count('id'),
+            cases=Count('id', filter=Q(classification="Case"))
+        )
+    }
+    t_trend = {
+        item['date_enroll']: item['total']
+        for item in tpt_filtered.filter(date_enroll__gte=start_trend_date).values('date_enroll').annotate(total=Count('id'))
+    }
+    i_trend = {
+        item['date_enroll']: item['total']
+        for item in ineligible_filtered.filter(date_enroll__gte=start_trend_date).values('date_enroll').annotate(total=Count('id'))
+    }
+
     for i in range(6, -1, -1):
         date = today - timedelta(days=i)
         trend_days.append(date.strftime("%b %d"))
-        
-        reg_count = (
-            participants_filtered.filter(date_enroll=date).count() +
-            tpt_filtered.filter(date_enroll=date).count() +
-            ineligible_filtered.filter(date_enroll=date).count()
-        )
-        case_count = participants_filtered.filter(date_enroll=date, classification="Case").count()
+        p_data = p_trend.get(date, {})
+        reg_count = p_data.get('total', 0) + t_trend.get(date, 0) + i_trend.get(date, 0)
+        case_count = p_data.get('cases', 0)
         
         trend_registrations.append(reg_count)
         trend_cases.append(case_count)
@@ -4110,8 +4187,10 @@ def dashboard_home(request):
                 "ip_address": log.ip_address or "—"
             })
 
-    # Recent verified cases
-    recent_cases_qs = participants_filtered.filter(classification="Case").order_by("-date_enroll")[:5]
+    # Recent verified cases (Selective column projection: avoids loading 80+ fields)
+    recent_cases_qs = participants_filtered.filter(classification="Case").only(
+        "study_id", "full_name", "district", "eptb_screened", "date_enroll"
+    ).order_by("-date_enroll")[:5]
     recent_cases_list = []
     for c in recent_cases_qs:
         recent_cases_list.append({
@@ -4124,8 +4203,10 @@ def dashboard_home(request):
             "actionText": "View Dossier"
         })
 
-    # My Verification Queue (Participants in pending state)
-    pending_verification_qs = participants_filtered.filter(classification="Pending").order_by("-created_at")[:10]
+    # My Verification Queue (Selective column projection)
+    pending_verification_qs = participants_filtered.filter(classification="Pending").only(
+        "study_id", "full_name", "classification", "date_enroll"
+    ).order_by("-created_at")[:10]
     verification_queue = []
     for p in pending_verification_qs:
         verification_queue.append({
@@ -4341,10 +4422,10 @@ def participants_line_list_view(request):
     ineligible_count = inel_qs.count() + p_qs.filter(classification__in=["Not Eligible", "Excluded"]).count()
     eligible_count = max(0, total_participants - ineligible_count)
 
-    # 3. Dynamic options for filter dropdowns
-    state_set = set(filter(None, list(p_qs.values_list('state', flat=True)) + list(tpt_qs.values_list('state', flat=True)) + list(inel_qs.values_list('state', flat=True))))
-    district_set = set(filter(None, list(p_qs.values_list('district', flat=True)) + list(tpt_qs.values_list('district', flat=True)) + list(inel_qs.values_list('district', flat=True))))
-    tu_set = set(filter(None, list(p_qs.values_list('tb_unit', flat=True)) + list(tpt_qs.values_list('tb_unit', flat=True)) + list(inel_qs.values_list('tb_unit', flat=True))))
+    # 3. Dynamic options for filter dropdowns (optimized with distinct to avoid duplicate WAN transfer)
+    state_set = set(filter(None, list(p_qs.values_list('state', flat=True).distinct()) + list(tpt_qs.values_list('state', flat=True).distinct()) + list(inel_qs.values_list('state', flat=True).distinct())))
+    district_set = set(filter(None, list(p_qs.values_list('district', flat=True).distinct()) + list(tpt_qs.values_list('district', flat=True).distinct()) + list(inel_qs.values_list('district', flat=True).distinct())))
+    tu_set = set(filter(None, list(p_qs.values_list('tb_unit', flat=True).distinct()) + list(tpt_qs.values_list('tb_unit', flat=True).distinct()) + list(inel_qs.values_list('tb_unit', flat=True).distinct())))
     available_states = sorted(list(state_set))
     available_districts = sorted(list(district_set))
     available_tb_units = sorted(list(tu_set))
@@ -4482,6 +4563,17 @@ def participants_line_list_view(request):
             "model_type": model_type,
         }
 
+    # Restrict columns fetched from Neon PostgreSQL to only the fields needed for the line list
+    list_fields = [
+        'id', 'study_id', 'screening_id', 'nikshay_id', 'full_name', 'first_name', 'last_name',
+        'age', 'gender', 'contact_number', 'state', 'district', 'tb_unit', 'facility',
+        'date_enroll', 'classification', 'classification_reason', 'eligible',
+        'eligible_bcg_campaign', 'bcg_status'
+    ]
+    p_qs = p_qs.only(*list_fields)
+    tpt_qs = tpt_qs.only(*list_fields)
+    inel_qs = inel_qs.only(*list_fields)
+
     all_records = []
     for p in p_qs:
         all_records.append(_format_record(p, "Participant"))
@@ -4613,6 +4705,12 @@ def cases_view(request):
             else:
                 participants_qs = participants_qs.exclude(classification__in=["Adjudication Pending", "Adjudication Completed"])
             
+        participants_qs = participants_qs.only(
+            'id', 'study_id', 'nikshay_id', 'full_name', 'age', 'gender', 'contact_number',
+            'village', 'state', 'district', 'tb_unit', 'facility', 'date_enroll',
+            'eligible', 'match_hrg', 'ptb_test_result', 'bcg_status', 'classification',
+            'synced', 'eptb_screened'
+        )
         cases_list = []
         for p in participants_qs:
             # Determine verification & adjudication status dynamically
@@ -4763,6 +4861,12 @@ def controls_view(request):
         if hrg_filter:
             participants_qs = participants_qs.filter(match_hrg__icontains=hrg_filter)
             
+        participants_qs = participants_qs.only(
+            'id', 'study_id', 'nikshay_id', 'full_name', 'age', 'gender', 'contact_number',
+            'village', 'state', 'district', 'tb_unit', 'facility', 'date_enroll',
+            'eligible', 'match_hrg', 'ptb_test_result', 'bcg_status', 'classification',
+            'synced', 'eptb_screened'
+        )
         controls_list = [_map_participant_to_dict(p) for p in participants_qs]
     else:
         # Fallback to mock data with programmatical list filtering
@@ -4806,9 +4910,13 @@ def matching_view(request):
     import random
     from questions.models import Participant
     
-    # 1. Fetch live cases and controls with jurisdiction filter
-    participants_cases = filter_by_jurisdiction(Participant.objects.filter(classification="Case"), request)
-    participants_controls = filter_by_jurisdiction(Participant.objects.filter(classification="Control"), request)
+    # 1. Fetch live cases and controls with jurisdiction filter (pruned columns)
+    participants_cases = filter_by_jurisdiction(Participant.objects.filter(classification="Case").only(
+        'screening_id', 'study_id', 'nikshay_id', 'age', 'gender', 'match_hrg', 'tb_unit', 'state'
+    ), request)
+    participants_controls = filter_by_jurisdiction(Participant.objects.filter(classification="Control").only(
+        'screening_id', 'study_id', 'nikshay_id', 'age', 'gender', 'synced'
+    ), request)
     
     cases_list = []
     controls_list = []
@@ -4888,8 +4996,13 @@ def matching_view(request):
 def adjudication_view(request):
     from . import mock_data
     
-    # 1. Fetch live central adjudication cases (strictly Adjudication Pending)
-    participants_qs = Participant.objects.filter(classification="Adjudication Pending")
+    # 1. Fetch live central adjudication cases (strictly Adjudication Pending, pruned columns)
+    participants_qs = Participant.objects.filter(classification="Adjudication Pending").only(
+        'id', 'study_id', 'nikshay_id', 'full_name', 'age', 'gender', 'contact_number',
+        'village', 'state', 'district', 'tb_unit', 'facility', 'date_enroll',
+        'eligible', 'match_hrg', 'ptb_test_result', 'bcg_status', 'classification',
+        'synced', 'eptb_screened'
+    )
     has_live_records = participants_qs.exists()
     
     is_mock_fallback = request.GET.get('mock') == 'true'
@@ -5029,8 +5142,12 @@ def data_quality_view(request):
     
     exceptions = []
     ex_idx = 1
+    dq_fields = [
+        "id", "study_id", "full_name", "contact_number", "classification",
+        "reconciliation_status", "nikshay_id", "bmi", "ptb_test_result", "created_at"
+    ]
     
-    for p in Participant.objects.all().order_by("-created_at"):
+    for p in Participant.objects.only(*dq_fields).order_by("-created_at"):
         # Rule DQ-01: Missing contact number
         if not p.contact_number or len(str(p.contact_number).strip()) < 10:
             exceptions.append({
@@ -5451,10 +5568,21 @@ def study_site_view(request):
             )
         active_sites_qs = StudySite.objects.filter(is_active=True).order_by("state", "district", "tb_unit")
 
+    # Pre-aggregate case/control/unsynced counts by tb_unit in a single query
+    site_counts = {
+        row["tb_unit"]: row
+        for row in Participant.objects.values("tb_unit").annotate(
+            cases=Count("id", filter=Q(classification="Case")),
+            controls=Count("id", filter=Q(classification="Control")),
+            unsynced=Count("id", filter=Q(synced=False))
+        ) if row["tb_unit"]
+    }
+
     for s in active_sites_qs:
         st_code = get_state_code(s.state)
-        c_count = Participant.objects.filter(tb_unit=s.tb_unit, classification="Case").count()
-        ctrl_count = Participant.objects.filter(tb_unit=s.tb_unit, classification="Control").count()
+        s_data = site_counts.get(s.tb_unit, {})
+        c_count = s_data.get("cases", 0)
+        ctrl_count = s_data.get("controls", 0)
         sites_list.append({
             "tuCode": s.tb_unit,
             "district": s.district,
@@ -5471,7 +5599,7 @@ def study_site_view(request):
     # Build real-time clinical tablets list directly from StudyDevice
     devices_list = []
     for d in StudyDevice.objects.all().order_by("device_id"):
-        queued_count = Participant.objects.filter(tb_unit=d.tb_unit, synced=False).count()
+        queued_count = site_counts.get(d.tb_unit, {}).get("unsynced", 0)
         devices_list.append({
             "deviceId": d.device_id,
             "tuCode": d.tb_unit,
@@ -5576,14 +5704,19 @@ def sync_telemetry_view(request):
     ]
     
     now = timezone.now()
+    twenty_four_hours_ago = now - timedelta(hours=24)
+    # Optimized: 2 single window queries instead of 48 individual queries
+    p_timestamps = list(Participant.objects.filter(created_at__gte=twenty_four_hours_ago).values_list('created_at', flat=True))
+    s_timestamps = list(DeviceSyncLog.objects.filter(timestamp__gte=twenty_four_hours_ago).values_list('timestamp', flat=True))
+
     throughput = []
     for i in range(23, -1, -1):
         hr_start = now - timedelta(hours=i+1)
         hr_end = now - timedelta(hours=i)
         label = hr_end.strftime("%H:00")
         
-        p_in_hr = Participant.objects.filter(created_at__gte=hr_start, created_at__lt=hr_end).count()
-        s_in_hr = DeviceSyncLog.objects.filter(timestamp__gte=hr_start, timestamp__lt=hr_end).count()
+        p_in_hr = sum(1 for ts in p_timestamps if hr_start <= ts < hr_end)
+        s_in_hr = sum(1 for ts in s_timestamps if hr_start <= ts < hr_end)
         throughput.append({
             "hour": label,
             "payloads": p_in_hr + s_in_hr

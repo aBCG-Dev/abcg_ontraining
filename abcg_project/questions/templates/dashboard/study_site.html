@@ -987,8 +987,21 @@
     }
   }
 
-  // Auto-poll metrics every 20 seconds
-  setInterval(() => pollRealtimeMetrics(false), 20000);
+  // Visibility-aware polling: only poll every 5 minutes and only when the tab is actively visible
+  let lastPollTime = Date.now();
+  setInterval(() => {
+    if (!document.hidden && Date.now() - lastPollTime >= 300000) {
+      lastPollTime = Date.now();
+      pollRealtimeMetrics(false);
+    }
+  }, 60000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - lastPollTime >= 60000) {
+      lastPollTime = Date.now();
+      pollRealtimeMetrics(false);
+    }
+  });
 
   function changeSitePerPage(val) {
     const urlParams = new URLSearchParams(window.location.search);

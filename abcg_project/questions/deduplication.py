@@ -297,7 +297,12 @@ class ParticipantDeduplicator:
         Returns list of clusters, where each cluster is a list of duplicate record objects (len >= 2).
         """
         if queryset is None:
-            queryset = self.model_class.objects.all()
+            queryset = self.model_class.objects.only(
+                "id", "study_id", "screening_id", "nikshay_id", "full_name",
+                "first_name", "last_name", "contact_number", "secondary_phone",
+                "gender", "dob", "age", "classification", "created_at",
+                "date_enroll", "state", "district", "tb_unit", "facility"
+            )
 
         records = list(queryset)
         n = len(records)
@@ -512,7 +517,13 @@ class ParticipantDeduplicator:
         candidate.age = age
         candidate.gender = gender
 
-        qs = self.model_class.objects.all()
+        from django.db.models import Q
+        dup_fields = [
+            "id", "study_id", "full_name", "first_name", "last_name",
+            "contact_number", "secondary_phone", "nikshay_id", "dob",
+            "age", "gender", "classification"
+        ]
+        qs = self.model_class.objects.only(*dup_fields)
         if exclude_pk:
             qs = qs.exclude(pk=exclude_pk)
 
@@ -533,8 +544,11 @@ class ParticipantDeduplicator:
 
         # 3. Quick lookup on Name + Gender
         norm_name = normalize_name(candidate.full_name)
-        if norm_name and gender:
-            for rec in qs.filter(gender__iexact=gender):
+        if norm_name and len(norm_name) >= 3 and gender:
+            name_parts = norm_name.split()
+            first_n = name_parts[0] if name_parts else norm_name
+            name_q = Q(full_name__icontains=first_n) | Q(first_name__icontains=first_n)
+            for rec in qs.filter(gender__iexact=gender).filter(name_q)[:25]:
                 is_match, tier, reason = match_participant_records(candidate, rec)
                 if is_match:
                     return True, rec, tier, reason

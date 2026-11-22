@@ -3,35 +3,72 @@ Template context processors for global template variables.
 Provides all_districts and all_tb_units to every template.
 """
 
+import time
+import copy
 from questions.models import Participant, TptIndividual, IneligibleIndividual
-
 from questions.locations_data import JURISDICTION_DATA, get_base_hierarchy
+
+_HIERARCHY_CACHE = {"data": None, "expires_at": 0}
+_CAMPAIGN_PERIODS_CACHE = {"data": None, "expires_at": 0}
+CACHE_TTL_SECONDS = 300  # 5 minutes in-memory cache
+
+
+def clear_location_cache(*args, **kwargs):
+    """Invalidates the in-memory location and campaign cache upon data mutation."""
+    _HIERARCHY_CACHE["data"] = None
+    _HIERARCHY_CACHE["expires_at"] = 0
+    _CAMPAIGN_PERIODS_CACHE["data"] = None
+    _CAMPAIGN_PERIODS_CACHE["expires_at"] = 0
+
+
+from django.db.models.signals import post_save, post_delete
+try:
+    from questions.models import StudySite
+    post_save.connect(clear_location_cache, sender=StudySite)
+    post_delete.connect(clear_location_cache, sender=StudySite)
+except Exception:
+    pass
+
 
 def get_site_campaign_periods_dict():
     """
     Returns a dictionary mapping tb_unit -> campaign_period_display string
     from active StudySite records and historical defaults.
+    Cached for 5 minutes to prevent redundant SELECT queries on every page request.
     """
+    now = time.time()
+    if _CAMPAIGN_PERIODS_CACHE["data"] is not None and now < _CAMPAIGN_PERIODS_CACHE["expires_at"]:
+        return dict(_CAMPAIGN_PERIODS_CACHE["data"])
+
     periods = {
         "Tiruvallur TU": "Jan 2025 - Mar 2025"
     }
     try:
         from questions.models import StudySite
-        for s in StudySite.objects.filter(is_active=True):
+        for s in StudySite.objects.filter(is_active=True).only('tb_unit', 'district', 'launch_date', 'concluding_date'):
             if s.tb_unit:
                 periods[s.tb_unit] = s.campaign_period_display
             if s.district and s.district not in periods:
                 periods[s.district] = s.campaign_period_display
     except Exception:
         pass
+
+    _CAMPAIGN_PERIODS_CACHE["data"] = dict(periods)
+    _CAMPAIGN_PERIODS_CACHE["expires_at"] = now + CACHE_TTL_SECONDS
     return periods
 
 
 def get_location_hierarchy():
-    # Start with the master predefined locations from clinical study configuration
+    """
+    Returns structured location hierarchy {State: {District: [TB_Units]}}.
+    Cached in memory for 5 minutes to avoid 10 distinct queries per request across 5 tables.
+    """
+    now = time.time()
+    if _HIERARCHY_CACHE["data"] is not None and now < _HIERARCHY_CACHE["expires_at"]:
+        return copy.deepcopy(_HIERARCHY_CACHE["data"])
+
     hierarchy = get_base_hierarchy()
 
-    # Query StudySite, Participant, TptIndividual, IneligibleIndividual, UserProfile to load dynamic values
     try:
         from questions.models import UserProfile, StudySite
         sources = [
@@ -47,7 +84,6 @@ def get_location_hierarchy():
                     continue
                 if state.upper() == 'GLOBAL' or district.upper() == 'ALL DISTRICTS' or tb_unit.upper() == 'ALL TB UNITS':
                     continue
-                # Normalize values
                 state_str = str(state).strip()
                 dist_str = str(district).strip()
                 tbu_str = str(tb_unit).strip()
@@ -61,6 +97,8 @@ def get_location_hierarchy():
     except Exception:
         pass
 
+    _HIERARCHY_CACHE["data"] = copy.deepcopy(hierarchy)
+    _HIERARCHY_CACHE["expires_at"] = now + CACHE_TTL_SECONDS
     return hierarchy
 
 
@@ -69,15 +107,25 @@ def navbar_choices(request):
     Provides dropdown options for navbar filters.
     Available in all templates.
     """
-    try:
-        all_participants = Participant.objects.all()
-        all_districts = sorted(set(all_participants.values_list('district', flat=True).distinct()))
-        all_tb_units = sorted(set(all_participants.values_list('tb_unit', flat=True).distinct()))
-    except Exception:
-        all_districts = []
-        all_tb_units = []
+    # Retrieve structured locations hierarchy (cached)
+    hierarchy = get_location_hierarchy()
+
+    # Extract all districts and TB units directly from hierarchy without hitting database
+    districts_set = set()
+    tb_units_set = set()
+    for s_data in hierarchy.values():
+        for d_name, tu_list in s_data.items():
+            districts_set.add(d_name)
+            tb_units_set.update(tu_list)
+    all_districts = sorted(districts_set)
+    all_tb_units = sorted(tb_units_set)
 
     user_states = []
+    user_districts = []
+    user_tb_units = []
+    selected_state = ""
+    selected_district = ""
+    selected_tb_unit = ""
     user_districts = []
     user_tb_units = []
     selected_state = ""
@@ -116,9 +164,6 @@ def navbar_choices(request):
             selected_district = profile.district if profile else ""
         if role in ["Doctor", "Project Nurse"]:
             selected_tb_unit = profile.tb_unit if profile else ""
-
-        # Retrieve structured locations hierarchy (predefined + live)
-        hierarchy = get_location_hierarchy()
 
         # Cascading choices based on active filter selections and roles
         if role in ["Super Admin", "Admin"]:
@@ -168,44 +213,51 @@ def navbar_choices(request):
             user_districts = [profile.district] if profile else []
             user_tb_units = [profile.tb_unit] if profile else []
 
-        # Calculate active backlog count for the user's scope
-        try:
-            p_qs = Participant.objects.filter(synced=False)
-            t_qs = TptIndividual.objects.filter(synced=False)
-            i_qs = IneligibleIndividual.objects.filter(synced=False)
+        # Calculate active backlog count for the user's scope (cached in session for 30 seconds)
+        cache_key = f"_unsynced_{selected_state}_{selected_district}_{selected_tb_unit}"
+        cached_tuple = request.session.get(cache_key)
+        now_ts = time.time()
+        if cached_tuple and isinstance(cached_tuple, (list, tuple)) and len(cached_tuple) == 2 and (now_ts - cached_tuple[1]) < 30:
+            total_unsynced = cached_tuple[0]
+        else:
+            try:
+                p_qs = Participant.objects.filter(synced=False)
+                t_qs = TptIndividual.objects.filter(synced=False)
+                i_qs = IneligibleIndividual.objects.filter(synced=False)
 
-            if role != "Super Admin":
-                p_qs = p_qs.filter(state=profile.state)
-                t_qs = t_qs.filter(state=profile.state)
-                i_qs = i_qs.filter(state=profile.state)
+                if role != "Super Admin":
+                    p_qs = p_qs.filter(state=profile.state)
+                    t_qs = t_qs.filter(state=profile.state)
+                    i_qs = i_qs.filter(state=profile.state)
 
-                if role in ["Nodal Officer", "Doctor", "Project Nurse"]:
-                    p_qs = p_qs.filter(district=profile.district)
-                    t_qs = t_qs.filter(district=profile.district)
-                    i_qs = i_qs.filter(district=profile.district)
+                    if role in ["Nodal Officer", "Doctor", "Project Nurse"]:
+                        p_qs = p_qs.filter(district=profile.district)
+                        t_qs = t_qs.filter(district=profile.district)
+                        i_qs = i_qs.filter(district=profile.district)
 
-                if role in ["Doctor", "Project Nurse"]:
-                    p_qs = p_qs.filter(tb_unit=profile.tb_unit)
-                    t_qs = t_qs.filter(tb_unit=profile.tb_unit)
-                    i_qs = i_qs.filter(tb_unit=profile.tb_unit)
+                    if role in ["Doctor", "Project Nurse"]:
+                        p_qs = p_qs.filter(tb_unit=profile.tb_unit)
+                        t_qs = t_qs.filter(tb_unit=profile.tb_unit)
+                        i_qs = i_qs.filter(tb_unit=profile.tb_unit)
 
-            # Apply active session filters
-            if selected_state:
-                p_qs = p_qs.filter(state=selected_state)
-                t_qs = t_qs.filter(state=selected_state)
-                i_qs = i_qs.filter(state=selected_state)
-            if selected_district:
-                p_qs = p_qs.filter(district=selected_district)
-                t_qs = t_qs.filter(district=selected_district)
-                i_qs = i_qs.filter(district=selected_district)
-            if selected_tb_unit:
-                p_qs = p_qs.filter(tb_unit=selected_tb_unit)
-                t_qs = t_qs.filter(tb_unit=selected_tb_unit)
-                i_qs = i_qs.filter(tb_unit=selected_tb_unit)
+                # Apply active session filters
+                if selected_state:
+                    p_qs = p_qs.filter(state=selected_state)
+                    t_qs = t_qs.filter(state=selected_state)
+                    i_qs = i_qs.filter(state=selected_state)
+                if selected_district:
+                    p_qs = p_qs.filter(district=selected_district)
+                    t_qs = t_qs.filter(district=selected_district)
+                    i_qs = i_qs.filter(district=selected_district)
+                if selected_tb_unit:
+                    p_qs = p_qs.filter(tb_unit=selected_tb_unit)
+                    t_qs = t_qs.filter(tb_unit=selected_tb_unit)
+                    i_qs = i_qs.filter(tb_unit=selected_tb_unit)
 
-            total_unsynced = p_qs.count() + t_qs.count() + i_qs.count()
-        except Exception:
-            total_unsynced = 0
+                total_unsynced = p_qs.count() + t_qs.count() + i_qs.count()
+                request.session[cache_key] = [total_unsynced, now_ts]
+            except Exception:
+                total_unsynced = 0
 
     else:
         total_unsynced = 0
@@ -221,7 +273,7 @@ def navbar_choices(request):
         'selected_district': selected_district,
         'selected_tb_unit': selected_tb_unit,
         'total_unsynced': total_unsynced,
-        'location_hierarchy_json': json.dumps(get_location_hierarchy()),
+        'location_hierarchy_json': json.dumps(hierarchy),
         'jurisdiction_data_json': json.dumps(JURISDICTION_DATA),
         'site_campaign_periods_json': json.dumps(get_site_campaign_periods_dict()),
     }
