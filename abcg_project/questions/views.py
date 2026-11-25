@@ -252,6 +252,8 @@ def home(request):
     if role in ["Super Admin", "Admin", "Nodal Officer", "Doctor"]:
         return redirect("questions:dashboard_home")
     today = timezone.localdate()
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
     
     # Gather live performance stats using filtered querysets
     participants_qs = Participant.objects.all()
@@ -267,12 +269,46 @@ def home(request):
         participants_filtered = participants_filtered.filter(created_by=request.user)
         tpt_filtered = tpt_filtered.filter(created_by=request.user)
         
-    total_registered_today = (
-        participants_filtered.filter(date_enroll=today).count() +
-        tpt_filtered.filter(date_enroll=today).count()
-    )
+    # Timeframe metrics: Daily (Today)
+    p_today = participants_filtered.filter(date_enroll=today)
+    t_today = tpt_filtered.filter(date_enroll=today)
+    total_registered_today = p_today.count() + t_today.count()
+    cases_today = p_today.filter(classification="Case").count()
+    controls_today = p_today.filter(classification="Control").count()
+    pending_today = p_today.filter(classification="Pending").count()
+
+    # Timeframe metrics: Weekly (This Week)
+    p_week = participants_filtered.filter(date_enroll__gte=week_start)
+    t_week = tpt_filtered.filter(date_enroll__gte=week_start)
+    total_registered_week = p_week.count() + t_week.count()
+    cases_week = p_week.filter(classification="Case").count()
+    controls_week = p_week.filter(classification="Control").count()
+    pending_week = p_week.filter(classification="Pending").count()
+
+    # Timeframe metrics: Monthly (This Month)
+    p_month = participants_filtered.filter(date_enroll__gte=month_start)
+    t_month = tpt_filtered.filter(date_enroll__gte=month_start)
+    total_registered_month = p_month.count() + t_month.count()
+    cases_month = p_month.filter(classification="Case").count()
+    controls_month = p_month.filter(classification="Control").count()
+    pending_month = p_month.filter(classification="Pending").count()
+
+    # All-time metrics for backwards compatibility & active queue
     total_cases = participants_filtered.filter(classification="Case").count()
     total_controls = participants_filtered.filter(classification="Control").count()
+    total_pending_all = participants_filtered.filter(classification="Pending").count()
+
+    # Unsynced offline records count
+    unsynced_p = filter_by_jurisdiction(Participant.objects.filter(synced=False), request)
+    unsynced_t = filter_by_jurisdiction(TptIndividual.objects.filter(synced=False), request)
+    if role == "Project Nurse":
+        unsynced_p = unsynced_p.filter(created_by=request.user)
+        unsynced_t = unsynced_t.filter(created_by=request.user)
+    unsynced_count = unsynced_p.count() + unsynced_t.count()
+
+    # Recent registrations (last 5 participants)
+    recent_fields = ["id", "study_id", "full_name", "classification", "created_at", "date_enroll", "village"]
+    recent_participants = list(participants_filtered.order_by("-created_at").only(*recent_fields)[:5])
 
     context = {
         "site": {
@@ -284,7 +320,29 @@ def home(request):
             "registered_today": total_registered_today,
             "cases": total_cases,
             "controls": total_controls,
+            "pending": pending_today,
+            "total_pending_all": total_pending_all,
+            "daily": {
+                "registered": total_registered_today,
+                "cases": cases_today,
+                "controls": controls_today,
+                "pending": pending_today,
+            },
+            "weekly": {
+                "registered": total_registered_week,
+                "cases": cases_week,
+                "controls": controls_week,
+                "pending": pending_week,
+            },
+            "monthly": {
+                "registered": total_registered_month,
+                "cases": cases_month,
+                "controls": controls_month,
+                "pending": pending_month,
+            },
         },
+        "unsynced_count": unsynced_count,
+        "recent_participants": recent_participants,
         "actions": [
             {
                 "icon": "bi-person-plus",
@@ -2517,7 +2575,7 @@ def search(request):
             participants_qs = participants_qs.filter(classification="Control")
             tpt_qs = tpt_qs.none()
             ineligible_qs = ineligible_qs.none()
-        elif type_filter == "Screening":
+        elif type_filter in ["Screening", "Pending"]:
             participants_qs = participants_qs.filter(classification="Pending")
             tpt_qs = tpt_qs.none()
             ineligible_qs = ineligible_qs.none()

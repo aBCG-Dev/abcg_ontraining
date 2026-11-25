@@ -119,11 +119,191 @@
     </div>
 </section>
 
-<!-- 3. Primary Workspace Routing Cards (Full-Width) -->
+<style>
+    .timeframe-pill-container {
+        display: inline-flex;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 50px;
+        border: 1px solid var(--line);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    .timeframe-pill-btn {
+        border: none;
+        background: transparent;
+        padding: 8px 18px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--muted);
+        border-radius: 50px;
+        min-height: 42px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+    }
+    .timeframe-pill-btn:hover:not(.active) {
+        color: var(--ink);
+        background: rgba(0, 0, 0, 0.05);
+    }
+    .timeframe-pill-btn.active {
+        background: var(--brand);
+        color: #ffffff !important;
+        box-shadow: 0 2px 8px rgba(15, 76, 129, 0.28);
+    }
+    .nurse-stat-card {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        box-shadow: var(--shadow);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .nurse-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(15, 42, 69, 0.12);
+    }
+    .stat-registered-card {
+        border-top: 4px solid var(--brand) !important;
+    }
+    .stat-cases-card {
+        border-top: 4px solid #dc3545 !important;
+    }
+    .stat-controls-card {
+        border-top: 4px solid #059669 !important;
+    }
+    .stat-pending-card {
+        border-top: 4px solid #d97706 !important;
+        background: linear-gradient(135deg, #ffffff 0%, #fffdf5 100%);
+    }
+    .stat-pending-card:hover {
+        border-color: #d97706 !important;
+        box-shadow: 0 10px 24px rgba(217, 119, 6, 0.18) !important;
+    }
+    .stat-icon-wrapper {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+    }
+</style>
+
+<!-- 3. Statistics Section with Timeframe Toggle -->
+<section class="mt-4" aria-label="Performance Statistics">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <div>
+            <h2 class="h5 fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                <i class="bi bi-graph-up-arrow text-primary"></i> Enrollment & Performance
+            </h2>
+            <p class="text-muted small mb-0">Live metrics for registrations, classifications, and pending results.</p>
+        </div>
+        
+        <!-- Segmented Timeframe Switcher (Touch-friendly for vertical tablet) -->
+        <div class="timeframe-pill-container" role="group" aria-label="Statistics Timeframe">
+            <button type="button" class="timeframe-pill-btn active" data-timeframe="daily" id="btn-timeframe-daily">
+                <i class="bi bi-calendar-event"></i> Today
+            </button>
+            <button type="button" class="timeframe-pill-btn" data-timeframe="weekly" id="btn-timeframe-weekly">
+                <i class="bi bi-calendar-week"></i> This Week
+            </button>
+            <button type="button" class="timeframe-pill-btn" data-timeframe="monthly" id="btn-timeframe-monthly">
+                <i class="bi bi-calendar-month"></i> This Month
+            </button>
+        </div>
+    </div>
+
+    <!-- 4 Responsive Metric Cards (2x2 on vertical tablet portrait) -->
+    <div class="row g-3">
+        <!-- Metric 1: Registered -->
+        <div class="col-6 col-lg-3">
+            <div class="nurse-stat-card stat-registered-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Registered</span>
+                    <div class="stat-icon-wrapper" style="background: #e8f1f8; color: var(--brand);">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                </div>
+                <div>
+                    <strong class="fs-2 fw-extrabold text-dark d-block lh-1 mb-1" id="stat-registered-val">{{ stats.daily.registered|default:0 }}</strong>
+                    <span class="text-muted small fw-medium" id="stat-registered-sub">Registered today</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Cases -->
+        <div class="col-6 col-lg-3">
+            <div class="nurse-stat-card stat-cases-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Cases</span>
+                    <div class="stat-icon-wrapper" style="background: #fee2e2; color: #dc3545;">
+                        <i class="bi bi-clipboard2-pulse-fill"></i>
+                    </div>
+                </div>
+                <div>
+                    <strong class="fs-2 fw-extrabold text-danger d-block lh-1 mb-1" id="stat-cases-val">{{ stats.daily.cases|default:0 }}</strong>
+                    <span class="text-muted small fw-medium" id="stat-cases-sub">Confirmed cases today</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Controls -->
+        <div class="col-6 col-lg-3">
+            <div class="nurse-stat-card stat-controls-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Controls</span>
+                    <div class="stat-icon-wrapper" style="background: #d1fae5; color: #059669;">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                </div>
+                <div>
+                    <strong class="fs-2 fw-extrabold text-success d-block lh-1 mb-1" id="stat-controls-val">{{ stats.daily.controls|default:0 }}</strong>
+                    <span class="text-muted small fw-medium" id="stat-controls-sub">Eligible controls today</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Pending (Clickable to jump directly to pending list) -->
+        <div class="col-6 col-lg-3">
+            <a href="{% url 'questions:search' %}?type=Pending" class="text-decoration-none text-dark d-block h-100">
+                <div class="nurse-stat-card stat-pending-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Pending</span>
+                        <div class="stat-icon-wrapper" style="background: #fef3c7; color: #d97706;">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-baseline gap-2 mb-1">
+                            <strong class="fs-2 fw-extrabold d-block lh-1" style="color: #b45309;" id="stat-pending-val">{{ stats.daily.pending|default:0 }}</strong>
+                            {% if stats.total_pending_all > 0 %}
+                            <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 0.72rem;">
+                                {{ stats.total_pending_all }} total in queue
+                            </span>
+                            {% endif %}
+                        </div>
+                        <span class="text-warning-emphasis small fw-semibold d-inline-flex align-items-center gap-1" id="stat-pending-sub">
+                            Enrolled today awaiting results <i class="bi bi-arrow-right-short"></i>
+                        </span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- 4. Primary Workspace Routing Cards -->
 <section class="mt-4">
     <div class="row g-3">
         {% for action in actions %}
-        <div class="col-lg-4 col-md-6">
+        <div class="col-12 col-md-4">
             <article class="workflow-card {{ action.card_class }} position-relative h-100 d-flex flex-column justify-content-between p-4">
                 <div class="d-flex gap-3">
                     <div class="action-icon flex-shrink-0"
@@ -138,9 +318,22 @@
                             </a>
                         </h3>
                         <p class="text-muted small mb-0">{{ action.description }}</p>
+                        {% if action.url_name == 'questions:pending_sync' %}
+                        <div class="mt-2">
+                            {% if unsynced_count > 0 %}
+                            <span class="badge bg-warning text-dark fw-bold px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">
+                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> {{ unsynced_count }} records awaiting sync
+                            </span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">
+                                <i class="bi bi-check2-circle me-1"></i> All records synced
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
-                <div class="d-flex justify-content-end align-items-center mt-4">
+                <div class="d-flex justify-content-end align-items-center mt-3">
                     <div class="action-button-circle">
                         <i class="bi bi-arrow-right"></i>
                     </div>
@@ -150,6 +343,177 @@
         {% endfor %}
     </div>
 </section>
+
+<!-- 5. Recent Activity / Registrations -->
+<section class="mt-4 mb-4" aria-label="Recent Registrations">
+    <div class="card border bg-white shadow-sm" style="border-radius: var(--radius); border-color: var(--line);">
+        <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-color: var(--line);">
+            <div>
+                <h3 class="h6 fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-clock-history text-primary"></i> Recent Registrations
+                </h3>
+                <span class="text-muted small">Latest participants enrolled under your workspace</span>
+            </div>
+            <a href="{% url 'questions:search' %}" class="btn btn-sm btn-outline-primary fw-bold px-3 py-1.5" style="border-radius: 6px; font-size: 0.82rem;">
+                View All in Registry <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="card-body p-0">
+            {% if recent_participants %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                    <thead class="table-light text-muted" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                        <tr>
+                            <th class="ps-4 py-2.5">Participant</th>
+                            <th class="py-2.5">Study ID</th>
+                            <th class="py-2.5">Enrollment Date</th>
+                            <th class="py-2.5">Classification</th>
+                            <th class="text-end pe-4 py-2.5">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in recent_participants %}
+                        <tr>
+                            <td class="ps-4 py-3">
+                                <div class="d-flex align-items-center gap-2.5">
+                                    <div class="rounded-circle d-grid place-items-center fw-bold text-white flex-shrink-0"
+                                        style="width: 34px; height: 34px; font-size: 0.82rem; background-color: var(--brand);">
+                                        {{ p.full_name|slice:":1"|upper|default:"P" }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ p.full_name|default:"Unnamed Participant" }}</div>
+                                        <div class="text-muted small" style="font-size: 0.75rem;">
+                                            {% if p.village %}{{ p.village }}{% else %}—{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3">
+                                <span class="font-monospace fw-semibold text-dark">{% if p.study_id %}{{ p.study_id }}{% else %}—{% endif %}</span>
+                            </td>
+                            <td class="py-3 text-muted">
+                                {{ p.date_enroll|date:"d M Y" }}
+                            </td>
+                            <td class="py-3">
+                                {% if p.classification == "Case" %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Case
+                                </span>
+                                {% elif p.classification == "Control" %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Control
+                                </span>
+                                {% elif p.classification == "TPT" or p.classification == "TPT+BCG" %}
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-shield-check me-1"></i> TPT
+                                </span>
+                                {% elif p.classification == "Excluded" or p.classification == "Not Eligible" %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-slash-circle me-1"></i> Excluded
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-hourglass-split me-1"></i> Pending
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4 py-3">
+                                {% if p.study_id %}
+                                <a href="{% url 'questions:participant_detail' p.study_id %}" class="btn btn-sm btn-outline-secondary py-1 px-2.5 fw-semibold" style="font-size: 0.8rem; border-radius: 6px;">
+                                    View <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                                {% else %}
+                                <a href="{% url 'questions:registration_edit' p.id %}" class="btn btn-sm btn-outline-secondary py-1 px-2.5 fw-semibold" style="font-size: 0.8rem; border-radius: 6px;">
+                                    Edit <i class="bi bi-pencil-square ms-1"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-inbox fs-2 text-secondary opacity-50 d-block mb-2"></i>
+                <p class="mb-2 fw-medium text-dark">No participants registered yet.</p>
+                <a href="{% url 'questions:registration' %}" class="btn btn-sm btn-primary fw-bold px-3 py-2" style="background-color: var(--brand); border: none; border-radius: var(--radius);">
+                    <i class="bi bi-person-plus me-1"></i> Register New Participant
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Timeframe Toggle JavaScript Logic -->
+<script>
+    (function () {
+        const statsData = {
+            daily: {
+                registered: {{ stats.daily.registered|default:0 }},
+                cases: {{ stats.daily.cases|default:0 }},
+                controls: {{ stats.daily.controls|default:0 }},
+                pending: {{ stats.daily.pending|default:0 }},
+                regSub: "Registered today",
+                casesSub: "Confirmed cases today",
+                controlsSub: "Eligible controls today",
+                pendingSub: "Enrolled today awaiting results"
+            },
+            weekly: {
+                registered: {{ stats.weekly.registered|default:0 }},
+                cases: {{ stats.weekly.cases|default:0 }},
+                controls: {{ stats.weekly.controls|default:0 }},
+                pending: {{ stats.weekly.pending|default:0 }},
+                regSub: "Registered this week",
+                casesSub: "Confirmed cases this week",
+                controlsSub: "Eligible controls this week",
+                pendingSub: "Enrolled this week awaiting results"
+            },
+            monthly: {
+                registered: {{ stats.monthly.registered|default:0 }},
+                cases: {{ stats.monthly.cases|default:0 }},
+                controls: {{ stats.monthly.controls|default:0 }},
+                pending: {{ stats.monthly.pending|default:0 }},
+                regSub: "Registered this month",
+                casesSub: "Confirmed cases this month",
+                controlsSub: "Eligible controls this month",
+                pendingSub: "Enrolled this month awaiting results"
+            }
+        };
+
+        const buttons = document.querySelectorAll('.timeframe-pill-btn');
+        buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const tf = this.getAttribute('data-timeframe');
+                if (!statsData[tf]) return;
+
+                buttons.forEach(function (b) { b.classList.remove('active'); });
+                this.classList.add('active');
+
+                const regVal = document.getElementById('stat-registered-val');
+                const casesVal = document.getElementById('stat-cases-val');
+                const controlsVal = document.getElementById('stat-controls-val');
+                const pendingVal = document.getElementById('stat-pending-val');
+
+                if (regVal) regVal.textContent = statsData[tf].registered;
+                if (casesVal) casesVal.textContent = statsData[tf].cases;
+                if (controlsVal) controlsVal.textContent = statsData[tf].controls;
+                if (pendingVal) pendingVal.textContent = statsData[tf].pending;
+
+                const regSub = document.getElementById('stat-registered-sub');
+                const casesSub = document.getElementById('stat-cases-sub');
+                const controlsSub = document.getElementById('stat-controls-sub');
+                const pendingSub = document.getElementById('stat-pending-sub');
+
+                if (regSub) regSub.textContent = statsData[tf].regSub;
+                if (casesSub) casesSub.textContent = statsData[tf].casesSub;
+                if (controlsSub) controlsSub.textContent = statsData[tf].controlsSub;
+                if (pendingSub) pendingSub.textContent = statsData[tf].pendingSub;
+            });
+        });
+    })();
+</script>
 
 
 

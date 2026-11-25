@@ -143,7 +143,7 @@
                         <option value="All" {% if type_filter == "All" or not type_filter %}selected{% endif %}>All Types</option>
                         <option value="Case" {% if type_filter == "Case" %}selected{% endif %}>Case</option>
                         <option value="Control" {% if type_filter == "Control" %}selected{% endif %}>Control</option>
-                        <option value="Screening" {% if type_filter == "Screening" %}selected{% endif %}>Screening</option>
+                        <option value="Pending" {% if type_filter == "Pending" or type_filter == "Screening" %}selected{% endif %}>Pending</option>
                         <option value="Registered" {% if type_filter == "Registered" %}selected{% endif %}>Registered</option>
                     </select>
                 </div>
