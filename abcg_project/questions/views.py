@@ -290,8 +290,6 @@ def home(request):
                 "icon": "bi-person-plus",
                 "title": "New Registration",
                 "description": "Register participant, check campaign lock, and verify high-risk eligibility.",
-                "status": "Module 01",
-                "badge_class": "bg-light text-dark border",
                 "url_name": "questions:registration",
                 "card_class": "workflow-card-registration"
             },
@@ -299,8 +297,6 @@ def home(request):
                 "icon": "bi-search",
                 "title": "Search Participant",
                 "description": "Find records by Study ID or Nikshay ID.",
-                "status": "Module 03",
-                "badge_class": "bg-light text-dark border",
                 "url_name": "questions:search",
                 "card_class": "workflow-card-search"
             },
@@ -308,8 +304,6 @@ def home(request):
                 "icon": "bi-arrow-repeat",
                 "title": "Data Synchronization",
                 "description": "Review, validate, and synchronize staged offline records.",
-                "status": "Module 04",
-                "badge_class": "bg-light text-dark border",
                 "url_name": "questions:pending_sync",
                 "card_class": "workflow-card-sync"
             },

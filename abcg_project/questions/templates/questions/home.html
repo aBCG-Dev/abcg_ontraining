@@ -121,8 +121,6 @@
 
 <!-- 3. Primary Workspace Routing Cards (Full-Width) -->
 <section class="mt-4">
-    <p class="eyebrow mb-3">Workflows</p>
-
     <div class="row g-3">
         {% for action in actions %}
         <div class="col-lg-4 col-md-6">
@@ -142,12 +140,7 @@
                         <p class="text-muted small mb-0">{{ action.description }}</p>
                     </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mt-4">
-                    {% if action.status %}
-                        <span class="badge {{ action.badge_class|default:'bg-light text-dark border' }} px-2.5 py-1.5" style="font-size: 0.75rem; border-radius: 6px;">{{ action.status }}</span>
-                    {% else %}
-                        <span></span>
-                    {% endif %}
+                <div class="d-flex justify-content-end align-items-center mt-4">
                     <div class="action-button-circle">
                         <i class="bi bi-arrow-right"></i>
                     </div>
@@ -155,59 +148,6 @@
             </article>
         </div>
         {% endfor %}
-    </div>
-</section>
-
-<!-- 4. Daily Statistics Board -->
-<section class="mt-5 border-top pt-4">
-    <p class="eyebrow mb-2">Performance &amp; Metrics</p>
-    <h2 class="h5 fw-bold text-dark mb-4">Daily Statistics</h2>
-
-    <div class="row g-3">
-        <!-- Registered Today -->
-        <div class="col-lg-4 col-md-6">
-            <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-registered"
-                style="border-radius: var(--radius); border-left: 5px solid var(--brand) !important;">
-                <div>
-                    <span class="summary-label mb-1">Registered Today</span>
-                    <strong class="text-dark fs-2 d-block" style="line-height: 1.1;">{{ stats.registered_today }}</strong>
-                    <small class="text-muted">New enrollments on this date</small>
-                </div>
-                <div class="fs-1 text-primary-emphasis opacity-25">
-                    <i class="bi bi-person-check-fill"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Cases -->
-        <div class="col-lg-4 col-md-6">
-            <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-case"
-                style="border-radius: var(--radius); border-left: 5px solid var(--accent) !important;">
-                <div>
-                    <span class="summary-label mb-1">Total Cases</span>
-                    <strong class="text-dark fs-2 d-block" style="line-height: 1.1;">{{ stats.cases }}</strong>
-                    <small class="text-muted">Active tuberculosis positive cases</small>
-                </div>
-                <div class="fs-1 text-success-emphasis opacity-25">
-                    <i class="bi bi-heart-pulse-fill"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Controls -->
-        <div class="col-lg-4 col-md-6">
-            <div class="card border shadow-sm p-4 bg-white d-flex flex-row align-items-center justify-content-between stat-card stat-card-control"
-                style="border-radius: var(--radius); border-left: 5px solid #d97706 !important;">
-                <div>
-                    <span class="summary-label mb-1">Total Controls</span>
-                    <strong class="text-dark fs-2 d-block" style="line-height: 1.1;">{{ stats.controls }}</strong>
-                    <small class="text-muted">Healthy matched comparison subjects</small>
-                </div>
-                <div class="fs-1 text-warning-emphasis opacity-25">
-                    <i class="bi bi-people-fill"></i>
-                </div>
-            </div>
-        </div>
     </div>
 </section>
 
