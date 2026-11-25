@@ -235,19 +235,20 @@
             <table class="table premium-table table-hover align-middle mb-0" id="directoryTable" style="font-size: 0.9rem;">
                 <thead class="bg-light text-secondary small" style="border-bottom: 2px solid #cbd5e1;">
                     <tr class="text-uppercase tracking-wider font-bold" style="font-size: 0.72rem; color: #475569;">
-                        <th class="text-start px-4 py-3" style="width: 20%;">Participant</th>
-                        <th class="py-3" style="width: 13%;">Study ID</th>
-                        <th class="py-3" style="width: 13%;">Screening ID</th>
-                        <th class="py-3" style="width: 13%;">Nikshay ID</th>
-                        <th class="py-3" style="width: 12%;">Current Age / Gender</th>
-                        <th class="py-3" style="width: 11%;">Source</th>
-                        <th class="py-3" style="width: 10%;">Status</th>
+                        <th class="text-start px-4 py-3" style="width: 18%;">Participant</th>
+                        <th class="py-3" style="width: 12%;">Study ID</th>
+                        <th class="py-3" style="width: 12%;">Screening ID</th>
+                        <th class="py-3" style="width: 12%;">Nikshay ID</th>
+                        <th class="py-3" style="width: 11%;">Current Age / Gender</th>
+                        <th class="py-3" style="width: 10%;">Source</th>
+                        <th class="py-3" style="width: 12%;">Classification</th>
+                        <th class="py-3" style="width: 8%;">Sync</th>
                         <th class="text-end px-4 py-3" style="width: 8%;">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     {% for p in participants %}
-                    <tr class="fw-semibold text-slate-700" onclick="window.location='{% url 'questions:participant_detail' p.study_id %}'">
+                    <tr class="fw-semibold text-slate-700" {% if p.study_id %}onclick="window.location='{% url 'questions:participant_detail' p.study_id %}'"{% endif %}>
                         <td class="text-start px-4 py-3">
                             <div style="min-width: 0;">
                                 <div class="fw-bold text-dark text-truncate" style="max-width: 220px;" title="{{ p.full_name }}">{{ p.full_name }}</div>
@@ -255,7 +256,7 @@
                             </div>
                         </td>
                         <td class="py-3">
-                            {% if p.eligible %}
+                            {% if p.eligible and p.study_id %}
                             <code class="text-secondary fw-bold font-monospace" style="font-size: 0.85rem;">{{ p.study_id }}</code>
                             {% else %}
                             <span class="text-muted small">Not Assigned</span>
@@ -270,21 +271,50 @@
                             </span>
                         </td>
                         <td class="py-3">
+                            {% if p.classification == "Case" %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Case
+                            </span>
+                            {% elif p.classification == "Control" %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-check-circle-fill me-1"></i> Control
+                            </span>
+                            {% elif p.classification == "TPT" or p.classification == "TPT+BCG" %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-shield-check me-1"></i> TPT
+                            </span>
+                            {% elif p.classification == "Excluded" or p.classification == "Not Eligible" %}
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-slash-circle me-1"></i> Excluded
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-hourglass-split me-1"></i> Pending
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3">
                             {% if p.synced %}
                             <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.72rem; color: #15803d !important; background-color: #dcfce7 !important;">Synced</span>
                             {% else %}
-                            <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.72rem; color: #b45309 !important; background-color: #fef3c7 !important;">Pending</span>
+                            <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.72rem; color: #b45309 !important; background-color: #fef3c7 !important;">Unsynced</span>
                             {% endif %}
                         </td>
                         <td class="text-end px-4 py-3" onclick="event.stopPropagation();">
+                            {% if p.study_id %}
                             <a href="{% url 'questions:participant_detail' p.study_id %}" class="btn btn-sm btn-outline-secondary py-1 px-2.5 fw-bold" style="font-size: 0.78rem; border-radius: 6px;">
                                 View <i class="bi bi-arrow-right ms-1"></i>
                             </a>
+                            {% else %}
+                            <a href="{% url 'questions:registration_edit' p.id %}" class="btn btn-sm btn-outline-secondary py-1 px-2.5 fw-bold" style="font-size: 0.78rem; border-radius: 6px;">
+                                Edit <i class="bi bi-pencil-square ms-1"></i>
+                            </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="p-5 text-center text-muted">
+                        <td colspan="9" class="p-5 text-center text-muted">
                             <i class="bi bi-person-badge fs-2 mb-2 text-secondary opacity-50"></i>
                             <h5 class="fw-bold text-dark mb-1">No participants found</h5>
                             <p class="small text-secondary mb-3">No participant records match your current search or filters.</p>
@@ -298,17 +328,29 @@
         
         <div class="d-block d-md-none p-4 bg-light">
             {% for p in participants %}
-            <div class="card p-4 mb-3 border border-slate-200 shadow-sm" style="border-radius: 10px; background: #ffffff;" onclick="window.location='{% url 'questions:participant_detail' p.study_id %}'">
+            <div class="card p-4 mb-3 border border-slate-200 shadow-sm" style="border-radius: 10px; background: #ffffff;" {% if p.study_id %}onclick="window.location='{% url 'questions:participant_detail' p.study_id %}'"{% endif %}>
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
                         <div class="fw-bold text-dark" style="font-size: 0.95rem;">{{ p.full_name }}</div>
                         <div class="text-secondary" style="font-size: 0.72rem;">{{ p.village }}, {{ p.district }}</div>
                     </div>
-                    <div>
+                    <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                        {% if p.classification == "Case" %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold px-2 py-1" style="font-size: 0.7rem;">Case</span>
+                        {% elif p.classification == "Control" %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1" style="font-size: 0.7rem;">Control</span>
+                        {% elif p.classification == "TPT" or p.classification == "TPT+BCG" %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1" style="font-size: 0.7rem;">TPT</span>
+                        {% elif p.classification == "Excluded" or p.classification == "Not Eligible" %}
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-semibold px-2 py-1" style="font-size: 0.7rem;">Excluded</span>
+                        {% else %}
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-semibold px-2 py-1" style="font-size: 0.7rem;">Pending</span>
+                        {% endif %}
+
                         {% if p.synced %}
                         <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.7rem; color: #15803d !important; background-color: #dcfce7 !important;">Synced</span>
                         {% else %}
-                        <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.7rem; color: #b45309 !important; background-color: #fef3c7 !important;">Pending</span>
+                        <span class="badge fw-bold px-2 py-1 rounded" style="font-size: 0.7rem; color: #b45309 !important; background-color: #fef3c7 !important;">Unsynced</span>
                         {% endif %}
                     </div>
                 </div>
@@ -316,7 +358,7 @@
                 <div class="row g-2 border-top border-slate-100 pt-2.5 mt-1" style="font-size: 0.82rem;">
                     <div class="col-6">
                         <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.65rem;">Study ID</div>
-                        <div class="font-monospace text-dark fw-bold">{% if p.eligible %}{{ p.study_id }}{% else %}<span class="text-muted small">Not Assigned</span>{% endif %}</div>
+                        <div class="font-monospace text-dark fw-bold">{% if p.eligible and p.study_id %}{{ p.study_id }}{% else %}<span class="text-muted small">Not Assigned</span>{% endif %}</div>
                     </div>
                     <div class="col-6">
                         <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.65rem;">Screening ID</div>
@@ -336,9 +378,15 @@
                     <span class="small fw-semibold text-secondary" style="font-size: 0.75rem;">
                         Source: <span class="text-slate-700">{% if p.nikshay_id and p.synced %}Nikshay + aBCG{% elif p.nikshay_id %}Nikshay{% else %}aBCG Local{% endif %}</span>
                     </span>
+                    {% if p.study_id %}
                     <a href="{% url 'questions:participant_detail' p.study_id %}" class="text-decoration-none fw-bold text-primary" style="font-size: 0.8rem;">
                         View Dossier <i class="bi bi-arrow-right"></i>
                     </a>
+                    {% else %}
+                    <a href="{% url 'questions:registration_edit' p.id %}" class="text-decoration-none fw-bold text-primary" style="font-size: 0.8rem;">
+                        Edit Record <i class="bi bi-pencil-square"></i>
+                    </a>
+                    {% endif %}
                 </div>
             </div>
             {% empty %}

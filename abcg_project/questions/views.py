@@ -275,7 +275,7 @@ def home(request):
     total_registered_today = p_today.count() + t_today.count()
     cases_today = p_today.filter(classification="Case").count()
     controls_today = p_today.filter(classification="Control").count()
-    pending_today = p_today.filter(classification="Pending").count()
+    pending_today = p_today.filter(Q(classification="Pending") | Q(classification__isnull=True) | Q(classification="")).count()
 
     # Timeframe metrics: Weekly (This Week)
     p_week = participants_filtered.filter(date_enroll__gte=week_start)
@@ -283,7 +283,7 @@ def home(request):
     total_registered_week = p_week.count() + t_week.count()
     cases_week = p_week.filter(classification="Case").count()
     controls_week = p_week.filter(classification="Control").count()
-    pending_week = p_week.filter(classification="Pending").count()
+    pending_week = p_week.filter(Q(classification="Pending") | Q(classification__isnull=True) | Q(classification="")).count()
 
     # Timeframe metrics: Monthly (This Month)
     p_month = participants_filtered.filter(date_enroll__gte=month_start)
@@ -291,12 +291,12 @@ def home(request):
     total_registered_month = p_month.count() + t_month.count()
     cases_month = p_month.filter(classification="Case").count()
     controls_month = p_month.filter(classification="Control").count()
-    pending_month = p_month.filter(classification="Pending").count()
+    pending_month = p_month.filter(Q(classification="Pending") | Q(classification__isnull=True) | Q(classification="")).count()
 
     # All-time metrics for backwards compatibility & active queue
     total_cases = participants_filtered.filter(classification="Case").count()
     total_controls = participants_filtered.filter(classification="Control").count()
-    total_pending_all = participants_filtered.filter(classification="Pending").count()
+    total_pending_all = participants_filtered.filter(Q(classification="Pending") | Q(classification__isnull=True) | Q(classification="")).count()
 
     # Unsynced offline records count
     unsynced_p = filter_by_jurisdiction(Participant.objects.filter(synced=False), request)
@@ -2576,7 +2576,7 @@ def search(request):
             tpt_qs = tpt_qs.none()
             ineligible_qs = ineligible_qs.none()
         elif type_filter in ["Screening", "Pending"]:
-            participants_qs = participants_qs.filter(classification="Pending")
+            participants_qs = participants_qs.filter(Q(classification="Pending") | Q(classification__isnull=True) | Q(classification=""))
             tpt_qs = tpt_qs.none()
             ineligible_qs = ineligible_qs.none()
         elif type_filter == "Registered":

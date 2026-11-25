@@ -84,7 +84,7 @@
 <!-- 1. Header Section -->
 <section class="page-header flex-wrap align-items-center">
     <div>
-        <h1 class="h2 fw-bold text-dark m-0">Welcome, {{ user.profile.full_name }}</h1>
+        <h1 class="h2 fw-bold text-dark m-0">Welcome, {{ user.username }}</h1>
     </div>
 
     <!-- Real-time Online/Offline Connectivity Status & Last Sync -->
@@ -116,6 +116,50 @@
     <div>
         <span class="summary-label">TB Unit</span>
         <strong class="text-dark">{{ site.tb_unit }}</strong>
+    </div>
+</section>
+
+<!-- 3. Primary Workspace Routing Cards -->
+<section class="mt-4">
+    <div class="row g-3">
+        {% for action in actions %}
+        <div class="col-12 col-md-4">
+            <article class="workflow-card {{ action.card_class }} position-relative h-100 d-flex flex-column justify-content-between p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="action-icon flex-shrink-0"
+                        style="width: 50px; height: 50px; background: #e8f1f8; color: var(--brand); border-radius: var(--radius); display: grid; place-items: center; font-size: 1.3rem;">
+                        <i class="bi {{ action.icon }}"></i>
+                    </div>
+                    <div>
+                        <h3 class="h6 fw-bold mb-0 text-dark">
+                            <a href="{% url action.url_name %}"
+                                class="text-decoration-none text-dark stretched-link">
+                                {{ action.title }}
+                            </a>
+                        </h3>
+                        {% if action.url_name == 'questions:pending_sync' %}
+                        <div class="mt-1">
+                            {% if unsynced_count > 0 %}
+                            <span class="badge bg-warning text-dark fw-bold px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">
+                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> {{ unsynced_count }} records awaiting sync
+                            </span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">
+                                <i class="bi bi-check2-circle me-1"></i> All records synced
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end align-items-center mt-3">
+                    <div class="action-button-circle">
+                        <i class="bi bi-arrow-right"></i>
+                    </div>
+                </div>
+            </article>
+        </div>
+        {% endfor %}
     </div>
 </section>
 
@@ -196,16 +240,9 @@
     }
 </style>
 
-<!-- 3. Statistics Section with Timeframe Toggle -->
+<!-- 4. Statistics Section with Timeframe Toggle -->
 <section class="mt-4" aria-label="Performance Statistics">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-        <div>
-            <h2 class="h5 fw-bold text-dark m-0 d-flex align-items-center gap-2">
-                <i class="bi bi-graph-up-arrow text-primary"></i> Enrollment & Performance
-            </h2>
-            <p class="text-muted small mb-0">Live metrics for registrations, classifications, and pending results.</p>
-        </div>
-        
+    <div class="d-flex justify-content-end mb-3">
         <!-- Segmented Timeframe Switcher (Touch-friendly for vertical tablet) -->
         <div class="timeframe-pill-container" role="group" aria-label="Statistics Timeframe">
             <button type="button" class="timeframe-pill-btn active" data-timeframe="daily" id="btn-timeframe-daily">
@@ -220,58 +257,64 @@
         </div>
     </div>
 
-    <!-- 4 Responsive Metric Cards (2x2 on vertical tablet portrait) -->
+    <!-- 4 Responsive Metric Cards (1-by-1 on smaller devices, 2x2 on tablets, 4 across on desktop) -->
     <div class="row g-3">
-        <!-- Metric 1: Registered -->
-        <div class="col-6 col-lg-3">
-            <div class="nurse-stat-card stat-registered-card">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Registered</span>
-                    <div class="stat-icon-wrapper" style="background: #e8f1f8; color: var(--brand);">
-                        <i class="bi bi-people-fill"></i>
+        <!-- Metric 1: Assessed for Eligibility -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <a href="{% url 'questions:search' %}" class="text-decoration-none text-dark d-block h-100">
+                <div class="nurse-stat-card stat-registered-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.04em;">Assessed for Eligibility</span>
+                        <div class="stat-icon-wrapper" style="background: #e8f1f8; color: var(--brand);">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <strong class="fs-2 fw-extrabold text-dark d-block lh-1 mb-1" id="stat-registered-val">{{ stats.daily.registered|default:0 }}</strong>
+                        <span class="text-muted small fw-medium" id="stat-registered-sub">Assessed today</span>
                     </div>
                 </div>
-                <div>
-                    <strong class="fs-2 fw-extrabold text-dark d-block lh-1 mb-1" id="stat-registered-val">{{ stats.daily.registered|default:0 }}</strong>
-                    <span class="text-muted small fw-medium" id="stat-registered-sub">Registered today</span>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- Metric 2: Cases -->
-        <div class="col-6 col-lg-3">
-            <div class="nurse-stat-card stat-cases-card">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Cases</span>
-                    <div class="stat-icon-wrapper" style="background: #fee2e2; color: #dc3545;">
-                        <i class="bi bi-clipboard2-pulse-fill"></i>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <a href="{% url 'questions:search' %}?type=Case" class="text-decoration-none text-dark d-block h-100">
+                <div class="nurse-stat-card stat-cases-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Cases</span>
+                        <div class="stat-icon-wrapper" style="background: #fee2e2; color: #dc3545;">
+                            <i class="bi bi-clipboard2-pulse-fill"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <strong class="fs-2 fw-extrabold text-danger d-block lh-1 mb-1" id="stat-cases-val">{{ stats.daily.cases|default:0 }}</strong>
+                        <span class="text-muted small fw-medium" id="stat-cases-sub">Confirmed cases today</span>
                     </div>
                 </div>
-                <div>
-                    <strong class="fs-2 fw-extrabold text-danger d-block lh-1 mb-1" id="stat-cases-val">{{ stats.daily.cases|default:0 }}</strong>
-                    <span class="text-muted small fw-medium" id="stat-cases-sub">Confirmed cases today</span>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- Metric 3: Controls -->
-        <div class="col-6 col-lg-3">
-            <div class="nurse-stat-card stat-controls-card">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Controls</span>
-                    <div class="stat-icon-wrapper" style="background: #d1fae5; color: #059669;">
-                        <i class="bi bi-shield-check"></i>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <a href="{% url 'questions:search' %}?type=Control" class="text-decoration-none text-dark d-block h-100">
+                <div class="nurse-stat-card stat-controls-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Controls</span>
+                        <div class="stat-icon-wrapper" style="background: #d1fae5; color: #059669;">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <strong class="fs-2 fw-extrabold text-success d-block lh-1 mb-1" id="stat-controls-val">{{ stats.daily.controls|default:0 }}</strong>
+                        <span class="text-muted small fw-medium" id="stat-controls-sub">Eligible controls today</span>
                     </div>
                 </div>
-                <div>
-                    <strong class="fs-2 fw-extrabold text-success d-block lh-1 mb-1" id="stat-controls-val">{{ stats.daily.controls|default:0 }}</strong>
-                    <span class="text-muted small fw-medium" id="stat-controls-sub">Eligible controls today</span>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- Metric 4: Pending (Clickable to jump directly to pending list) -->
-        <div class="col-6 col-lg-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <a href="{% url 'questions:search' %}?type=Pending" class="text-decoration-none text-dark d-block h-100">
                 <div class="nurse-stat-card stat-pending-card">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -299,61 +342,13 @@
     </div>
 </section>
 
-<!-- 4. Primary Workspace Routing Cards -->
-<section class="mt-4">
-    <div class="row g-3">
-        {% for action in actions %}
-        <div class="col-12 col-md-4">
-            <article class="workflow-card {{ action.card_class }} position-relative h-100 d-flex flex-column justify-content-between p-4">
-                <div class="d-flex gap-3">
-                    <div class="action-icon flex-shrink-0"
-                        style="width: 50px; height: 50px; background: #e8f1f8; color: var(--brand); border-radius: var(--radius); display: grid; place-items: center; font-size: 1.3rem;">
-                        <i class="bi {{ action.icon }}"></i>
-                    </div>
-                    <div>
-                        <h3 class="h6 fw-bold mb-1 text-dark">
-                            <a href="{% url action.url_name %}"
-                                class="text-decoration-none text-dark stretched-link">
-                                {{ action.title }}
-                            </a>
-                        </h3>
-                        <p class="text-muted small mb-0">{{ action.description }}</p>
-                        {% if action.url_name == 'questions:pending_sync' %}
-                        <div class="mt-2">
-                            {% if unsynced_count > 0 %}
-                            <span class="badge bg-warning text-dark fw-bold px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">
-                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> {{ unsynced_count }} records awaiting sync
-                            </span>
-                            {% else %}
-                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">
-                                <i class="bi bi-check2-circle me-1"></i> All records synced
-                            </span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="d-flex justify-content-end align-items-center mt-3">
-                    <div class="action-button-circle">
-                        <i class="bi bi-arrow-right"></i>
-                    </div>
-                </div>
-            </article>
-        </div>
-        {% endfor %}
-    </div>
-</section>
-
 <!-- 5. Recent Activity / Registrations -->
 <section class="mt-4 mb-4" aria-label="Recent Registrations">
     <div class="card border bg-white shadow-sm" style="border-radius: var(--radius); border-color: var(--line);">
         <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-color: var(--line);">
-            <div>
-                <h3 class="h6 fw-bold text-dark m-0 d-flex align-items-center gap-2">
-                    <i class="bi bi-clock-history text-primary"></i> Recent Registrations
-                </h3>
-                <span class="text-muted small">Latest participants enrolled under your workspace</span>
-            </div>
+            <h3 class="h6 fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                <i class="bi bi-clock-history text-primary"></i> Recent Registrations
+            </h3>
             <a href="{% url 'questions:search' %}" class="btn btn-sm btn-outline-primary fw-bold px-3 py-1.5" style="border-radius: 6px; font-size: 0.82rem;">
                 View All in Registry <i class="bi bi-arrow-right ms-1"></i>
             </a>
@@ -375,18 +370,7 @@
                         {% for p in recent_participants %}
                         <tr>
                             <td class="ps-4 py-3">
-                                <div class="d-flex align-items-center gap-2.5">
-                                    <div class="rounded-circle d-grid place-items-center fw-bold text-white flex-shrink-0"
-                                        style="width: 34px; height: 34px; font-size: 0.82rem; background-color: var(--brand);">
-                                        {{ p.full_name|slice:":1"|upper|default:"P" }}
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold text-dark">{{ p.full_name|default:"Unnamed Participant" }}</div>
-                                        <div class="text-muted small" style="font-size: 0.75rem;">
-                                            {% if p.village %}{{ p.village }}{% else %}—{% endif %}
-                                        </div>
-                                    </div>
-                                </div>
+                                <span class="fw-bold text-dark">{{ p.full_name|default:"Unnamed Participant" }}</span>
                             </td>
                             <td class="py-3">
                                 <span class="font-monospace fw-semibold text-dark">{% if p.study_id %}{{ p.study_id }}{% else %}—{% endif %}</span>
@@ -455,7 +439,7 @@
                 cases: {{ stats.daily.cases|default:0 }},
                 controls: {{ stats.daily.controls|default:0 }},
                 pending: {{ stats.daily.pending|default:0 }},
-                regSub: "Registered today",
+                regSub: "Assessed today",
                 casesSub: "Confirmed cases today",
                 controlsSub: "Eligible controls today",
                 pendingSub: "Enrolled today awaiting results"
@@ -465,7 +449,7 @@
                 cases: {{ stats.weekly.cases|default:0 }},
                 controls: {{ stats.weekly.controls|default:0 }},
                 pending: {{ stats.weekly.pending|default:0 }},
-                regSub: "Registered this week",
+                regSub: "Assessed this week",
                 casesSub: "Confirmed cases this week",
                 controlsSub: "Eligible controls this week",
                 pendingSub: "Enrolled this week awaiting results"
@@ -475,7 +459,7 @@
                 cases: {{ stats.monthly.cases|default:0 }},
                 controls: {{ stats.monthly.controls|default:0 }},
                 pending: {{ stats.monthly.pending|default:0 }},
-                regSub: "Registered this month",
+                regSub: "Assessed this month",
                 casesSub: "Confirmed cases this month",
                 controlsSub: "Eligible controls this month",
                 pendingSub: "Enrolled this month awaiting results"

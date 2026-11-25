@@ -519,9 +519,43 @@
 <div class="container-detail">
     <!-- Breadcrumb Navigation -->
     <div class="mb-3 d-flex align-items-center justify-content-between">
-        <a href="{% if p.classification == 'Control' %}{% url 'questions:controls' %}{% else %}{% url 'questions:cases' %}{% endif %}" class="text-decoration-none back-btn">
-            <i class="bi bi-arrow-left fs-6"></i> Back to {% if p.classification == 'Control' %}Controls{% else %}Cases{% endif %}
-        </a>
+        {% if request.user.profile.role == 'Project Nurse' %}
+            {% if p.classification == 'Pending' %}
+            <a href="{% url 'questions:search' %}?type=Pending" class="text-decoration-none back-btn">
+                <i class="bi bi-arrow-left fs-6"></i> Back to Pending Participants
+            </a>
+            {% elif p.classification == 'Case' %}
+            <a href="{% url 'questions:search' %}?type=Case" class="text-decoration-none back-btn">
+                <i class="bi bi-arrow-left fs-6"></i> Back to Cases
+            </a>
+            {% elif p.classification == 'Control' %}
+            <a href="{% url 'questions:search' %}?type=Control" class="text-decoration-none back-btn">
+                <i class="bi bi-arrow-left fs-6"></i> Back to Controls
+            </a>
+            {% else %}
+            <a href="{% url 'questions:search' %}" class="text-decoration-none back-btn">
+                <i class="bi bi-arrow-left fs-6"></i> Back to Participants
+            </a>
+            {% endif %}
+        {% else %}
+            {% if p.classification == 'Pending' %}
+            <a href="{% url 'questions:search' %}?type=Pending" class="text-decoration-none back-btn">
+                <i class="bi bi-arrow-left fs-6"></i> Back to Pending Participants
+            </a>
+            {% elif p.classification == 'Control' %}
+            <a href="{% url 'questions:controls' %}" class="text-decoration-none back-btn">
+                <i class="bi bi-arrow-left fs-6"></i> Back to Controls
+            </a>
+            {% elif p.classification == 'Case' %}
+            <a href="{% url 'questions:cases' %}" class="text-decoration-none back-btn">
+                <i class="bi bi-arrow-left fs-6"></i> Back to Cases
+            </a>
+            {% else %}
+            <a href="{% url 'questions:search' %}" class="text-decoration-none back-btn">
+                <i class="bi bi-arrow-left fs-6"></i> Back to Participants
+            </a>
+            {% endif %}
+        {% endif %}
     </div>
 
     <!-- DOSSIER HERO HEADER CARD -->
