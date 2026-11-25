@@ -60,6 +60,32 @@ def get_state_code(state_name):
     return name[:2] if len(name) >= 2 else "ST"
 
 
+def format_previous_address(val):
+    if not val:
+        return ""
+    val_str = str(val).strip()
+    if val_str.startswith("{") and val_str.endswith("}"):
+        try:
+            d = json.loads(val_str)
+            if isinstance(d, dict):
+                parts = []
+                if d.get("street"):
+                    parts.append(d["street"])
+                if d.get("taluka_block"):
+                    parts.append(f"Taluka/Block: {d['taluka_block']}")
+                if d.get("landmark"):
+                    parts.append(f"Landmark: {d['landmark']}")
+                if d.get("village"):
+                    parts.append(f"Village/Ward: {d['village']}")
+                if d.get("pincode"):
+                    parts.append(f"PIN: {d['pincode']}")
+                if parts:
+                    return ", ".join(parts)
+        except Exception:
+            pass
+    return val_str
+
+
 CANONICAL_BCG_CRITERIA = [
     "Was aged >=60 years during the BCG campaign period",
     "Past history Of TB from 2019-2024 or prior to the BCG campaign period",
@@ -415,7 +441,28 @@ def registration(request, pk=None):
         recently_changed_phone = request.POST.get("recently_changed_phone", "No").strip()
         previous_phone_number = request.POST.get("previous_phone_number", "").strip() if recently_changed_phone == "Yes" else ""
         recently_changed_address = request.POST.get("recently_changed_address", "No").strip()
-        previous_address = request.POST.get("previous_address", "").strip() if recently_changed_address == "Yes" else ""
+        if recently_changed_address == "Yes":
+            prev_street = request.POST.get("previous_address_street", "").strip()
+            prev_taluka = request.POST.get("previous_taluka_block", "").strip()
+            prev_landmark = request.POST.get("previous_landmark", "").strip()
+            prev_village = request.POST.get("previous_village", "").strip()
+            prev_pincode = request.POST.get("previous_pincode", "").strip()
+            raw_prev = request.POST.get("previous_address", "").strip()
+            if prev_street or prev_taluka or prev_landmark or prev_village or prev_pincode:
+                prev_dict = {
+                    "street": prev_street,
+                    "taluka_block": prev_taluka,
+                    "landmark": prev_landmark,
+                    "village": prev_village,
+                    "pincode": prev_pincode
+                }
+                previous_address = json.dumps(prev_dict)
+            elif raw_prev:
+                previous_address = raw_prev
+            else:
+                previous_address = ""
+        else:
+            previous_address = ""
 
         # Residence & Location Parameters
         address = request.POST.get("current_address", "").strip() or request.POST.get("address", "").strip() or (getattr(participant, "address", "") if participant else "")
@@ -917,6 +964,20 @@ def registration(request, pk=None):
                     "remarks": remarks
                 }
             
+            if not naat_status:
+                if result_availability == "Absent" or undergone_testing == "Yes, waiting for results":
+                    naat_status = "Pending/Referral"
+                elif final_interpretation:
+                    fi_up = final_interpretation.upper()
+                    if "NOT DETECTED" in fi_up:
+                        naat_status = "MTB Not Detected"
+                    elif "RIF RESIST" in fi_up or "RESISTANCE DETECTED" in fi_up:
+                        naat_status = "Rif Resistant"
+                    elif "RIF SENSITIVE" in fi_up or "RESISTANCE NOT DETECTED" in fi_up:
+                        naat_status = "Rif Sensitive"
+                    elif "DETECTED" in fi_up:
+                        naat_status = "MTB Detected"
+
             # Map primary test fields for database compatibility (only if test was added)
             if test_reason or test_type:
                 ptb_test_registered = True
@@ -6388,7 +6449,7 @@ def data_export_view(request):
             ("Current Village", lambda p: p.village),
             ("Current Pincode", lambda p: p.pincode),
             ("Has the participant changed their residential address after the BCG campaign period?", lambda p: getattr(p, "recently_changed_address", "No")),
-            ("Previous Address", lambda p: getattr(p, "previous_address", "")),
+            ("Previous Address", lambda p: format_previous_address(getattr(p, "previous_address", ""))),
             ("Marital Status", lambda p: p.marital_status),
             ("Socioeconomic Status", lambda p: p.socioeconomic_status),
             ("Demographic Area", lambda p: p.demographic_area),
@@ -7206,6 +7267,7 @@ def participant_detail_view(request, study_id):
             "verification_status": v_status,
             "adjudication_status": adj_status,
             "associated_submissions": associated_submissions,
+            "previous_address_display": format_previous_address(getattr(participant, "previous_address", "")),
         })
         
     # 2. Fallback / Mock participant adapter (renders in the NEW model template)
