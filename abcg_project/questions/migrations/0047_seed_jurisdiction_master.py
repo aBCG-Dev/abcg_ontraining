@@ -10,36 +10,56 @@ def seed_jurisdiction_master(apps, schema_editor):
 
     from questions.locations_data import MASTER_JURISDICTION_RECORDS, lookup_jurisdiction_by_tbu
 
-    # 1. Upsert all 106 master study sites
-    for rec in MASTER_JURISDICTION_RECORDS:
-        # Match primarily by tb_unit name or tbu_id
-        site = StudySite.objects.filter(tb_unit=rec["tb_unit"]).first()
-        if not site:
-            site = StudySite.objects.filter(tbu_id=rec["tbu_id"]).first()
-        if site:
-            site.state_id = rec["state_id"]
-            site.state = rec["state"]
-            site.district_id = rec["district_id"]
-            site.district = rec["district"]
-            site.tbu_id = rec["tbu_id"]
-            site.tb_unit = rec["tb_unit"]
+    # 1. Delete all Karnataka study sites (as per study requirement)
+    StudySite.objects.filter(state__iexact="Karnataka").delete()
+
+    # 2. Deduplicate and clean up StudySite rows (removes uppercase duplicates like JUNNARDEO when Junnardeo exists)
+    for site in list(StudySite.objects.all()):
+        match = lookup_jurisdiction_by_tbu(site.tb_unit, site.district, site.state)
+        if not match:
+            site.delete()
+            continue
+
+        canonical_name = match["tb_unit"]
+        if site.tb_unit != canonical_name:
+            if StudySite.objects.filter(tb_unit=canonical_name).exclude(pk=site.pk).exists():
+                site.delete()
+            else:
+                site.state_id = match["state_id"]
+                site.state = match["state"]
+                site.district_id = match["district_id"]
+                site.district = match["district"]
+                site.tbu_id = match["tbu_id"]
+                site.tb_unit = canonical_name
+                site.is_active = True
+                site.save()
+        else:
+            site.state_id = match["state_id"]
+            site.state = match["state"]
+            site.district_id = match["district_id"]
+            site.district = match["district"]
+            site.tbu_id = match["tbu_id"]
             site.is_active = True
             site.save()
-        else:
-            StudySite.objects.create(
-                state_id=rec["state_id"],
-                state=rec["state"],
-                district_id=rec["district_id"],
-                district=rec["district"],
-                tbu_id=rec["tbu_id"],
-                tb_unit=rec["tb_unit"],
-                is_active=True,
-            )
 
-    # 2. Deactivate any legacy Karnataka sites if present
-    StudySite.objects.filter(state__iexact="Karnataka").update(is_active=False)
+    # 3. Ensure all 106 master study sites exist and are active
+    for rec in MASTER_JURISDICTION_RECORDS:
+        StudySite.objects.update_or_create(
+            tb_unit=rec["tb_unit"],
+            defaults={
+                "state_id": rec["state_id"],
+                "state": rec["state"],
+                "district_id": rec["district_id"],
+                "district": rec["district"],
+                "tbu_id": rec["tbu_id"],
+                "is_active": True,
+            }
+        )
 
-    # 3. Backfill Participant records
+    # 4. Remove any lingering unmapped or NULL rows
+    StudySite.objects.filter(state_id__isnull=True).delete()
+
+    # 5. Standardize and backfill Participant records (fixes casing and fills IDs)
     for p in Participant.objects.all():
         match = lookup_jurisdiction_by_tbu(p.tb_unit, p.district, p.state)
         if match:
@@ -51,7 +71,7 @@ def seed_jurisdiction_master(apps, schema_editor):
             p.tb_unit = match["tb_unit"]
             p.save()
 
-    # 4. Backfill TptIndividual records
+    # 6. Standardize and backfill TptIndividual records
     for t in TptIndividual.objects.all():
         match = lookup_jurisdiction_by_tbu(t.tb_unit, t.district, t.state)
         if match:
@@ -63,7 +83,7 @@ def seed_jurisdiction_master(apps, schema_editor):
             t.tb_unit = match["tb_unit"]
             t.save()
 
-    # 5. Backfill IneligibleIndividual records
+    # 7. Standardize and backfill IneligibleIndividual records
     for i in IneligibleIndividual.objects.all():
         match = lookup_jurisdiction_by_tbu(i.tb_unit, i.district, i.state)
         if match:
@@ -75,7 +95,7 @@ def seed_jurisdiction_master(apps, schema_editor):
             i.tb_unit = match["tb_unit"]
             i.save()
 
-    # 6. Backfill UserProfile records
+    # 8. Standardize and backfill UserProfile records
     for up in UserProfile.objects.all():
         match = lookup_jurisdiction_by_tbu(up.tb_unit, up.district, up.state)
         if match:

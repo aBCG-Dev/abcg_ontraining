@@ -1,11 +1,11 @@
 -- ============================================================================
--- aBCG VE Study: Add state_id, district_id, tbu_id & Seed Jurisdiction Master
--- Target: Neon PostgreSQL (or Self-Hosted PostgreSQL)
--- Run this script in the Neon SQL Editor or via psql
+-- aBCG VE Study: Complete Jurisdiction Cleanup & Seeding Script
+-- Target: Neon PostgreSQL
+-- Resolves: Fills ALL rows with valid IDs, removes duplicates/NULLs, deletes Karnataka
 -- ============================================================================
 BEGIN;
 
--- 1. Add columns to questions_studysite
+-- 1. Ensure columns and indexes exist on all relevant tables
 ALTER TABLE questions_studysite ADD COLUMN IF NOT EXISTS state_id INTEGER;
 ALTER TABLE questions_studysite ADD COLUMN IF NOT EXISTS district_id INTEGER;
 ALTER TABLE questions_studysite ADD COLUMN IF NOT EXISTS tbu_id INTEGER;
@@ -13,7 +13,6 @@ CREATE INDEX IF NOT EXISTS idx_studysite_state_id ON questions_studysite(state_i
 CREATE INDEX IF NOT EXISTS idx_studysite_district_id ON questions_studysite(district_id);
 CREATE INDEX IF NOT EXISTS idx_studysite_tbu_id ON questions_studysite(tbu_id);
 
--- 2. Add columns to questions_participant
 ALTER TABLE questions_participant ADD COLUMN IF NOT EXISTS state_id INTEGER;
 ALTER TABLE questions_participant ADD COLUMN IF NOT EXISTS district_id INTEGER;
 ALTER TABLE questions_participant ADD COLUMN IF NOT EXISTS tbu_id INTEGER;
@@ -21,7 +20,6 @@ CREATE INDEX IF NOT EXISTS idx_participant_state_id ON questions_participant(sta
 CREATE INDEX IF NOT EXISTS idx_participant_district_id ON questions_participant(district_id);
 CREATE INDEX IF NOT EXISTS idx_participant_tbu_id ON questions_participant(tbu_id);
 
--- 3. Add columns to questions_tptindividual
 ALTER TABLE questions_tptindividual ADD COLUMN IF NOT EXISTS state_id INTEGER;
 ALTER TABLE questions_tptindividual ADD COLUMN IF NOT EXISTS district_id INTEGER;
 ALTER TABLE questions_tptindividual ADD COLUMN IF NOT EXISTS tbu_id INTEGER;
@@ -29,7 +27,6 @@ CREATE INDEX IF NOT EXISTS idx_tpt_state_id ON questions_tptindividual(state_id)
 CREATE INDEX IF NOT EXISTS idx_tpt_district_id ON questions_tptindividual(district_id);
 CREATE INDEX IF NOT EXISTS idx_tpt_tbu_id ON questions_tptindividual(tbu_id);
 
--- 4. Add columns to questions_ineligibleindividual
 ALTER TABLE questions_ineligibleindividual ADD COLUMN IF NOT EXISTS state_id INTEGER;
 ALTER TABLE questions_ineligibleindividual ADD COLUMN IF NOT EXISTS district_id INTEGER;
 ALTER TABLE questions_ineligibleindividual ADD COLUMN IF NOT EXISTS tbu_id INTEGER;
@@ -37,7 +34,6 @@ CREATE INDEX IF NOT EXISTS idx_ineligible_state_id ON questions_ineligibleindivi
 CREATE INDEX IF NOT EXISTS idx_ineligible_district_id ON questions_ineligibleindividual(district_id);
 CREATE INDEX IF NOT EXISTS idx_ineligible_tbu_id ON questions_ineligibleindividual(tbu_id);
 
--- 5. Add columns to questions_userprofile
 ALTER TABLE questions_userprofile ADD COLUMN IF NOT EXISTS state_id INTEGER;
 ALTER TABLE questions_userprofile ADD COLUMN IF NOT EXISTS district_id INTEGER;
 ALTER TABLE questions_userprofile ADD COLUMN IF NOT EXISTS tbu_id INTEGER;
@@ -45,10 +41,119 @@ CREATE INDEX IF NOT EXISTS idx_userprofile_state_id ON questions_userprofile(sta
 CREATE INDEX IF NOT EXISTS idx_userprofile_district_id ON questions_userprofile(district_id);
 CREATE INDEX IF NOT EXISTS idx_userprofile_tbu_id ON questions_userprofile(tbu_id);
 
--- 6. Deactivate legacy Karnataka sites if present
-UPDATE questions_studysite SET is_active = FALSE WHERE LOWER(state) = 'karnataka';
+-- 2. Delete Karnataka records (as per study requirement: Karnataka is removed)
+DELETE FROM questions_studysite WHERE LOWER(state) = 'karnataka';
 
--- 7. Upsert Master Study Sites (106 sites)
+-- 3. Upsert / synchronize all 106 authoritative study sites
+-- First remove any duplicate uppercase variations that would collide with canonical names:
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Paderu DTC') AND tb_unit != 'Paderu DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Chittoor DTC') AND tb_unit != 'Chittoor_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('GunturWest') AND tb_unit != 'GunturWest';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Guntur DTC') AND tb_unit != 'Guntur DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Mangalagiri') AND tb_unit != 'Mangalagiri';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Tenali') AND tb_unit != 'Tenali';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Machilipatnam') AND tb_unit != 'DTC Machilipatnam';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Narasaraopet') AND tb_unit != 'Narasaraopet';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Nellore 1') AND tb_unit != 'Nellore-1';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Dharmavaram') AND tb_unit != 'Dharmavaram';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Visakhapatnam DTC') AND tb_unit != 'Visakhapatnam_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('KGH') AND tb_unit != 'KGH';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Vizianagaram DTC') AND tb_unit != 'Vizianagaram_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Kadapa Rural') AND tb_unit != 'Kadapa Rural';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Ambala') AND tb_unit != 'Ambala';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Ambalacantt') AND tb_unit != 'Ambalacantt';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Tosham') AND tb_unit != 'Tosham';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Bhiwani DTC') AND tb_unit != 'Bhiwani_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Hisar') AND tb_unit != 'DTC Hisar';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Barwala') AND tb_unit != 'Barwala';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Jhajjar') AND tb_unit != 'Jhajjar';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Bahadurgarh') AND tb_unit != 'Bahadurgarh';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU DTC Jind') AND tb_unit != 'TU DTC Jind';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU 1 Kaithal') AND tb_unit != 'TU-1 Kaithal';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('GH Mandikhera') AND tb_unit != 'GH Mandikhera';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('CHC Nuh') AND tb_unit != 'CHC Nuh';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('GH Rohtak') AND tb_unit != 'GH Rohtak';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Rohtak') AND tb_unit != 'DTC_Rohtak';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('PGIMS Rohtak') AND tb_unit != 'PGIMS Rohtak';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Sirsa') AND tb_unit != 'DTC_Sirsa';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Ganaur') AND tb_unit != 'Ganaur';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Mudlana') AND tb_unit != 'Mudlana';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Gohana TU') AND tb_unit != 'Gohana TU';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Markand') AND tb_unit != 'Markand';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Rajpur') AND tb_unit != 'Rajpur';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Dhagera') AND tb_unit != 'Dhagera';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Tiara') AND tb_unit != 'Tiara';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Nurpur') AND tb_unit != 'Nurpur';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU Basdehra') AND tb_unit != 'TU-Basdehra';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Ratti') AND tb_unit != 'Ratti';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Agar') AND tb_unit != 'Agar';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Mungaoli') AND tb_unit != 'Mungaoli';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Barwani') AND tb_unit != 'Barwani';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Gohad') AND tb_unit != 'Gohad';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DH Jaiprakash Hospital') AND tb_unit != 'DH Jaiprakash Hospital';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Jawaharlal Nehru Hospital (Gas Rahat)') AND tb_unit != 'Jawaharlal Nehru Hospital (Gas Rahat)';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('AIIMS Hospital') AND tb_unit != 'AIIMS Hospital';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Civil Hospital Bairagarh') AND tb_unit != 'Civil Hospital Bairagarh';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('T B Hospital') AND tb_unit != 'T. B. Hospital';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Junnardeo') AND tb_unit != 'Junnardeo';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Chhindwara') AND tb_unit != 'DTC Chhindwara';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Damoh DTC') AND tb_unit != 'Damoh_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Dewas DTC') AND tb_unit != 'Dewas DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('CH Gwalior') AND tb_unit != 'CH Gwalior';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Dabra') AND tb_unit != 'Dabra';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Morar') AND tb_unit != 'Morar';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Medical College') AND tb_unit != 'Medical College';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Gwalior') AND tb_unit != 'DTC-Gwalior';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Harda') AND tb_unit != 'Harda';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Pipariya') AND tb_unit != 'Pipariya';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Hoshangabad DTC') AND tb_unit != 'Hoshangabad_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Rithi') AND tb_unit != 'Rithi';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Umaria Pan') AND tb_unit != 'Umaria Pan';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('V Garh') AND tb_unit != 'V_Garh';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Khargone DTC') AND tb_unit != 'Khargone DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Mandla') AND tb_unit != 'DTC-Mandla';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU Kailaras') AND tb_unit != 'TU-Kailaras';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU Sabalgarh') AND tb_unit != 'TU-Sabalgarh';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU Porsa') AND tb_unit != 'TU Porsa';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU Joura') AND tb_unit != 'TU-Joura';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU Morena DTC') AND tb_unit != 'TU-Morena DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Narsinghpur DTC') AND tb_unit != 'Narsinghpur_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Raisen DTC') AND tb_unit != 'Raisen DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Jaora') AND tb_unit != 'Jaora';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Majhgawan') AND tb_unit != 'Majhgawan';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Satna') AND tb_unit != 'Satna';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Maihar') AND tb_unit != 'Maihar';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Singrauli') AND tb_unit != 'DTC Singrauli';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Tikamgarh DTC') AND tb_unit != 'Tikamgarh_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Umaria DTC') AND tb_unit != 'Umaria_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Amravati') AND tb_unit != 'Amravati';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Bai Rukminibai Hospital TU') AND tb_unit != 'Bai Rukminibai Hospital TU';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Latur Urban') AND tb_unit != 'Latur Urban';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Squatters Colony Health Post') AND tb_unit != 'Squatters Colony Health Post';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('VN Desai Hospital') AND tb_unit != 'V.N. Desai Hospital';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Maa Hospital') AND tb_unit != 'Maa Hospital';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Urban Health Centre, Dharavi') AND tb_unit != 'Urban Health Centre, Dharavi';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('KB Bhabha Hospital') AND tb_unit != 'K.B. Bhabha Hospital';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('GMC') AND tb_unit != 'GMC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('IGGMC') AND tb_unit != 'IGGMC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('YCM Zone TB Unit') AND tb_unit != 'YCM Zone TB Unit';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Balangir DTC') AND tb_unit != 'Balangir DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Urban TU') AND tb_unit != 'Urban_TU';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Dhenkanal DTC') AND tb_unit != 'Dhenkanal_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Jharsuguda') AND tb_unit != 'Jharsuguda';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Kalahandi') AND tb_unit != 'DTC Kalahandi';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Baripada DTC') AND tb_unit != 'Baripada_DTC';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Udala') AND tb_unit != 'Udala';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('DTC Rayagada') AND tb_unit != 'DTC Rayagada';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Sadar Sundargarh') AND tb_unit != 'Sadar Sundargarh';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Chennai Central TU') AND tb_unit != 'Chennai Central TU';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU1') AND tb_unit != 'TU1';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU3') AND tb_unit != 'TU3';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('TU2') AND tb_unit != 'TU2';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Tiruvallur TU') AND tb_unit != 'Tiruvallur TU';
+DELETE FROM questions_studysite WHERE LOWER(REPLACE(REPLACE(REPLACE(tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER('Training TBU') AND tb_unit != 'Training TBU';
+
+-- Insert / Update the 106 Canonical Study Sites:
 INSERT INTO questions_studysite (state_id, state, district_id, district, tbu_id, tb_unit, launch_date, is_active, created_at, updated_at)
 VALUES (1, 'Andhra Pradesh', 1, 'Alluri Sitharama Raju', 1, 'Paderu DTC', CURRENT_DATE, TRUE, NOW(), NOW())
 ON CONFLICT (tb_unit) DO UPDATE SET
@@ -1110,31 +1215,35 @@ ON CONFLICT (tb_unit) DO UPDATE SET
     is_active = TRUE,
     updated_at = NOW();
 
--- 8. Backfill questions_participant from questions_studysite
+-- 4. Delete any remaining unmapped or test sites that have NULL state_id
+DELETE FROM questions_studysite WHERE state_id IS NULL;
+
+-- 5. Standardize & Backfill questions_participant (matches case-insensitively)
 UPDATE questions_participant p
-SET state_id = s.state_id, district_id = s.district_id, tbu_id = s.tbu_id
+SET state_id = s.state_id, district_id = s.district_id, tbu_id = s.tbu_id, tb_unit = s.tb_unit, state = s.state, district = s.district
 FROM questions_studysite s
-WHERE LOWER(REPLACE(REPLACE(p.tb_unit, '_', ' '), '-', ' ')) = LOWER(REPLACE(REPLACE(s.tb_unit, '_', ' '), '-', ' '));
+WHERE LOWER(REPLACE(REPLACE(REPLACE(p.tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER(REPLACE(REPLACE(REPLACE(s.tb_unit, '_', ' '), '-', ' '), '.', ''));
 
--- 9. Backfill questions_tptindividual from questions_studysite
+-- 6. Standardize & Backfill questions_tptindividual
 UPDATE questions_tptindividual t
-SET state_id = s.state_id, district_id = s.district_id, tbu_id = s.tbu_id
+SET state_id = s.state_id, district_id = s.district_id, tbu_id = s.tbu_id, tb_unit = s.tb_unit, state = s.state, district = s.district
 FROM questions_studysite s
-WHERE LOWER(REPLACE(REPLACE(t.tb_unit, '_', ' '), '-', ' ')) = LOWER(REPLACE(REPLACE(s.tb_unit, '_', ' '), '-', ' '));
+WHERE LOWER(REPLACE(REPLACE(REPLACE(t.tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER(REPLACE(REPLACE(REPLACE(s.tb_unit, '_', ' '), '-', ' '), '.', ''));
 
--- 10. Backfill questions_ineligibleindividual from questions_studysite
+-- 7. Standardize & Backfill questions_ineligibleindividual
 UPDATE questions_ineligibleindividual i
-SET state_id = s.state_id, district_id = s.district_id, tbu_id = s.tbu_id
+SET state_id = s.state_id, district_id = s.district_id, tbu_id = s.tbu_id, tb_unit = s.tb_unit, state = s.state, district = s.district
 FROM questions_studysite s
-WHERE LOWER(REPLACE(REPLACE(i.tb_unit, '_', ' '), '-', ' ')) = LOWER(REPLACE(REPLACE(s.tb_unit, '_', ' '), '-', ' '));
+WHERE LOWER(REPLACE(REPLACE(REPLACE(i.tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER(REPLACE(REPLACE(REPLACE(s.tb_unit, '_', ' '), '-', ' '), '.', ''));
 
--- 11. Backfill questions_userprofile from questions_studysite
+-- 8. Standardize & Backfill questions_userprofile
 UPDATE questions_userprofile u
-SET state_id = s.state_id, district_id = s.district_id, tbu_id = s.tbu_id
+SET state_id = s.state_id, district_id = s.district_id, tbu_id = s.tbu_id, tb_unit = s.tb_unit, state = s.state, district = s.district
 FROM questions_studysite s
-WHERE LOWER(REPLACE(REPLACE(u.tb_unit, '_', ' '), '-', ' ')) = LOWER(REPLACE(REPLACE(s.tb_unit, '_', ' '), '-', ' '));
+WHERE LOWER(REPLACE(REPLACE(REPLACE(u.tb_unit, '_', ' '), '-', ' '), '.', '')) = LOWER(REPLACE(REPLACE(REPLACE(s.tb_unit, '_', ' '), '-', ' '), '.', ''));
 
 COMMIT;
--- ============================================================================
--- Execution Complete: All columns added, 106 study sites seeded, records backfilled.
--- ============================================================================
+
+-- Verification Queries (Run these to confirm zero NULLs):
+-- SELECT COUNT(*) AS total_study_sites FROM questions_studysite;
+-- SELECT COUNT(*) AS null_rows FROM questions_studysite WHERE state_id IS NULL OR district_id IS NULL OR tbu_id IS NULL;
