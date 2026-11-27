@@ -703,11 +703,16 @@ def get_location_by_facility(facility_name):
 def recover_location_from_evidence(study_id=None, facility=None, screening_id=None, pincode=None):
     """
     Recovers verified (state, district, tb_unit) from evidence when a record was corrupted to GLOBAL.
+    Supports both new hierarchical format (ABCG-1-3-4-000001, SCREENED-1-3-4-000001) and legacy format.
     """
     sid = str(study_id or screening_id or "").upper().strip()
-    if "ABCG-" in sid:
+    if sid.startswith("ABCG-") or sid.startswith("SCREENED-"):
         parts = sid.split("-")
-        if len(parts) >= 3:
+        if len(parts) >= 4 and parts[1].isdigit() and parts[2].isdigit() and parts[3].isdigit():
+            rec = lookup_jurisdiction_by_id(int(parts[1]), int(parts[2]), int(parts[3]))
+            if rec:
+                return rec["state"], rec["district"], rec["tb_unit"]
+        elif "ABCG-" in sid and len(parts) >= 3:
             st_code = parts[1]
             tu_code = parts[2]
             st_name = STATE_CODE_TO_NAME.get(st_code)
@@ -792,3 +797,70 @@ def resolve_operational_location(participant=None, user=None, session=None, subm
         pass
 
     return "Tamil Nadu", "Tiruvallur", "Tiruvallur TU"
+
+
+def generate_next_study_id(state_id, district_id, tbu_id):
+    """
+    Generates the next sequential Study ID for an enrolled participant at a specific TB Unit:
+    Format: ABCG-{state_id}-{district_id}-{tbu_id}-{serial:06d}
+    e.g. ABCG-1-3-4-000001
+    """
+    from questions.models import Participant, TptIndividual, IneligibleIndividual
+    prefix = f"ABCG-{state_id}-{district_id}-{tbu_id}-"
+    
+    p_ids = list(Participant.objects.filter(study_id__startswith=prefix).values_list("study_id", flat=True))
+    tpt_ids = list(TptIndividual.objects.filter(study_id__startswith=prefix).values_list("study_id", flat=True))
+    inel_ids = list(IneligibleIndividual.objects.filter(study_id__startswith=prefix).values_list("study_id", flat=True))
+    
+    all_matching = p_ids + tpt_ids + inel_ids
+    max_serial = 0
+    for sid in all_matching:
+        try:
+            val = int(sid.split("-")[-1])
+            if val > max_serial:
+                max_serial = val
+        except (ValueError, IndexError):
+            pass
+            
+    next_serial = max_serial + 1
+    while True:
+        candidate = f"{prefix}{next_serial:06d}"
+        if not (Participant.objects.filter(study_id=candidate).exists() or
+                TptIndividual.objects.filter(study_id=candidate).exists() or
+                IneligibleIndividual.objects.filter(study_id=candidate).exists()):
+            return candidate
+        next_serial += 1
+
+
+def generate_next_screening_id(state_id, district_id, tbu_id):
+    """
+    Generates the next sequential Screening ID for any screened individual at a specific TB Unit:
+    Format: SCREENED-{state_id}-{district_id}-{tbu_id}-{serial:06d}
+    e.g. SCREENED-1-3-4-000001
+    """
+    from questions.models import Participant, TptIndividual, IneligibleIndividual
+    prefix = f"SCREENED-{state_id}-{district_id}-{tbu_id}-"
+    
+    p_ids = list(Participant.objects.filter(screening_id__startswith=prefix).values_list("screening_id", flat=True))
+    tpt_ids = list(TptIndividual.objects.filter(screening_id__startswith=prefix).values_list("screening_id", flat=True))
+    inel_ids = list(IneligibleIndividual.objects.filter(screening_id__startswith=prefix).values_list("screening_id", flat=True))
+    
+    all_matching = p_ids + tpt_ids + inel_ids
+    max_serial = 0
+    for sid in all_matching:
+        try:
+            val = int(sid.split("-")[-1])
+            if val > max_serial:
+                max_serial = val
+        except (ValueError, IndexError):
+            pass
+            
+    next_serial = max_serial + 1
+    while True:
+        candidate = f"{prefix}{next_serial:06d}"
+        if not (Participant.objects.filter(screening_id=candidate).exists() or
+                TptIndividual.objects.filter(screening_id=candidate).exists() or
+                IneligibleIndividual.objects.filter(screening_id=candidate).exists() or
+                IneligibleIndividual.objects.filter(study_id=candidate).exists()):
+            return candidate
+        next_serial += 1

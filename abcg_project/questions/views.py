@@ -17,7 +17,12 @@ from eptb.models import EptbSite, EptbSubQuestion
 from django.contrib.auth.models import User
 from questions.models import UserProfile, AuditLog, RolePermission
 from questions.decorators import role_required, permission_required, has_role_permission, group_required
-from questions.locations_data import resolve_operational_location
+from questions.locations_data import (
+    resolve_operational_location,
+    lookup_jurisdiction_by_tbu,
+    generate_next_study_id,
+    generate_next_screening_id,
+)
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -1377,73 +1382,40 @@ def registration(request, pk=None):
                 screening_id = getattr(match_rec, "screening_id", None) or study_id
                 existing_dup_rec = match_rec
 
+        # Resolve authoritative operational jurisdiction for location assignment and ID generation
+        target_state, target_dist, target_tu = resolve_operational_location(
+            participant=participant,
+            user=request.user,
+            session=request.session,
+            submitted_state=state,
+            submitted_district=district,
+            submitted_tb_unit=tb_unit
+        )
+        j_match = lookup_jurisdiction_by_tbu(target_tu, target_dist, target_state)
+        target_state_id = j_match["state_id"] if j_match else 99
+        target_district_id = j_match["district_id"] if j_match else 999
+        target_tbu_id = j_match["tbu_id"] if j_match else 999
+
         # Generate unique study ID / screening ID if not an existing or matched participant
         if not participant:
-            today_code = timezone.localdate().strftime("%y%m%d")
-            rand_code = random.randint(1000, 9999)
-            screening_id = f"SCR-{today_code}-{rand_code}"
-            while (Participant.objects.filter(screening_id=screening_id).exists() or 
-                   TptIndividual.objects.filter(screening_id=screening_id).exists() or 
-                   IneligibleIndividual.objects.filter(screening_id=screening_id).exists()):
-                rand_code = random.randint(1000, 9999)
-                screening_id = f"SCR-{today_code}-{rand_code}"
-            
+            screening_id = generate_next_screening_id(target_state_id, target_district_id, target_tbu_id)
             if eligible:
-                target_state, target_dist, target_tu = resolve_operational_location(
-                    participant=None,
-                    user=request.user,
-                    session=request.session,
-                    submitted_state=state,
-                    submitted_district=district,
-                    submitted_tb_unit=tb_unit
-                )
-                state_code = get_state_code(target_state)
-                tu_code = get_tu_code(target_tu)
-                year_code = timezone.localdate().strftime("%Y")
-                rand_serial = random.randint(100000, 999999)
-                study_id = f"ABCG-{state_code}-{tu_code}-{year_code}-{rand_serial}"
-                while (Participant.objects.filter(study_id=study_id).exists() or 
-                       TptIndividual.objects.filter(study_id=study_id).exists() or 
-                       IneligibleIndividual.objects.filter(study_id=study_id).exists()):
-                    rand_serial = random.randint(100000, 999999)
-                    study_id = f"ABCG-{state_code}-{tu_code}-{year_code}-{rand_serial}"
+                study_id = generate_next_study_id(target_state_id, target_district_id, target_tbu_id)
             else:
                 study_id = screening_id
         else:
             screening_id = getattr(participant, "screening_id", None)
             if not screening_id:
-                if participant.study_id.startswith("SCR-"):
+                if participant.study_id.startswith("SCR-") or participant.study_id.startswith("SCREENED-"):
                     screening_id = participant.study_id
                 else:
-                    today_code = timezone.localdate().strftime("%y%m%d")
-                    rand_code = random.randint(1000, 9999)
-                    screening_id = f"SCR-{today_code}-{rand_code}"
-                    while (Participant.objects.filter(screening_id=screening_id).exists() or 
-                           TptIndividual.objects.filter(screening_id=screening_id).exists() or 
-                           IneligibleIndividual.objects.filter(screening_id=screening_id).exists()):
-                        rand_code = random.randint(1000, 9999)
-                        screening_id = f"SCR-{today_code}-{rand_code}"
+                    screening_id = generate_next_screening_id(target_state_id, target_district_id, target_tbu_id)
             
             if eligible:
-                if participant.study_id.startswith("SCR-") or not participant.study_id.startswith("ABCG-"):
-                    target_state, target_dist, target_tu = resolve_operational_location(
-                        participant=participant,
-                        user=request.user,
-                        session=request.session,
-                        submitted_state=state,
-                        submitted_district=district,
-                        submitted_tb_unit=tb_unit
-                    )
-                    state_code = get_state_code(target_state)
-                    tu_code = get_tu_code(target_tu)
-                    year_code = timezone.localdate().strftime("%Y")
-                    rand_serial = random.randint(100000, 999999)
-                    study_id = f"ABCG-{state_code}-{tu_code}-{year_code}-{rand_serial}"
-                    while (Participant.objects.filter(study_id=study_id).exists() or 
-                           TptIndividual.objects.filter(study_id=study_id).exists() or 
-                           IneligibleIndividual.objects.filter(study_id=study_id).exists()):
-                        rand_serial = random.randint(100000, 999999)
-                        study_id = f"ABCG-{state_code}-{tu_code}-{year_code}-{rand_serial}"
+                if (participant.study_id.startswith("SCR-") or 
+                    participant.study_id.startswith("SCREENED-") or 
+                    not participant.study_id.startswith("ABCG-")):
+                    study_id = generate_next_study_id(target_state_id, target_district_id, target_tbu_id)
                 else:
                     study_id = participant.study_id
             else:
@@ -2486,6 +2458,8 @@ def search(request):
             Q(full_name__icontains=query) |
             Q(study_id__icontains=query) |
             Q(screening_id__icontains=query) |
+            Q(legacy_study_id__icontains=query) |
+            Q(legacy_screening_id__icontains=query) |
             Q(nikshay_id__icontains=query) |
             Q(bcg_beneficiary_id__icontains=query) |
             Q(contact_number__icontains=query)
@@ -2494,6 +2468,8 @@ def search(request):
             Q(full_name__icontains=query) |
             Q(study_id__icontains=query) |
             Q(screening_id__icontains=query) |
+            Q(legacy_study_id__icontains=query) |
+            Q(legacy_screening_id__icontains=query) |
             Q(nikshay_id__icontains=query) |
             Q(bcg_beneficiary_id__icontains=query) |
             Q(contact_number__icontains=query)
@@ -2502,6 +2478,8 @@ def search(request):
             Q(full_name__icontains=query) |
             Q(study_id__icontains=query) |
             Q(screening_id__icontains=query) |
+            Q(legacy_study_id__icontains=query) |
+            Q(legacy_screening_id__icontains=query) |
             Q(nikshay_id__icontains=query) |
             Q(bcg_beneficiary_id__icontains=query) |
             Q(contact_number__icontains=query)
@@ -2511,6 +2489,8 @@ def search(request):
         exact_match = participants_qs.filter(
             Q(study_id__iexact=query) |
             Q(screening_id__iexact=query) |
+            Q(legacy_study_id__iexact=query) |
+            Q(legacy_screening_id__iexact=query) |
             Q(nikshay_id__iexact=query) |
             Q(bcg_beneficiary_id__iexact=query)
         ).first()
@@ -2518,6 +2498,8 @@ def search(request):
             exact_match = tpt_qs.filter(
                 Q(study_id__iexact=query) |
                 Q(screening_id__iexact=query) |
+                Q(legacy_study_id__iexact=query) |
+                Q(legacy_screening_id__iexact=query) |
                 Q(nikshay_id__iexact=query) |
                 Q(bcg_beneficiary_id__iexact=query)
             ).first()
@@ -2525,6 +2507,8 @@ def search(request):
             exact_match = ineligible_qs.filter(
                 Q(study_id__iexact=query) |
                 Q(screening_id__iexact=query) |
+                Q(legacy_study_id__iexact=query) |
+                Q(legacy_screening_id__iexact=query) |
                 Q(nikshay_id__iexact=query) |
                 Q(bcg_beneficiary_id__iexact=query)
             ).first()
@@ -6463,6 +6447,8 @@ def data_export_view(request):
             # 0. Core Identifiers
             ("Study ID", lambda p: p.study_id),
             ("Screening ID", lambda p: p.screening_id),
+            ("Legacy Study ID", lambda p: getattr(p, "legacy_study_id", "") or ""),
+            ("Legacy Screening ID", lambda p: getattr(p, "legacy_screening_id", "") or ""),
             ("Nikshay ID", lambda p: p.nikshay_id),
             ("Date of Enrollment", lambda p: p.date_enroll),
             ("Last Updated Date", lambda p: p.updated_at.strftime("%Y-%m-%d %H:%M:%S") if getattr(p, "updated_at", None) else (p.created_at.strftime("%Y-%m-%d %H:%M:%S") if getattr(p, "created_at", None) else "")),
@@ -7266,13 +7252,20 @@ def participant_detail_view(request, study_id):
     import datetime
     
     # 1. Attempt to look up the participant in the database
-    participant = Participant.objects.filter(study_id=study_id).first()
+    from django.db.models import Q
+    lookup_q = (
+        Q(study_id=study_id) |
+        Q(legacy_study_id=study_id) |
+        Q(screening_id=study_id) |
+        Q(legacy_screening_id=study_id)
+    )
+    participant = Participant.objects.filter(lookup_q).first()
     cohort = "participant"
     if not participant:
-        participant = TptIndividual.objects.filter(study_id=study_id).first()
+        participant = TptIndividual.objects.filter(lookup_q).first()
         cohort = "tpt"
     if not participant:
-        participant = IneligibleIndividual.objects.filter(study_id=study_id).first()
+        participant = IneligibleIndividual.objects.filter(lookup_q).first()
         cohort = "ineligible"
         
     if participant:
