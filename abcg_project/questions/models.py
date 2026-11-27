@@ -18,9 +18,16 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     full_name = models.CharField(max_length=150, blank=True)
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, default="Project Nurse")
+    state_id = models.IntegerField(null=True, blank=True, db_index=True)
     state = models.CharField(max_length=100, default="Tamil Nadu")
+    district_id = models.IntegerField(null=True, blank=True, db_index=True)
     district = models.CharField(max_length=100, default="Tiruvallur")
+    tbu_id = models.IntegerField(null=True, blank=True, db_index=True)
     tb_unit = models.CharField(max_length=100, default="Tiruvallur TU")
+
+    def save(self, *args, **kwargs):
+        populate_jurisdiction_ids(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.username} Profile ({self.role})"
@@ -97,6 +104,31 @@ def sync_user_groups(sender, instance, **kwargs):
                 User.objects.filter(pk=user.pk).update(is_superuser=False, is_staff=False)
 
 
+def populate_jurisdiction_ids(instance):
+    """
+    Automatically resolves and attaches numeric state_id, district_id, and tbu_id
+    based on the entity's tb_unit, district, and state.
+    Guarantees high-speed indexed lookups and export codebook alignment.
+    """
+    try:
+        if hasattr(instance, "tb_unit") and instance.tb_unit:
+            from questions.locations_data import lookup_jurisdiction_by_tbu
+            match = lookup_jurisdiction_by_tbu(
+                instance.tb_unit,
+                getattr(instance, "district", None),
+                getattr(instance, "state", None),
+            )
+            if match:
+                if getattr(instance, "state_id", None) is None:
+                    instance.state_id = match["state_id"]
+                if getattr(instance, "district_id", None) is None:
+                    instance.district_id = match["district_id"]
+                if getattr(instance, "tbu_id", None) is None:
+                    instance.tbu_id = match["tbu_id"]
+    except Exception:
+        pass
+
+
 class Participant(models.Model):
     CLASSIFICATION_CHOICES = [
         ("Case", "Case"),
@@ -125,8 +157,11 @@ class Participant(models.Model):
     date_enroll = models.DateField()
     
     # Geography & Campaign wash-out details
+    state_id = models.IntegerField(null=True, blank=True, db_index=True)
     state = models.CharField(max_length=100, default="Tamil Nadu")
+    district_id = models.IntegerField(null=True, blank=True, db_index=True)
     district = models.CharField(max_length=100, default="Tiruvallur")
+    tbu_id = models.IntegerField(null=True, blank=True, db_index=True)
     tb_unit = models.CharField(max_length=100, default="Tiruvallur TU")
     facility = models.CharField(max_length=100, default="Local Clinic")
     village = models.CharField(max_length=150, default="")
@@ -285,6 +320,10 @@ class Participant(models.Model):
     def current_pincode(self):
         return self.pincode
 
+    def save(self, *args, **kwargs):
+        populate_jurisdiction_ids(self)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.full_name} ({self.study_id})"
 
@@ -393,8 +432,11 @@ class TptIndividual(models.Model):
     date_enroll = models.DateField()
     
     # Geography & Campaign wash-out details
+    state_id = models.IntegerField(null=True, blank=True, db_index=True)
     state = models.CharField(max_length=100, default="Tamil Nadu")
+    district_id = models.IntegerField(null=True, blank=True, db_index=True)
     district = models.CharField(max_length=100, default="Tiruvallur")
+    tbu_id = models.IntegerField(null=True, blank=True, db_index=True)
     tb_unit = models.CharField(max_length=100, default="Tiruvallur TU")
     facility = models.CharField(max_length=100, default="Local Clinic")
     village = models.CharField(max_length=150, default="")
@@ -553,6 +595,10 @@ class TptIndividual(models.Model):
     def current_pincode(self):
         return self.pincode
 
+    def save(self, *args, **kwargs):
+        populate_jurisdiction_ids(self)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"[TPT] {self.full_name} ({self.study_id})"
 
@@ -575,8 +621,11 @@ class IneligibleIndividual(models.Model):
     date_enroll = models.DateField()
     
     # Geography & Campaign wash-out details
+    state_id = models.IntegerField(null=True, blank=True, db_index=True)
     state = models.CharField(max_length=100, default="Tamil Nadu")
+    district_id = models.IntegerField(null=True, blank=True, db_index=True)
     district = models.CharField(max_length=100, default="Tiruvallur")
+    tbu_id = models.IntegerField(null=True, blank=True, db_index=True)
     tb_unit = models.CharField(max_length=100, default="Tiruvallur TU")
     facility = models.CharField(max_length=100, default="Local Clinic")
     village = models.CharField(max_length=150, default="")
@@ -734,6 +783,10 @@ class IneligibleIndividual(models.Model):
     @property
     def current_pincode(self):
         return self.pincode
+
+    def save(self, *args, **kwargs):
+        populate_jurisdiction_ids(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"[INELIGIBLE] {self.full_name} ({self.study_id})"
@@ -907,8 +960,11 @@ def auto_sync_ineligible_nikshay(sender, instance, **kwargs):
 
 
 class StudySite(models.Model):
+    state_id = models.IntegerField(null=True, blank=True, db_index=True)
     state = models.CharField(max_length=100)
+    district_id = models.IntegerField(null=True, blank=True, db_index=True)
     district = models.CharField(max_length=100)
+    tbu_id = models.IntegerField(null=True, blank=True, unique=True, db_index=True)
     tb_unit = models.CharField(max_length=100, unique=True, db_index=True)
     launch_date = models.DateField(default=timezone.localdate)
     concluding_date = models.DateField(null=True, blank=True)
@@ -918,7 +974,7 @@ class StudySite(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_study_sites")
 
     class Meta:
-        ordering = ["state", "district", "tb_unit"]
+        ordering = ["state_id", "district_id", "tbu_id"]
         verbose_name = "Study Site"
         verbose_name_plural = "Study Sites"
 
@@ -944,6 +1000,10 @@ class StudySite(models.Model):
         elif l_dt:
             return f"From {l_dt.strftime('%b %Y')}"
         return "Jun 2024 - Aug 2024"
+
+    def save(self, *args, **kwargs):
+        populate_jurisdiction_ids(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.tb_unit} ({self.district}, {self.state})"

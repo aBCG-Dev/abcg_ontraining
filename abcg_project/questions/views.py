@@ -49,6 +49,8 @@ def get_state_code(state_name):
         "RAJASTHAN": "RJ",
         "TAMIL NADU": "TN",
         "TELANGANA": "TG",
+        "TRAINING STATE": "TR",
+        "TRAINING": "TR",
         "TRIPURA": "TR",
         "UTTAR PRADESH": "UP",
         "UTTARAKHAND": "UK",
@@ -1344,6 +1346,8 @@ def registration(request, pk=None):
                 name = name[:-3].strip()
             if name == "TIRUVALLUR":
                 return "TIR"
+            if "TRAINING" in name:
+                return "TRN"
             if not name:
                 return "UNK"
             return name[:3] if len(name) >= 3 else name.ljust(3, 'X')
@@ -6464,8 +6468,11 @@ def data_export_view(request):
             ("Last Updated Date", lambda p: p.updated_at.strftime("%Y-%m-%d %H:%M:%S") if getattr(p, "updated_at", None) else (p.created_at.strftime("%Y-%m-%d %H:%M:%S") if getattr(p, "created_at", None) else "")),
 
             # 1. Step 1: Site Location & Sector
+            ("State ID", lambda p: getattr(p, "state_id", "") or ""),
             ("State", lambda p: p.state),
+            ("District ID", lambda p: getattr(p, "district_id", "") or ""),
             ("District", lambda p: p.district),
+            ("TBU ID", lambda p: getattr(p, "tbu_id", "") or ""),
             ("TB Unit", lambda p: p.tb_unit),
             ("Facility", lambda p: p.facility),
             ("Sector", lambda p: p.sector),
@@ -6885,6 +6892,38 @@ def data_export_view(request):
                 total_exported_count = len(primary_eligible) + len(primary_ineligible)
                 log_name = f"{base_export_name} ({len(primary_eligible)} primary, {len(primary_ineligible)} ineligible)"
                 
+            # Sheet: Jurisdiction Codebook
+            try:
+                ws_codebook = wb.create_sheet(title="Jurisdiction Codebook")
+                cb_headers = ["State ID", "State", "District ID", "District", "TBU ID", "TB Unit"]
+                ws_codebook.append(cb_headers)
+                for c_idx in range(1, len(cb_headers) + 1):
+                    cell = ws_codebook.cell(row=1, column=c_idx)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                
+                from questions.locations_data import get_master_codebook
+                for rec in get_master_codebook():
+                    ws_codebook.append([
+                        rec["state_id"],
+                        rec["state"],
+                        rec["district_id"],
+                        rec["district"],
+                        rec["tbu_id"],
+                        rec["tb_unit"],
+                    ])
+                for row in ws_codebook.iter_rows(min_row=2, max_row=ws_codebook.max_row, min_col=1, max_col=len(cb_headers)):
+                    for cell in row:
+                        cell.font = normal_font
+                        cell.border = thin_border
+                for col in ws_codebook.columns:
+                    max_len = max(len(str(cell.value or '')) for cell in col)
+                    col_letter = openpyxl.utils.get_column_letter(col[0].column)
+                    ws_codebook.column_dimensions[col_letter].width = max(max_len + 4, 14)
+            except Exception:
+                pass
+
             stream = BytesIO()
             wb.save(stream)
             stream.seek(0)
